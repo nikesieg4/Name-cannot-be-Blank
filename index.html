@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sehrohrtiefe – Prototyp</title>
+  <meta name="description" content="U-Boot-Simulation im Pixel-Look: Führe dein Boot und deine Crew als Kaleu.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/stil.css">
+</head>
+<body>
+  <header id="leiste">
+    <div class="titel">SEHROHRTIEFE <span>Prototyp 0.1</span></div>
+    <div id="uhr">Tag 1 · 12:00 UTC</div>
+    <div class="gruppe" id="tempo">
+      <button data-aktion="tempo" data-arg="0" title="Pause (Leertaste)">❚❚</button>
+      <button data-aktion="tempo" data-arg="1" title="Normale Geschwindigkeit (1)">1×</button>
+      <button data-aktion="tempo" data-arg="2" title="Doppelt (2)">2×</button>
+      <button data-aktion="tempo" data-arg="4" title="Vierfach (4)">4×</button>
+    </div>
+    <button id="btnAlarm" data-aktion="alarm" title="Alle auf Gefechtsstation – niemand schläft">Gefechtsstationen</button>
+    <div class="gruppe rechts">
+      <button data-aktion="schichtplan">Schichtplan</button>
+      <button data-aktion="speichern">Speichern</button>
+      <button data-aktion="laden">Laden</button>
+      <button data-aktion="neu">Neues Spiel</button>
+      <button data-aktion="hilfe" title="Hilfe">?</button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="links" class="spalte">
+      <section>
+        <h2>Status</h2>
+        <div id="status"></div>
+        <div id="systeme"></div>
+      </section>
+      <section>
+        <h2>Verpflegung</h2>
+        <label class="zeile" for="ration">Rationen pro Person und Tag <b id="rationWert">3</b></label>
+        <input type="range" id="ration" min="1" max="4" step="1" value="3">
+        <div id="rationInfo" class="klein"></div>
+      </section>
+      <section class="wachsen">
+        <h2>Besatzung</h2>
+        <div id="crewListe"></div>
+      </section>
+    </aside>
+
+    <div id="mitte">
+      <div id="bootWrap">
+        <canvas id="boot" aria-label="Querschnitt des U-Bootes"></canvas>
+        <div class="zoom">
+          <button data-aktion="zoom" data-arg="1" title="Hineinzoomen">+</button>
+          <button data-aktion="zoom" data-arg="-1" title="Herauszoomen">−</button>
+          <button data-aktion="zoom" data-arg="0" title="Ganzes Boot">▣</button>
+        </div>
+        <div id="bootHinweis"></div>
+      </div>
+      <div id="karteWrap">
+        <canvas id="karte" aria-label="Seekarte"></canvas>
+      </div>
+    </div>
+
+    <aside id="rechts" class="spalte">
+      <section>
+        <h2>Tiefe</h2>
+        <div id="tiefe"></div>
+        <div id="tiefenKnoepfe" class="knopfraster"></div>
+        <button data-aktion="anblasen" class="breit warn">Notanblasen</button>
+      </section>
+      <section>
+        <h2>Fahrt</h2>
+        <div id="fahrtKnoepfe" class="knopfraster"></div>
+        <div id="fahrtInfo"></div>
+      </section>
+      <section>
+        <h2>Torpedos</h2>
+        <div id="waffen"></div>
+      </section>
+      <section>
+        <h2>Funk</h2>
+        <div id="funk"></div>
+      </section>
+      <section>
+        <h2>Aufträge</h2>
+        <div id="auftraege"></div>
+      </section>
+      <section>
+        <h2>Auswahl</h2>
+        <div id="auswahl"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer id="logLeiste"><div id="log"></div></footer>
+
+  <div id="modal" hidden>
+    <div class="fenster" role="dialog" aria-modal="true">
+      <button class="schliessen" data-aktion="modalZu" title="Schließen">✕</button>
+      <div id="modalInhalt"></div>
+    </div>
+  </div>
+  <input type="file" id="dateiLaden" accept=".srt,.txt" hidden>
+
+  <script src="js/krypto.js"></script>
+  <script src="js/daten.js"></script>
+  <script src="js/zustand.js"></script>
+  <script src="js/speicher.js"></script>
+  <script src="js/simulation.js"></script>
+  <script src="js/grafik.js"></script>
+  <script src="js/karte.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
