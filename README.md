@@ -10,3 +10,6 @@ Werte:
   Essen: Rationen an bord. Man gibt an wieviel man jeden Tag verwenden möchte, die Crew ist das dann (es gibt ein Maximum und ein Minimum).
 
 Es soll als Webgame funktionieren ohne Datenbank also man downloaded seine Savefiles selber (die sollen sicher gemacht werden gegen Manipulation)
+
+Crew:
+  Jedes Crewmitglied hat natürlich bestimmte rollen, siehe: https://www.ubootworkshop.de/rollen.php. Alle rollen sollen übernommen werden außer Reporter und Schiffsjunge/mädel
