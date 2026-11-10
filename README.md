@@ -143,7 +143,7 @@ Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil bes
 ## Technik
 
 - **Reines HTML, CSS und JavaScript**, kein Build-Schritt, keine Abhängigkeiten. Der Ordner kann so wie er ist auf **GitHub Pages** oder **Netlify** hochgeladen werden und läuft auch per Doppelklick auf `index.html`.
-- **Grafik:** Canvas mit ganzzahligem Zoom ohne Glättung, damit die Pixel scharf bleiben. Das Boot ist **660 × 150 Pixel** groß, eine Figur **6 × 14 Pixel**. Die Karte hat 300 × 200 Pixel (1 Pixel = 1 km).
+- **Grafik:** Canvas mit ganzzahligem Zoom ohne Glättung, damit die Pixel scharf bleiben. Die Spiellogik rechnet in Bootseinheiten (660 × 150), gezeichnet wird mit **doppelter Auflösung**: Das Boot ist **1320 × 300 Pixel** groß, eine Figur **12 × 28 Pixel**. Auf einem 1080p-Bildschirm passt das ganze Boot gerade Pixel für Pixel in die Mitte. Für kleine Bildschirme gibt es zusätzlich die Zoomstufen 0,5 und 0,75 (dann geglättet). Die Karte hat 600 × 400 Pixel (2 Pixel = 1 km).
 - **Schriften:** Silkscreen und VT323 von Google Fonts, ohne Internet greift eine Monospace-Schrift.
 
 ```
@@ -161,8 +161,8 @@ js/main.js        Spielschleife, Maus, Tastatur, Befehle
 ```
 
 **Grafiken austauschen:** Alle Grafiken im Prototyp sind Platzhalter, die im Code gezeichnet werden (`js/grafik.js`). Für die echten Grafiken (z. B. aus Claude Design) gilt:
-- Boot-Querschnitt als **ein PNG mit 660 × 150 Pixeln**. Die Abteilgrenzen stehen in `js/daten.js` (`ABTEILE`), Boden bei y = 110, Decke bei y = 70.
-- Crew als **Spritesheet mit 6 × 14 Pixeln pro Bild** (Stehen, 2 Laufbilder, Schlafen), eine Reihe pro Rolle.
+- Boot-Querschnitt als **ein PNG mit 1320 × 300 Pixeln**. Die Abteilgrenzen stehen in `js/daten.js` (`ABTEILE`, in Bootseinheiten, also × 2 rechnen), der Boden liegt bei y = 220, die Decke bei y = 140.
+- Crew als **Spritesheet mit 12 × 28 Pixeln pro Bild** (Stehen, 2 Laufbilder, Schlafen), eine Reihe pro Rolle. Die Platzhalter-Figuren sind als Pixel-Raster in `js/grafik.js` definiert (`OBEN`, `BEINE`) und lassen sich dort direkt bearbeiten.
 - Hintergrund, Wasser und Licht bleiben im Code, damit Tiefe und Tageszeit sie verändern können.
 
 ## Stand des Prototyps
@@ -205,4 +205,4 @@ js/main.js        Spielschleife, Maus, Tastatur, Befehle
 
 - **Name:** „Sehrohrtiefe“ ist ein Arbeitstitel. Vorschläge für Spiel und Repository: `sehrohrtiefe`, `stille-fahrt`, `kaleu`, `abteil-sieben`, `tiefenruder`.
 - **Feind und Setting:** Wer ist der Gegner? Gibt es eine Geschichte? „Vardanien“ ist nur ein Platzhalter.
-- **Pixelgröße:** Passt das Raster (Figur 6 × 14 Pixel, Boot 660 × 150 Pixel) zu deinen Grafiken aus Claude Design?
+- **Pixelgröße:** Passt das Raster (Figur 12 × 28 Pixel, Boot 1320 × 300 Pixel) zu deinen Grafiken aus Claude Design?

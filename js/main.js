@@ -47,14 +47,23 @@
     return false;
   }
 
+  /* Zoom in Bildschirmpixeln pro Grafikpixel. Ganzzahlige Stufen bleiben pixelgenau,
+     0,5 und 0,75 gibt es nur für kleine Bildschirme. */
+  const STUFEN = S.grafik.ZOOMSTUFEN;
   function passendZoom() {
-    return Math.max(1, Math.floor(Math.min(bootCv.width / (D.BOOT.B - 8), bootCv.height / 100)));
+    const F = S.grafik.F;
+    const max = Math.min(bootCv.width / ((D.BOOT.B - 8) * F), bootCv.height / (100 * F));
+    let z = STUFEN[0];
+    for (const s of STUFEN) if (s <= max) z = s;
+    return z;
   }
   function zoomFit() { ansicht.zoom = passendZoom(); ansicht.cx = 330; ansicht.cy = 82; }
 
-  function zoomen(stufe, sx, sy) {
+  function zoomen(richtung, sx, sy) {
     const alt = ansicht.zoom;
-    const neu = Math.max(1, Math.min(12, alt + stufe));
+    let i = STUFEN.indexOf(alt);
+    if (i < 0) i = STUFEN.findIndex((s) => s >= alt);
+    const neu = STUFEN[Math.max(0, Math.min(STUFEN.length - 1, i + richtung))];
     if (neu === alt) return;
     if (sx != null) {
       const p = S.grafik.zuBoot(ansicht, bootCv.width, bootCv.height, sx, sy);
@@ -75,7 +84,7 @@
   function schleife(jetzt) {
     const dtReal = Math.min(0.25, (jetzt - letzte) / 1000);
     letzte = jetzt;
-    if (passeAn(bootCv) || !ansicht.gesetzt) { if (!ansicht.gesetzt || ansicht.zoom > 12) zoomFit(); ansicht.gesetzt = true; }
+    if (passeAn(bootCv) || !ansicht.gesetzt) { if (!ansicht.gesetzt) zoomFit(); ansicht.gesetzt = true; }
     passeAn(karteCv);
 
     if (st.tempo > 0 && !st.verloren) {
@@ -108,8 +117,8 @@
       if (Math.hypot(dx, dy) > 5) druck.gezogen = true;
       if (druck.gezogen) {
         const dpr = bootCv.width / bootCv.getBoundingClientRect().width;
-        ansicht.cx = druck.cx - dx * dpr / ansicht.zoom;
-        ansicht.cy = druck.cy - dy * dpr / ansicht.zoom;
+        ansicht.cx = druck.cx - dx * dpr / (ansicht.zoom * S.grafik.F);
+        ansicht.cy = druck.cy - dy * dpr / (ansicht.zoom * S.grafik.F);
         begrenzeAnsicht();
         bootCv.classList.add('ziehen');
       }

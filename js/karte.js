@@ -5,27 +5,51 @@
   const W = D.WELT;
   let basis = null;
 
+  /* Grundkarte mit doppelter Auflösung (2 Pixel pro km), ausgefranste Küsten und Flachwasser. */
+  const KF = 2;
   function baueBasis() {
+    const bw = W.B * KF, bh = W.H * KF;
+    const land = new Uint8Array(bw * bh);
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const kx = (x + 0.5) / KF, ky = (y + 0.5) / KF;
+      const nx = Math.sin(ky * 0.9 + kx * 0.13) * 0.7 + Math.sin(ky * 0.31 - kx * 0.27) * 1.1;
+      const ny = Math.sin(kx * 0.8 - ky * 0.11) * 0.7 + Math.sin(kx * 0.29 + ky * 0.23) * 1.1;
+      land[y * bw + x] = S.sim.imLand(kx + nx, ky + ny) && kx > 0 && ky > 0 && kx < W.B && ky < W.H ? 1 : 0;
+    }
+    const istLand = (x, y) => x < 0 || y < 0 || x >= bw || y >= bh ? 0 : land[y * bw + x];
     const c = document.createElement('canvas');
-    c.width = W.B; c.height = W.H;
+    c.width = bw; c.height = bh;
     const g = c.getContext('2d');
-    for (let y = 0; y < W.H; y++) {
-      for (let x = 0; x < W.B; x++) {
-        const land = S.sim.imLand(x + 0.5, y + 0.5);
-        let f;
-        if (land) {
-          const kueste = !S.sim.imLand(x + 2.5, y + 0.5) || !S.sim.imLand(x - 1.5, y + 0.5) || !S.sim.imLand(x + 0.5, y + 2.5) || !S.sim.imLand(x + 0.5, y - 1.5);
-          f = kueste ? '#7c865a' : ((x + y) % 7 === 0 ? '#4f5c3c' : '#55633f');
-        } else {
-          const feind = x > 205;
-          const dither = (x + y * 3) % 9 === 0;
-          f = feind ? (dither ? '#2a2632' : '#22222d') : (dither ? '#17384a' : '#123040');
-          if (x % W.PLAN === 0 || y % W.PLAN === 0) f = (x + y) % 2 ? '#1f4a5c' : f;
-        }
-        g.fillStyle = f;
-        g.fillRect(x, y, 1, 1);
+    const bild = g.createImageData(bw, bh);
+    const farbe = (i, hex) => { const n = parseInt(hex.slice(1), 16); bild.data[i] = n >> 16; bild.data[i + 1] = (n >> 8) & 255; bild.data[i + 2] = n & 255; bild.data[i + 3] = 255; };
+    for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+      const i = (y * bw + x) * 4;
+      let naehe = 9;
+      for (let dy = -5; dy <= 5 && naehe > 0; dy++) for (let dx = -5; dx <= 5; dx++) {
+        if (istLand(x + dx, y + dy)) { const d = Math.max(Math.abs(dx), Math.abs(dy)); if (d < naehe) naehe = d; }
+      }
+      const kx = x / KF, ky = y / KF;
+      if (land[y * bw + x]) {
+        const kueste = !istLand(x + 1, y) || !istLand(x - 1, y) || !istLand(x, y + 1) || !istLand(x, y - 1);
+        let f = (x * 7 + y * 13) % 11 === 0 ? '#4c593a' : (x + y) % 9 === 0 ? '#5d6c45' : '#55633f';
+        let innen = 9;
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (!istLand(x + dx, y + dy)) innen = Math.min(innen, Math.max(Math.abs(dx), Math.abs(dy)));
+        if (innen >= 3 && (x * 3 + y * 5) % 17 === 0) f = '#46523a';
+        if (innen === 2) f = '#6a7550';
+        if (kueste) f = '#a39a6e';
+        farbe(i, f);
+      } else {
+        const feind = kx > 205;
+        const dither = (x + y * 3) % 7 === 0;
+        let f = feind ? (dither ? '#2a2632' : '#22222d') : (dither ? '#17384a' : '#123040');
+        if (naehe <= 1) f = '#3f7f8c';
+        else if (naehe <= 2) f = (x + y) % 2 ? '#2c6273' : '#22505f';
+        else if (naehe <= 4) f = (x + y) % 2 ? '#1a4556' : f;
+        if ((x % (W.PLAN * KF) === 0 || y % (W.PLAN * KF) === 0) && (x + y) % 3 !== 0) f = '#24515f';
+        farbe(i, f);
       }
     }
+    g.putImageData(bild, 0, 0);
     basis = c;
   }
 
