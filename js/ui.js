@@ -209,7 +209,7 @@
       h += '<div class="knopfraster">';
       h += st.gesteuert === c.id ? '<button data-aktion="freigeben" class="aktiv">Freigeben</button>' : '<button data-aktion="steuern">Übernehmen</button>';
       h += '<button data-aktion="befehlWeg"' + (c.befehl == null ? ' disabled' : '') + '>Befehl aufheben</button>';
-      h += '</div><div class="klein" style="margin-top:4px">Klick ins Boot: dorthin schicken. Übernommen: <kbd>A</kbd>/<kbd>D</kbd> laufen.</div>';
+      h += '</div><div class="klein" style="margin-top:4px">Klick ins Boot: dorthin schicken. Übernommen: ◀ ▶ oder <kbd>A</kbd>/<kbd>D</kbd> laufen. Doppeltipp auf eine Figur übernimmt sie direkt.</div>';
       return h;
     }
     if (aus.abteil != null) {
@@ -244,7 +244,7 @@
     let t = '';
     if (st.gesteuert != null) {
       const c = S.sim.crewNachId(st, st.gesteuert);
-      if (c) t = 'Du steuerst ' + c.name + ' (' + D.ROLLEN[c.rolle].kurz + '): A/D oder Pfeiltasten zum Laufen, Esc zum Freigeben.';
+      if (c) t = 'Du steuerst ' + c.name + ' (' + D.ROLLEN[c.rolle].kurz + '): laufen mit ◀ ▶ oder A/D, „Freigeben“ beendet.';
     } else if (aus.crew != null) t = 'Klicke ins Boot, um das Crewmitglied dorthin zu schicken.';
     if (st.tempo === 0) t = '❚❚ PAUSE – ' + t;
     setze($('bootHinweis'), esc(t));

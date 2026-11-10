@@ -710,18 +710,27 @@
     return { x: (sx - t.tx) / t.z / F, y: (sy - t.ty) / t.z / F };
   }
 
-  function treffer(st, p) {
-    for (const c of st.crew.slice().reverse()) {
+  /* tol: zusätzliche Trefferfläche in Bootseinheiten (für Finger). Die nächste Figur gewinnt. */
+  function treffer(st, p, tol) {
+    tol = tol || 0;
+    let beste = null, bd = Infinity;
+    for (const c of st.crew) {
       if (c.tot) continue;
+      let mx, my, bx, by;
       if (c.taetigkeit === 'schlaf') {
         const k = D.KOJEN[c.koje];
-        const y = k.o ? 88 : 100;
-        if (p.x >= k.x - 9 && p.x <= k.x + 9 && p.y >= y - 4 && p.y <= y + 5) return { art: 'crew', id: c.id };
-      } else if (p.x >= c.x - 4 && p.x <= c.x + 4 && p.y >= B.BODEN_Y - 15 && p.y <= B.BODEN_Y + 1) return { art: 'crew', id: c.id };
+        mx = k.x; my = k.o ? 89 : 101; bx = 9; by = 4.5;
+      } else { mx = c.x; my = B.BODEN_Y - 7; bx = 4; by = 8; }
+      const dx = Math.abs(p.x - mx), dy = Math.abs(p.y - my);
+      if (dx <= bx + tol && dy <= by + tol) {
+        const d = Math.hypot(dx / bx, dy / by);
+        if (d < bd) { bd = d; beste = c; }
+      }
     }
+    if (beste) return { art: 'crew', id: beste.id };
     for (let i = 0; i < D.ABTEILE.length - 1; i++) {
       const x = D.ABTEILE[i].x1;
-      if (Math.abs(p.x - x) <= 3 && p.y >= 84 && p.y <= B.BODEN_Y) return { art: 'schott', i };
+      if (Math.abs(p.x - x) <= 3 + tol / 2 && p.y >= 84 && p.y <= B.BODEN_Y) return { art: 'schott', i };
     }
     if (p.y >= B.DECKE_Y && p.y <= B.BODEN_Y + 3 && p.x >= D.ABTEILE[0].x0 && p.x <= D.ABTEILE[D.ABTEILE.length - 1].x1) {
       return { art: 'abteil', i: S.sim.abteilIndex(p.x), x: p.x };

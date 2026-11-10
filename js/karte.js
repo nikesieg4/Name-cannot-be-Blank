@@ -89,7 +89,7 @@
     for (let j = 0; j < 7; j++) ctx.fillText(String(j + 1), m.ox + 3, m.oy + (j * W.PLAN + 16) * m.s);
     ctx.fillStyle = 'rgba(220,120,120,0.5)';
     ctx.textAlign = 'center';
-    ctx.fillText('Hoheitsgewässer ' + D.FEIND_NAME, m.ox + 238 * m.s, m.oy + 196 * m.s);
+    ctx.fillText('Hoheitsgewässer ' + D.FEIND_NAME, m.ox + 238 * m.s, m.oy + 175 * m.s);
 
     const b = st.boot;
     const bp = P(b);
@@ -176,9 +176,14 @@
     ctx.restore();
 
     // Legende
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(200,220,220,0.7)';
-    ctx.fillText('Klick: Kurs setzen · Klick auf Kontakt: Ziel wählen · ' + S.sim.planquadrat(b), cv.width - 6 * dpr, cv.height - 6 * dpr);
+    const legende = 'Tippen/Klicken: Kurs · auf Kontakt: Ziel · Boot in ' + S.sim.planquadrat(b);
+    ctx.textAlign = 'left';
+    const lw = ctx.measureText(legende).width;
+    const lx = m.ox + 6 * dpr, ly = m.oy + W.H * m.s - 6 * dpr;
+    ctx.fillStyle = 'rgba(8,18,24,0.75)';
+    ctx.fillRect(lx - 3 * dpr, ly - fs + 2 * dpr, Math.min(lw, W.B * m.s - 12 * dpr) + 6 * dpr, fs + 2 * dpr);
+    ctx.fillStyle = 'rgba(210,225,225,0.85)';
+    ctx.fillText(legende, lx, ly, W.B * m.s - 12 * dpr);
   }
 
   function zuWelt(cv, sx, sy) {

@@ -54,6 +54,8 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 | `A` / `D`, `←` / `→` | Übernommenes Crewmitglied laufen lassen |
 | `Esc` | Auswahl bzw. Übernahme aufheben, Fenster schließen |
 
+**Tablet und Touch (z. B. iPad):** Tippen wählt aus und gibt Befehle, **Doppeltipp** auf eine Figur übernimmt sie, mit zwei Fingern **zoomen**, mit einem Finger **ziehen**. Beim Übernehmen erscheinen Laufknöpfe **◀ ▶**. Im Hochformat liegen Boot und Karte oben, darunter die beiden Seitenleisten.
+
 ## Werte
 
 | Wert | Bedeutung |

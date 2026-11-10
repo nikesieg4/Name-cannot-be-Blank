@@ -2,7 +2,9 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>Sehrohrtiefe – Prototyp</title>
   <meta name="description" content="U-Boot-Simulation im Pixel-Look: Führe dein Boot und deine Crew als Kaleu.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,6 +60,11 @@
           <button data-aktion="zoom" data-arg="0" title="Ganzes Boot">▣</button>
         </div>
         <div id="bootHinweis"></div>
+        <div id="steuer" hidden>
+          <button data-lauf="-1" aria-label="Nach links laufen">◀</button>
+          <button data-lauf="1" aria-label="Nach rechts laufen">▶</button>
+          <button data-aktion="loslassen">Freigeben</button>
+        </div>
       </div>
       <div id="karteWrap">
         <canvas id="karte" aria-label="Seekarte"></canvas>

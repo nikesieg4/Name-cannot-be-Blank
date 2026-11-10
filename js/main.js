@@ -95,26 +95,54 @@
     S.grafik.zeichneBoot(bootCtx, st, ansicht, auswahl, dtReal);
     S.karte.zeichne(karteCv, st);
     uiTakt -= dtReal;
-    if (uiTakt <= 0) { uiTakt = 0.15; S.ui.aktualisiere(st, auswahl); }
+    if (uiTakt <= 0) { uiTakt = 0.15; S.ui.aktualisiere(st, auswahl); $('steuer').hidden = st.gesteuert == null; }
     requestAnimationFrame(schleife);
   }
 
-  /* ---------- Maus im Boot ---------- */
+  /* ---------- Maus und Touch im Boot ---------- */
   let druck = null;
+  const zeiger = new Map();          // aktive Finger/Maus für Pinch-Zoom
+  let pinch = null;
+  let letzterTipp = { zeit: 0, id: null };
   function bootPunkt(e) {
     const rect = bootCv.getBoundingClientRect();
     const dpr = bootCv.width / rect.width;
     const sx = (e.clientX - rect.left) * dpr, sy = (e.clientY - rect.top) * dpr;
     return { sx, sy, p: S.grafik.zuBoot(ansicht, bootCv.width, bootCv.height, sx, sy) };
   }
+  /* Mit dem Finger ist die Trefferfläche größer, abhängig vom Zoom (ca. 12 Bildschirmpunkte). */
+  function toleranz(e) {
+    if (e.pointerType === 'mouse') return 0;
+    const dpr = bootCv.width / bootCv.getBoundingClientRect().width;
+    return Math.min(8, 12 * dpr / (ansicht.zoom * S.grafik.F));
+  }
   bootCv.addEventListener('pointerdown', (e) => {
-    druck = { x: e.clientX, y: e.clientY, cx: ansicht.cx, cy: ansicht.cy, gezogen: false, id: e.pointerId };
+    e.preventDefault();
+    zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
     bootCv.setPointerCapture(e.pointerId);
+    if (zeiger.size === 2) {
+      const [p1, p2] = [...zeiger.values()];
+      pinch = { abstand: Math.hypot(p1.x - p2.x, p1.y - p2.y) };
+      druck = null;
+      return;
+    }
+    if (zeiger.size === 1) druck = { x: e.clientX, y: e.clientY, cx: ansicht.cx, cy: ansicht.cy, gezogen: false, id: e.pointerId };
   });
   bootCv.addEventListener('pointermove', (e) => {
-    if (druck) {
+    if (zeiger.has(e.pointerId)) zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && zeiger.size >= 2) {
+      const [p1, p2] = [...zeiger.values()];
+      const abstand = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      const rect = bootCv.getBoundingClientRect();
+      const dpr = bootCv.width / rect.width;
+      const mx = ((p1.x + p2.x) / 2 - rect.left) * dpr, my = ((p1.y + p2.y) / 2 - rect.top) * dpr;
+      if (abstand / pinch.abstand > 1.3) { zoomen(1, mx, my); pinch.abstand = abstand; }
+      else if (abstand / pinch.abstand < 0.77) { zoomen(-1, mx, my); pinch.abstand = abstand; }
+      return;
+    }
+    if (druck && druck.id === e.pointerId) {
       const dx = e.clientX - druck.x, dy = e.clientY - druck.y;
-      if (Math.hypot(dx, dy) > 5) druck.gezogen = true;
+      if (Math.hypot(dx, dy) > (e.pointerType === 'mouse' ? 5 : 10)) druck.gezogen = true;
       if (druck.gezogen) {
         const dpr = bootCv.width / bootCv.getBoundingClientRect().width;
         ansicht.cx = druck.cx - dx * dpr / (ansicht.zoom * S.grafik.F);
@@ -124,18 +152,35 @@
       }
       return;
     }
-    const t = S.grafik.treffer(st, bootPunkt(e).p);
+    if (e.pointerType !== 'mouse') return;
+    const t = S.grafik.treffer(st, bootPunkt(e).p, 0);
     auswahl.hover = t && t.art === 'crew' ? t.id : null;
     bootCv.style.cursor = t && (t.art === 'crew' || t.art === 'schott') ? 'pointer' : t && auswahl.crew != null ? 'crosshair' : '';
   });
-  bootCv.addEventListener('pointerup', (e) => {
+  function zeigerEnde(e, abbruch) {
+    zeiger.delete(e.pointerId);
+    if (zeiger.size < 2) pinch = null;
     bootCv.classList.remove('ziehen');
-    if (!druck) return;
+    if (!druck || druck.id !== e.pointerId) return;
     const war = druck; druck = null;
-    if (war.gezogen) return;
-    klickImBoot(bootPunkt(e).p);
-  });
-  bootCv.addEventListener('pointercancel', () => { druck = null; bootCv.classList.remove('ziehen'); });
+    if (war.gezogen || abbruch) return;
+    const p = bootPunkt(e).p;
+    const t = S.grafik.treffer(st, p, toleranz(e));
+    // Doppeltipp mit dem Finger auf eine Figur = übernehmen
+    if (e.pointerType !== 'mouse' && t && t.art === 'crew') {
+      const jetzt = performance.now();
+      if (letzterTipp.id === t.id && jetzt - letzterTipp.zeit < 400) {
+        letzterTipp = { zeit: 0, id: null };
+        auswahl.crew = t.id; auswahl.abteil = null;
+        aktion('steuern');
+        return;
+      }
+      letzterTipp = { zeit: jetzt, id: t.id };
+    }
+    klickImBoot(p, toleranz(e));
+  }
+  bootCv.addEventListener('pointerup', (e) => zeigerEnde(e, false));
+  bootCv.addEventListener('pointercancel', (e) => zeigerEnde(e, true));
   bootCv.addEventListener('wheel', (e) => {
     e.preventDefault();
     const { sx, sy } = bootPunkt(e);
@@ -143,15 +188,29 @@
   }, { passive: false });
   bootCv.addEventListener('contextmenu', (e) => e.preventDefault());
   bootCv.addEventListener('dblclick', (e) => {
-    const t = S.grafik.treffer(st, bootPunkt(e).p);
-    if (!t || t.art !== 'crew' || st.verloren) return;
+    const t = S.grafik.treffer(st, bootPunkt(e).p, 0);
+    if (!t || t.art !== 'crew' || st.verloren || st.gesteuert === t.id) return;
     auswahl.crew = t.id; auswahl.abteil = null;
     aktion('steuern');
   });
+  // Safari: Gesten-Zoom der Seite über dem Spiel verhindern
+  ['gesturestart', 'gesturechange'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault()));
 
-  function klickImBoot(p) {
+  /* ---------- Laufknöpfe für Touch ---------- */
+  document.querySelectorAll('[data-lauf]').forEach((knopf) => {
+    const richtung = Number(knopf.dataset.lauf);
+    const an = (e) => { e.preventDefault(); if (richtung < 0) tasten.links = true; else tasten.rechts = true; knopf.classList.add('aktiv'); };
+    const aus = () => { if (richtung < 0) tasten.links = false; else tasten.rechts = false; knopf.classList.remove('aktiv'); };
+    knopf.addEventListener('pointerdown', an);
+    knopf.addEventListener('pointerup', aus);
+    knopf.addEventListener('pointercancel', aus);
+    knopf.addEventListener('pointerleave', aus);
+    knopf.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
+
+  function klickImBoot(p, tol) {
     if (st.verloren) return;
-    const t = S.grafik.treffer(st, p);
+    const t = S.grafik.treffer(st, p, tol || 0);
     if (!t) { auswahl.crew = null; auswahl.abteil = null; return; }
     if (t.art === 'crew') {
       auswahl.crew = auswahl.crew === t.id ? null : t.id;
@@ -233,6 +292,11 @@
         if (c && st.gesteuert === c.id) { st.gesteuert = null; c.befehl = Math.round(c.x); }
         break;
       case 'befehlWeg': if (c) c.befehl = null; break;
+      case 'loslassen': {
+        const g = st.gesteuert != null ? S.sim.crewNachId(st, st.gesteuert) : null;
+        if (g) { st.gesteuert = null; g.befehl = Math.round(g.x); }
+        break;
+      }
       case 'pumpe': { const a = st.boot.abteile[Number(arg)]; a.pumpe = !a.pumpe; break; }
       case 'abschotten': {
         const i = Number(arg);
