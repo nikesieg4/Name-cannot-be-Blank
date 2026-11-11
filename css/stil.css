@@ -237,3 +237,72 @@ th { color: var(--leise); font-weight: normal; }
   #links { border-right: 0; }
   #mitte { position: static; height: 60vh; }
 }
+
+/* ---------- Pixel-Grafiken in der Oberfläche ---------- */
+.sym { display: inline-block; width: 16px; height: 16px; margin-right: 5px; vertical-align: -3px; background: url(../grafik/hud_symbole.png) no-repeat; image-rendering: pixelated; }
+.item { display: inline-block; width: 24px; height: 24px; margin-right: 6px; vertical-align: middle; background: url(../grafik/inventar_items.png) no-repeat; image-rendering: pixelated; }
+
+/* ---------- Minispiel Funkgerät ---------- */
+.etikett { font-family: 'Silkscreen', monospace; font-size: 11px; letter-spacing: 1px; color: #c29a45; }
+.funk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 16px; }
+.empfaenger { background: #2a2620; border: 3px solid #1d1912; box-shadow: inset 0 0 0 2px #86662a; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.empfaenger .anzeige { font-size: 64px; line-height: 1; color: #efd086; text-align: center; background: #0a0806; border: 3px solid #1d1912; padding: 6px; letter-spacing: 3px; }
+.empfaenger .anzeige small { font-size: 24px; color: #c29a45; letter-spacing: 0; }
+.lampe { font-size: 17px; color: #d9cfae; }
+.lampe::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 6px; background: #5a1f16; }
+.lampe.schwach::before { background: #efd086; }
+.lampe.klar::before { background: #4fc77c; }
+.skala { position: relative; height: 40px; background: #d9cfae; border: 3px solid #1d1912; overflow: hidden; }
+.skala i { position: absolute; bottom: 0; width: 2px; background: #2a261c; }
+.skala .band { position: absolute; top: 0; height: 8px; background: #4fc77c; opacity: 0.7; }
+.skala em { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: #c8392b; }
+.skalazahlen { display: flex; justify-content: space-between; font-size: 15px; color: #d9cfae; }
+.knopfraster.vier { grid-template-columns: repeat(4, 1fr); }
+.knopfraster.vier button { min-height: 40px; background: #3a3226; border-color: #86662a; }
+.pegel { display: flex; gap: 3px; align-items: flex-end; height: 36px; padding: 4px; background: #0a0806; border: 3px solid #1d1912; }
+.pegel i { flex: 1; background: #1d1912; }
+.pegel i.h1 { background: #23784a; } .pegel i.h2 { background: #4fc77c; } .pegel i.h3 { background: #b8ffd0; }
+.funker { color: #d9cfae; margin: 0; }
+.morse { display: flex; flex-direction: column; gap: 8px; }
+.morse .etikett { color: #4fc77c; }
+.morse .band { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; min-height: 40px; padding: 8px; background: #0b1b30; border: 2px solid #25507a; }
+.buchstabe { display: flex; gap: 4px; }
+.buchstabe i { height: 8px; background: #b8ffd0; }
+.buchstabe i.p { width: 8px; } .buchstabe i.s { width: 24px; }
+.buchstabe.leise i { background: #25507a; }
+.buchstabe.aus i { background: #18375e; }
+.luecke { width: 14px; }
+.felder { display: flex; flex-wrap: wrap; gap: 4px; }
+.feld { width: 30px; height: 38px; border-bottom: 3px solid #25507a; font-size: 30px; text-align: center; line-height: 38px; }
+.feld.richtig { color: var(--gruen); } .feld.falsch { color: var(--rot); }
+.tasten { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.tasten button { min-height: 36px; padding: 0; }
+.tasten .zurueck { grid-column: span 2; }
+.tabelle { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 8px; font-size: 16px; color: var(--leise); padding: 6px 8px; border: 1px solid var(--rand); }
+.tabelle b { color: var(--gelb); font-weight: normal; display: inline-block; width: 12px; }
+
+/* ---------- Minispiel Horchraum ---------- */
+.horch { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.aufnahme { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: #04110a; border: 3px solid #13432a; }
+.aufnahme .etikett { color: #4fc77c; }
+#horchBild { width: 100%; max-width: 400px; aspect-ratio: 5 / 3; image-rendering: pixelated; border: 2px solid #13432a; }
+.profil { display: flex; gap: 2px; align-items: flex-end; height: 110px; padding: 4px; background: #0a2616; border: 2px solid #13432a; }
+.profil span { flex: 1; height: 100%; display: flex; gap: 1px; align-items: flex-end; }
+.profil i { flex: 1; background: #4fc77c; }
+.profil i.ref { background: #efd086; }
+.takt { display: flex; gap: 2px; height: 10px; }
+.takt i { flex: 1; background: #0a2616; }
+.takt i.an { background: #4fc77c; }
+.takt.ref i { background: #1d1912; } .takt.ref i.an { background: #efd086; }
+.kartei { display: flex; flex-direction: column; gap: 8px; }
+.kartei .etikett { color: #4fc77c; }
+.karten { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.karte { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 6px; background: #0b1b30; border-color: #18375e; }
+.karte.aktiv { border-color: #efd086; background: #11284a; }
+.karte img { width: 100%; height: auto; image-rendering: pixelated; }
+.karte b { color: #fff; font-weight: normal; font-size: 21px; }
+.karte span { font-size: 15px; color: var(--leise); line-height: 1.05; }
+.meldung { display: flex; gap: 10px; align-items: center; padding: 8px; border: 2px solid var(--rand); background: #0b1b30; }
+.meldung.ok { border-color: var(--gruen); } .meldung.falsch { border-color: var(--rot); }
+.meldung .schiff { image-rendering: pixelated; height: 48px; }
+@media (max-width: 760px) { .funk, .horch { grid-template-columns: 1fr; } .tasten { grid-template-columns: repeat(8, 1fr); } }

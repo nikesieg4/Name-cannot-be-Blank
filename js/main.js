@@ -247,6 +247,7 @@
   /* ---------- Tastatur ---------- */
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+    if (S.minispiele.taste(st, e)) { S.ui.aktualisiere(st, auswahl); return; }
     const k = e.key;
     if (k === 'a' || k === 'A' || k === 'ArrowLeft') { tasten.links = true; if (st.gesteuert != null) e.preventDefault(); }
     if (k === 'd' || k === 'D' || k === 'ArrowRight') { tasten.rechts = true; if (st.gesteuert != null) e.preventDefault(); }
@@ -340,9 +341,14 @@
       case 'hilfe': pausieren(); S.ui.hilfe(); break;
       case 'modalZu':
         if (st.verloren) return;
+        S.minispiele.geschlossen();
         S.ui.schliesse(); fortsetzen();
         break;
-      default: break;
+      case 'funkgeraet': case 'horch':
+        if (!S.ui.offen()) pausieren();
+        S.minispiele.aktion(st, name, arg);
+        break;
+      default: S.minispiele.aktion(st, name, arg); break;
     }
     S.ui.aktualisiere(st, auswahl);
   }

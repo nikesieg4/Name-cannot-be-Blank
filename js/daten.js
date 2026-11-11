@@ -151,6 +151,23 @@
     haendler: { name: 'Händlerschiff', kn: 6, hp: 1, feind: false, kopfgeld: 0 },
   };
 
+  /* Funk: Morsealphabet. Der Stützpunkt sendet zwischen 6 000 und 7 000 kHz. */
+  const MORSE = {
+    A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--',
+    N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
+    0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.',
+  };
+  const FUNK = { min: 4000, max: 9000, basisVon: 6000, basisBis: 7000, schwach: 60 };
+
+  /* Horchgerät: Geräuschkartei. linien = Frequenzlinien im Wasserfall (0–200), takt = Zeilen pro Schraubenschlag,
+     spitzen = Klangprofil [Band 0–23, Stärke], grund = Grundrauschen. Das U-Boot dient als Fehlerquelle. */
+  const HORCH = {
+    frachter: { name: 'Frachter', merkmal: 'Langsamer Takt ~80/min, tiefer Grundton, gleichmäßige Linien', linien: [[38, 1], [76, 0.7], [114, 0.45], [152, 0.3]], takt: 8, spitzen: [[4, 85], [9, 60], [14, 40], [19, 26]], grund: 10 },
+    zerstoerer: { name: 'Zerstörer', merkmal: 'Schneller Takt ~220/min, hohe Töne, zwei Schrauben', linien: [[62, 0.8], [124, 1], [186, 0.6]], takt: 3, spitzen: [[7, 60], [14, 85], [21, 55]], grund: 14 },
+    haendler: { name: 'Händler', merkmal: 'Dieselklopfen, unruhiger Takt ~130/min, Doppellinie', linien: [[30, 0.9], [90, 0.6], [100, 0.4]], takt: 5, spitzen: [[3, 75], [10, 50], [11, 40]], grund: 12 },
+    uboot: { name: 'U-Boot', merkmal: 'Sehr leise, eine schwache Linie, Takt ~60/min', linien: [[50, 0.45]], takt: 11, spitzen: [[6, 30]], grund: 6 },
+  };
+
   const VORNAMEN = ['Jonas', 'Karl', 'Emil', 'Oskar', 'Paul', 'Fritz', 'Hannes', 'Lukas', 'Moritz', 'Anton', 'Theo',
     'Jakob', 'Felix', 'Erik', 'Lene', 'Greta', 'Ida', 'Marta', 'Frieda', 'Nora', 'Wilma', 'Kurt', 'Bruno', 'Ole', 'Mats'];
   const NACHNAMEN = ['Brenner', 'Kowalski', 'Hartmann', 'Lindqvist', 'Vogt', 'Seidel', 'Albers', 'Petersen', 'Kraus',
@@ -161,6 +178,6 @@
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
     ZERSTOERUNGSTIEFE, MAX_SICHER, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, LADERAUM_LE, PREISE, ANKAUF,
-    UPGRADES, SCHIFFSTYPEN, VORNAMEN, NACHNAMEN, stufe,
+    UPGRADES, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

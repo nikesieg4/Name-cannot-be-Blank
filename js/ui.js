@@ -6,6 +6,15 @@
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const geld = (n) => Math.round(n).toLocaleString('de-DE') + ' Kr';
   const pz = (v) => Math.round(v) + ' %';
+  /* Symbol aus grafik/hud_symbole.png (16 × 16): geld, moral, proviant, diesel, batterie, druckluft, rumpf, torpedo, funk, schlaf */
+  const SYM = ['geld', 'moral', 'proviant', 'diesel', 'batterie', 'druckluft', 'rumpf', 'torpedo', 'funk', 'schlaf'];
+  const sym = (n) => '<i class="sym" style="background-position:-' + SYM.indexOf(n) * 16 + 'px 0"></i>';
+  /* Gegenstand aus grafik/inventar_items.png (Torpedo 48 × 24, sonst 24 × 24) */
+  const ITEM = { torpedos: [0, 48], diesel: [48, 24], proviant: [72, 24], ersatzteile: [120, 24] };
+  const item = (id) => ITEM[id] ? '<i class="item" style="width:' + ITEM[id][1] + 'px;background-position:-' + ITEM[id][0] + 'px 0"></i>' : '';
+  /* Upgrade-Symbol aus grafik/skill_symbole.png (24 × 24) */
+  const SKILL = { rumpf: 0, pumpen: 2, batterie: 4 };
+  const skill = (id) => SKILL[id] != null ? '<i class="item" style="background-image:url(grafik/skill_symbole.png);background-position:-' + SKILL[id] * 24 + 'px 0"></i>' : '';
 
   /* Nur neu schreiben, wenn sich etwas geändert hat – sonst gehen Klicks verloren. */
   function setze(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
@@ -37,13 +46,13 @@
     const le = S.sim.ladeEinheiten(st.ladung);
     const fl = S.sim.flutung(st);
     let h = '';
-    h += '<div class="zeile"><span>Geld</span><b>' + geld(st.geld) + '</b></div>';
-    h += '<div class="zeile"><span>Moral (Schnitt)</span><b>' + pz(moral) + '</b></div>' + balken(moral, moralKlasse(moral));
-    h += '<div class="zeile"><span>Proviant</span><b>' + st.ladung.proviant + ' Rat. (' + tage.toFixed(1) + ' Tage)</b></div>';
-    h += '<div class="zeile"><span>Diesel</span><b>' + Math.round(st.ladung.diesel).toLocaleString('de-DE') + ' L</b></div>';
-    h += '<div class="zeile"><span>Batterie</span><b>' + pz(b.batterie) + '</b></div>' + balken(b.batterie, b.batterie < 20 ? 'rot' : 'blau');
-    h += '<div class="zeile"><span>Druckluft</span><b>' + pz(b.druckluft) + '</b></div>' + balken(b.druckluft, 'blau');
-    h += '<div class="zeile"><span>Ersatzteile</span><b>' + st.ladung.ersatzteile + '</b></div>';
+    h += '<div class="zeile"><span>' + sym('geld') + 'Geld</span><b>' + geld(st.geld) + '</b></div>';
+    h += '<div class="zeile"><span>' + sym('moral') + 'Moral (Schnitt)</span><b>' + pz(moral) + '</b></div>' + balken(moral, moralKlasse(moral));
+    h += '<div class="zeile"><span>' + sym('proviant') + 'Proviant</span><b>' + st.ladung.proviant + ' Rat. (' + tage.toFixed(1) + ' Tage)</b></div>';
+    h += '<div class="zeile"><span>' + sym('diesel') + 'Diesel</span><b>' + Math.round(st.ladung.diesel).toLocaleString('de-DE') + ' L</b></div>';
+    h += '<div class="zeile"><span>' + sym('batterie') + 'Batterie</span><b>' + pz(b.batterie) + '</b></div>' + balken(b.batterie, b.batterie < 20 ? 'rot' : 'blau');
+    h += '<div class="zeile"><span>' + sym('druckluft') + 'Druckluft</span><b>' + pz(b.druckluft) + '</b></div>' + balken(b.druckluft, 'blau');
+    h += '<div class="zeile"><span>' + sym('rumpf') + 'Ersatzteile</span><b>' + st.ladung.ersatzteile + '</b></div>';
     h += '<div class="zeile"><span>Laderaum</span><b>' + Math.round(le) + ' / ' + D.LADERAUM_LE + ' LE</b></div>';
     if (fl > 0.005) h += '<div class="zeile warnung"><span>Wasser im Boot</span><b>' + pz(fl * 100) + '</b></div>' + balken(fl / 0.7 * 100, 'rot');
     setze($('status'), h);
@@ -123,7 +132,7 @@
         : '<div class="klein">Zum Nachladen jemanden in den Bugraum schicken.</div>';
     }
     if (ziel) {
-      const bekannt = ziel.entdeckt === 'sicht' || ziel.ident >= 1;
+      const bekannt = S.sim.bekannt(ziel);
       h += '<div class="zeile"><span>Ziel</span><b>' + (bekannt ? D.SCHIFFSTYPEN[ziel.typ].name : 'Kontakt') + ', ' + S.sim.dist(ziel, b).toFixed(1) + ' km</b></div>';
     } else h += '<div class="klein">Kein Ziel. Klicke auf der Karte auf einen Kontakt.</div>';
     h += '<button class="breit warn" data-aktion="feuern"' + (ziel ? '' : ' disabled') + '>Torpedo los!</button>';
@@ -148,12 +157,18 @@
     for (const n of f.nachrichten.slice(0, 3)) {
       if (n.fertig) h += '<div class="nachricht"><b>' + esc(n.mission.titel) + ':</b> ' + esc(n.mission.text) + '</div>';
       else {
-        h += '<div class="nachricht verschluesselt">' + esc(verschleiert(n.mission.text, n.fortschritt, n.id)) + '</div>' + balken(n.fortschritt * 100, 'gelb');
-        if (S.sim.eff.funk <= 0) h += '<div class="klein">Entschlüsselung ruht – niemand am Funkgerät.</div>';
+        h += '<div class="nachricht verschluesselt">' + esc(verschleiert(n.mission.text, n.fortschritt, n.id)) + '</div>';
+        if (n.auto) {
+          h += balken(n.fortschritt * 100, 'gelb');
+          if (S.sim.eff.funk <= 0) h += '<div class="klein">Entschlüsselung ruht – niemand am Funkgerät.</div>';
+        }
+        h += '<button class="breit" data-aktion="funkgeraet" data-arg="' + n.id + '">Am Funkgerät entschlüsseln</button>';
       }
     }
     setze($('funk'), h);
   }
+
+  function horch(st) { setze($('horch'), S.minispiele.liste(st)); }
 
   function auftraege(st) {
     const liste = st.missionen.slice().reverse();
@@ -251,7 +266,7 @@
   }
 
   function aktualisiere(st, aus) {
-    kopf(st); status(st); crewListe(st, aus); tiefe(st); fahrt(st); waffen(st); funk(st); auftraege(st); auswahl(st, aus); logListe(st); hinweis(st, aus);
+    kopf(st); status(st); crewListe(st, aus); tiefe(st); fahrt(st); waffen(st); horch(st); funk(st); auftraege(st); auswahl(st, aus); logListe(st); hinweis(st, aus);
   }
 
   /* ------------ Fenster ------------ */
@@ -293,7 +308,7 @@
     h += '<h3>Waren</h3><table><tr><th>Ware</th><th>An Bord</th><th>Kaufen</th><th>Verkaufen</th></tr>';
     for (const [id, w] of Object.entries(D.WAREN)) {
       const k = S2.kaufpreis(st, ort, id), v = S2.verkaufspreis(st, ort, id);
-      h += '<tr><td>' + w.name + ' <span class="klein">(' + w.paket + ' ' + w.einheit + ')</span></td><td>' + Math.round(st.ladung[id]).toLocaleString('de-DE') + ' ' + w.einheit + '</td>';
+      h += '<tr><td>' + item(id) + w.name + ' <span class="klein">(' + w.paket + ' ' + w.einheit + ')</span></td><td>' + Math.round(st.ladung[id]).toLocaleString('de-DE') + ' ' + w.einheit + '</td>';
       h += '<td>' + (k == null ? '<span class="klein">nicht im Angebot</span>' : '<button data-aktion="kaufen" data-arg="' + id + '">+' + w.paket + ' für ' + geld(k) + '</button>') + '</td>';
       h += '<td><button data-aktion="verkaufen" data-arg="' + id + '"' + (st.ladung[id] < w.paket ? ' disabled' : '') + '>−' + w.paket + ' für ' + geld(v) + '</button></td></tr>';
     }
@@ -308,7 +323,7 @@
       h += '<h3>Ausbau</h3><table>';
       for (const [id, u] of Object.entries(D.UPGRADES)) {
         const s = st.boot.upgrades[id];
-        h += '<tr><td>' + u.name + ' <span class="klein">' + u.text + '</span></td><td>Stufe ' + s + ' / ' + u.preise.length + '</td><td>' +
+        h += '<tr><td>' + skill(id) + u.name + ' <span class="klein">' + u.text + '</span></td><td>Stufe ' + s + ' / ' + u.preise.length + '</td><td>' +
           (s < u.preise.length ? '<button data-aktion="upgrade" data-arg="' + id + '">Ausbauen für ' + geld(u.preise[s]) + '</button>' : 'voll') + '</td></tr>';
       }
       h += '</table>';
@@ -328,6 +343,7 @@
       '<h3>Boot</h3><p><b>Klick auf Crew:</b> auswählen. <b>Danach Klick ins Boot:</b> dorthin schicken (bleibt dort, bis du den Befehl aufhebst). ' +
       '<b>Übernehmen</b> (Knopf oder Doppelklick auf die Figur): selbst steuern mit <kbd>A</kbd>/<kbd>D</kbd> oder Pfeiltasten. <b>Klick auf ein Abteil:</b> Pumpe und Schotten. <b>Klick auf ein Schott:</b> öffnen/schließen. ' +
       '<b>Mausrad</b> zoomt, <b>Ziehen</b> verschiebt die Ansicht.</p>' +
+      '<h3>Funk und Horchgerät</h3><p>Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +
       '<h3>Tauchen und Lecks</h3><p>Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
       '<h3>Energie</h3><p>An der Oberfläche laufen die Diesel und laden die Batterie. Getaucht fährt das Boot mit der E-Maschine und verbraucht Batterie. Funk und Sehrohr gehen nur bis Sehrohrtiefe.</p>' +

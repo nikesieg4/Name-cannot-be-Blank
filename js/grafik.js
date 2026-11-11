@@ -422,6 +422,16 @@
       r(g, x + 6, y, 6, 6, '#9a9a9a'); r(g, x + 6, y, 6, 2, '#6a6a6a');
       return;
     }
+    const reihe = Object.keys(D.ROLLEN).indexOf(c.rolle);
+    const blatt = reihe >= 0 && reihe < 13 ? S.bilder.bild('crew_sheet') : null;
+    const schlafBlatt = reihe >= 0 && reihe < 13 ? S.bilder.bild('crew_schlaf') : null;
+    if (c.taetigkeit === 'schlaf' && schlafBlatt) {
+      // Pixel-Grafik: 28 × 12 je Rolle, Kopf rechts auf dem Kissen
+      const k = D.KOJEN[c.koje];
+      const kx = k.x * F, y = (k.o ? 184 : 208) - 3;
+      g.drawImage(schlafBlatt, 0, reihe * 12, 28, 12, kx - 13, y - 11, 28, 12);
+      return;
+    }
     if (c.taetigkeit === 'schlaf') {
       const k = D.KOJEN[c.koje];
       const kx = k.x * F, y = (k.o ? 184 : 208) - 3;
@@ -436,6 +446,15 @@
       return;
     }
     const bild = c.laeuft ? 1 + (Math.floor(c.anim) % 2) : 0;
+    if (blatt) {
+      // Pixel-Grafik: Bilder stehen, laufen 1, laufen 2, arbeiten (am Posten)
+      const nr = c.laeuft ? bild : (c.aktPosten && c.taetigkeit !== 'frei' ? 3 : 0);
+      const bx = Math.round(c.x * F) - 6, by = BODEN - 28 + (nr === 1 ? 1 : 0);
+      if (c.richtung < 0) {
+        g.save(); g.translate(bx + 12, by); g.scale(-1, 1); g.drawImage(blatt, nr * 12, reihe * 28, 12, 28, 0, 0, 12, 28); g.restore();
+      } else g.drawImage(blatt, nr * 12, reihe * 28, 12, 28, bx, by, 12, 28);
+      return;
+    }
     const sp = sprite(c, bild);
     const x = Math.round(c.x * F) - 6, y = BODEN - 28 + (bild === 1 ? 1 : 0);
     if (c.richtung < 0) {
@@ -538,7 +557,7 @@
     r(ctx, 822, sy, 4, 60 - sy, FARBE.metallHell); r(ctx, 822, sy, 1, 60 - sy, '#aab3b8');
     r(ctx, 820, sy, 8, 4, FARBE.metall); r(ctx, 826, sy + 1, 3, 2, '#1a2523');
     r(ctx, 802, 22, 1, 34, '#8a8f95'); r(ctx, 798, 22, 9, 1, '#8a8f95');
-    ctx.drawImage(statisch, 0, 0);
+    ctx.drawImage(S.bilder.bild('boot_querschnitt') || statisch, 0, 0);
 
     // Schraube
     const drehung = S.sim.knoten > 0 ? Math.floor(zeit * 14) % 3 : 0;

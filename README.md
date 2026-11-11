@@ -156,15 +156,19 @@ js/daten.js       feste Spieldaten: Abteile, Rollen, Posten, Tiefen, Karte, Ware
 js/zustand.js     neuen Spielstand erzeugen
 js/speicher.js    Spielstände verschleiern, signieren, herunterladen, laden
 js/simulation.js  Spiellogik: Crew, Wasser, Tiefe, Energie, Fahrt, Schiffe, Kampf, Funk, Aufträge, Handel
+js/bilder.js      lädt die PNG-Grafiken aus grafik/
 js/grafik.js      Pixel-Grafik des Bootes und der Crew
 js/karte.js       Seekarte
 js/ui.js          Seitenleisten und Fenster
+js/minispiele.js  Funkgerät (Frequenz + Morse) und Horchraum (Schraubengeräusch abgleichen)
 js/main.js        Spielschleife, Maus, Tastatur, Befehle
+grafik/           Pixel-Grafiken (PNG)
+werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 ```
 
-**Grafiken austauschen:** Alle Grafiken im Prototyp sind Platzhalter, die im Code gezeichnet werden (`js/grafik.js`). Für die echten Grafiken (z. B. aus Claude Design) gilt:
+**Grafiken:** Boot-Querschnitt, Crew, Seekarte, Kartensymbole, Status-Symbole, Waren- und Ausbau-Symbole sowie die Horch-Spektrogramme liegen als PNG in `grafik/` und werden von `js/bilder.js` geladen. Fehlt eine Datei, zeichnet das Spiel die alten Platzhalter aus `js/grafik.js`. Neu erzeugen mit `python3 werkzeuge/pixelart/boot.py grafik` (ebenso `crew.py`, `extra.py`, `extra2.py`; braucht Pillow und numpy). Für eigene Grafiken gilt:
 - Boot-Querschnitt als **ein PNG mit 1320 × 300 Pixeln**. Die Abteilgrenzen stehen in `js/daten.js` (`ABTEILE`, in Bootseinheiten, also × 2 rechnen), der Boden liegt bei y = 220, die Decke bei y = 140.
-- Crew als **Spritesheet mit 12 × 28 Pixeln pro Bild** (Stehen, 2 Laufbilder, Schlafen), eine Reihe pro Rolle. Die Platzhalter-Figuren sind als Pixel-Raster in `js/grafik.js` definiert (`OBEN`, `BEINE`) und lassen sich dort direkt bearbeiten.
+- Crew als **Spritesheet mit 12 × 28 Pixeln pro Bild** (`grafik/crew_sheet.png`: Stehen, 2 Laufbilder, Arbeiten am Posten), eine Reihe pro Rolle in der Reihenfolge von `ROLLEN`. Schlafende Figuren liegen in `grafik/crew_schlaf.png` (28 × 12 je Rolle). Die Platzhalter-Figuren sind als Pixel-Raster in `js/grafik.js` definiert (`OBEN`, `BEINE`) und lassen sich dort direkt bearbeiten.
 - Hintergrund, Wasser und Licht bleiben im Code, damit Tiefe und Tageszeit sie verändern können.
 
 ## Stand des Prototyps
@@ -181,6 +185,9 @@ js/main.js        Spielschleife, Maus, Tastatur, Befehle
 - [x] Diesel, Batterie, Druckluft, Laderaum
 - [x] Seekarte mit Kurs, Häfen, Feindgebiet, Sicht- und Horchweite
 - [x] Funk mit Entschlüsselung, Aufträge (Patrouille, Frachter versenken)
+- [x] Pixel-Grafiken für Boot, Crew, Karte und Symbole
+- [x] Funk-Minispiel: Frequenz suchen, Morse entschlüsseln (oder den Funker machen lassen, dreimal langsamer)
+- [x] Horch-Minispiel: Schraubengeräusch mit der Geräuschkartei abgleichen, erst dann ist ein getauchter Kontakt erkannt
 - [x] Torpedos mit Nachladen, Frachter, Zerstörer (Beschuss), Händlerschiffe
 - [x] Handel im Hafen und mit Händlerschiffen, Werft, Upgrades, Anheuern
 - [x] Pause, 1×, 2×, 4×, eigene Bordzeit (UTC) mit Tag und Nacht
@@ -189,9 +196,9 @@ js/main.js        Spielschleife, Maus, Tastatur, Befehle
 ## Fahrplan
 
 **Bis 1.0**
-- [ ] Echte Pixel-Grafiken (Boot, Crew, Animationen) aus Claude Design
+- [ ] Animationen (Crew-Arbeitsbewegungen, Schraube, Blasen)
+- [ ] Inventar-Bildschirm und Skilltree (Entwürfe im Claude-Design-Canvas)
 - [ ] Admiral-Aufträge (im Hafen aufnehmen, als Beobachter mitfahren)
-- [ ] Funk-Entschlüsselung als kleines Minispiel statt Fortschrittsbalken
 - [ ] Mehr Auftragsarten (Geleitzug, Aufklärung, Transport)
 - [ ] Soundeffekte (Sonar-Ping, Alarm, Ächzen des Rumpfes)
 - [ ] Balancing (Preise, Verbrauch, Schaden)

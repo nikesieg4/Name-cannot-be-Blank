@@ -461,11 +461,15 @@
       }
 
       // Entdeckung durch das Boot
-      if (d < sicht) { if (s.entdeckt !== 'sicht') s.ident = 1; s.entdeckt = 'sicht'; }
+      if (d < sicht) { s.ident = 1; s.klass = true; s.entdeckt = 'sicht'; }
       else if (d < sonar) {
+        // ident = Qualität der Horch-Aufnahme. Erkannt ist der Kontakt erst nach dem Abgleich im Horchraum.
         s.entdeckt = 'sonar';
         s.ident = Math.min(1, s.ident + eff.sonar * dt / 6);
-      } else { s.entdeckt = 'nein'; s.ident = Math.max(0, s.ident - dt / 120); }
+      } else {
+        s.entdeckt = 'nein'; s.ident = Math.max(0, s.ident - dt / 120);
+        if (s.ident <= 0) s.klass = false;
+      }
     }
 
     // Frachter am Ziel verschwinden
@@ -517,12 +521,38 @@
     }
   }
 
+  /* Ein Kontakt gilt als erkannt, wenn er gesehen oder im Horchraum richtig abgeglichen wurde. */
+  function bekannt(s) { return s.entdeckt === 'sicht' || !!s.klass; }
+  sim.bekannt = bekannt;
+
+  /* Horch-Minispiel: Der Spieler ordnet das Schraubengeräusch einer Vorlage aus der Kartei zu. */
+  sim.klassifizieren = function (st, id, typ) {
+    const s = st.schiffe.find((x) => x.id === id && !x.versenkt);
+    if (!s || s.entdeckt !== 'sonar') return { ok: false, text: 'Der Kontakt ist nicht mehr im Horchbereich.' };
+    if (bekannt(s)) return { ok: true, text: 'Kontakt ist bereits erkannt.' };
+    if (sim.eff.sonar <= 0) return { ok: false, text: 'Niemand sitzt am Horchgerät.' };
+    if (s.ident < 0.5) return { ok: false, text: 'Die Aufnahme ist noch zu schwach (unter 50 %).' };
+    if (s.sperre && st.zeit < s.sperre) return { ok: false, text: 'Der Soni hört noch einmal hin … (' + Math.ceil(s.sperre - st.zeit) + ' min)' };
+    const horcher = st.crew.filter((c) => !c.tot && c.aktPosten === 'horch');
+    if (typ === s.typ) {
+      s.klass = true;
+      for (const c of horcher) c.xp += 3;
+      log(st, 'Horchkontakt erkannt: ' + D.SCHIFFSTYPEN[s.typ].name + (D.SCHIFFSTYPEN[s.typ].feind ? ' (feindlich).' : ' (neutral).'), 'gut');
+      return { ok: true, text: 'Richtig: ' + D.SCHIFFSTYPEN[s.typ].name + '.' };
+    }
+    s.sperre = st.zeit + 10;
+    for (const c of horcher) c.moral = Math.max(0, c.moral - 3);
+    log(st, 'Falsche Meldung aus dem Horchraum – das war kein ' + D.HORCH[typ].name + '.', 'warn');
+    return { ok: false, text: 'Falsch gemeldet. Der Soni braucht 10 Minuten für eine neue Aufnahme.' };
+  };
+
   sim.feuern = function (st) {
     const b = st.boot;
     const s = st.schiffe.find((x) => x.id === st.ziel && !x.versenkt);
     if (!s) return 'Kein Ziel ausgewählt. Klicke auf der Karte auf einen Kontakt.';
     if (!D.SCHIFFSTYPEN[s.typ].feind) return 'Feuer auf neutrale Schiffe ist verboten.';
-    if (s.entdeckt === 'nein' || (s.entdeckt === 'sonar' && s.ident < 1)) return 'Ziel ist nicht erfasst.';
+    if (s.entdeckt === 'nein') return 'Ziel ist nicht erfasst.';
+    if (!bekannt(s)) return 'Ziel ist nicht klassifiziert. Erst im Horchraum das Schraubengeräusch abgleichen.';
     if (b.tiefe > 15) return 'Zum Schießen auf Sehrohrtiefe oder an die Oberfläche gehen.';
     if (sim.eff.torpedo <= 0) return 'Niemand am Torpedo-Vorhalterechner.';
     const rohr = b.rohre.indexOf(true);
@@ -563,6 +593,7 @@
       titel: 'Patrouille', text: 'Patrouillieren Sie Planquadrat ' + planquadrat(p) + ' und melden Sie Feindbewegungen.' };
   }
 
+
   sim.anfunken = function (st) {
     if (st.funk.anfrage) return 'Es läuft bereits ein Funkspruch.';
     if (!antenneFrei(st)) return 'Funk nur an der Oberfläche oder auf Sehrohrtiefe möglich.';
@@ -581,21 +612,65 @@
         f.anfrage = null;
         const m = neueMission(st);
         f.nachrichten.unshift({ id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false });
+        funkFelder(st, f.nachrichten[0]);
         if (f.nachrichten.length > 8) f.nachrichten.length = 8;
-        log(st, 'Verschlüsselter Funkspruch vom Stützpunkt empfangen. Der Funker entschlüsselt.', 'info');
+        log(st, 'Verschlüsselter Funkspruch vom Stützpunkt empfangen. Am Funkgerät entschlüsseln.', 'info');
       }
     }
     for (const n of f.nachrichten) {
-      if (n.fertig || eff.funk <= 0) continue;
-      n.fortschritt = Math.min(1, n.fortschritt + eff.funk * dt / 15);
-      if (n.fortschritt >= 1) {
-        n.fertig = true;
-        st.missionen.push(n.mission);
-        for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
-        log(st, 'Neuer Auftrag: ' + n.mission.titel + '. ' + n.mission.text, 'gut');
-      }
+      funkFelder(st, n);
+      // Ohne Minispiel: der Funker entschlüsselt selbst, aber dreimal langsamer.
+      if (n.fertig || !n.auto || eff.funk <= 0) continue;
+      n.fortschritt = Math.min(1, n.fortschritt + eff.funk * dt / 45);
+      if (n.fortschritt >= 1) nachrichtFertig(st, n);
     }
   }
+
+  function nachrichtFertig(st, n) {
+    if (n.fertig) return;
+    n.fertig = true; n.fortschritt = 1;
+    st.missionen.push(n.mission);
+    for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
+    log(st, 'Neuer Auftrag: ' + n.mission.titel + '. ' + n.mission.text, 'gut');
+  }
+
+  /* Funk-Minispiel: Frequenz und Klartext des Spruchs (auch für ältere Spielstände nachgetragen). */
+  function funkFelder(st, n) {
+    if (n.spruch) return;
+    const m = n.mission;
+    const fr = m.typ === 'versenken' ? st.schiffe.find((x) => x.id === m.schiff) : null;
+    n.spruch = m.typ === 'versenken' ? 'FRACHTER ' + (fr ? planquadrat(fr) : 'X') : 'PATROUILLE ' + planquadrat(m.ziel);
+    const F = D.FUNK;
+    n.freq = F.basisVon + 10 * Math.round(Math.random() * (F.basisBis - F.basisVon) / 10);
+    do { n.f = F.min + 10 * Math.round(Math.random() * (F.max - F.min) / 10); } while (Math.abs(n.f - n.freq) < 400);
+    n.eingabe = '';
+  }
+
+  sim.funkSignal = function (n) {
+    const d = Math.abs(n.f - n.freq);
+    return d === 0 ? 'klar' : d <= D.FUNK.schwach ? 'schwach' : 'rauschen';
+  };
+  sim.funkNachricht = function (st, id) { return st.funk.nachrichten.find((n) => n.id === id) || null; };
+  sim.funkStellen = function (st, id, delta) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig) return null;
+    if (sim.eff.funk <= 0) return 'Niemand sitzt am Funkgerät.';
+    n.f = klemme(n.f + delta, D.FUNK.min, D.FUNK.max);
+    return null;
+  };
+  sim.funkTaste = function (st, id, z) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig) return;
+    const klar = n.spruch.replace(/ /g, '');
+    if (z === null) { n.eingabe = n.eingabe.slice(0, -1); return; }
+    if (n.eingabe.length >= klar.length) return;
+    n.eingabe += z;
+    if (n.eingabe === klar) nachrichtFertig(st, n);
+  };
+  sim.funkAuto = function (st, id) {
+    const n = sim.funkNachricht(st, id);
+    if (n && !n.fertig) { n.auto = true; log(st, 'Der Funker entschlüsselt den Spruch selbst. Das dauert.', 'info'); }
+  };
 
   function missionErfuellt(st, m) {
     m.status = 'erfuellt';

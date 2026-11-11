@@ -76,9 +76,13 @@
     ctx.fillRect(0, 0, cv.width, cv.height);
     const m = masstab(cv);
     const P = (p) => ({ x: m.ox + p.x * m.s, y: m.oy + p.y * m.s });
-    ctx.drawImage(basis, m.ox, m.oy, W.B * m.s, W.H * m.s);
+    ctx.drawImage(S.bilder.bild('karte_leer') || basis, m.ox, m.oy, W.B * m.s, W.H * m.s);
     const dpr = cv.width / cv.clientWidth || 1;
     const fs = Math.round(13 * dpr);
+    const symbole = S.bilder.bild('karte_symbole');
+    const sg = 12 * Math.max(1, Math.round(dpr));
+    /* Kartensymbol aus grafik/karte_symbole.png: 0 Boot, 1 Frachter, 2 Zerstörer, 3 Händler, 4 Unbekannt, 5 Stützpunkt, 6 Hafen, 7 Ziel */
+    const symbol = (nr, p) => ctx.drawImage(symbole, nr * 12, 0, 12, 12, Math.round(p.x - sg / 2), Math.round(p.y - sg / 2), sg, sg);
     ctx.font = fs + 'px VT323, monospace';
     ctx.lineWidth = Math.max(1, dpr);
 
@@ -103,8 +107,11 @@
     // Häfen
     for (const h of D.HAEFEN) {
       const p = P(h);
-      ctx.fillStyle = h.typ === 'basis' ? '#7fd18b' : '#e0c36a';
-      ctx.fillRect(Math.round(p.x - 3 * dpr), Math.round(p.y - 3 * dpr), Math.round(6 * dpr), Math.round(6 * dpr));
+      if (symbole) symbol(h.typ === 'basis' ? 5 : 6, p);
+      else {
+        ctx.fillStyle = h.typ === 'basis' ? '#7fd18b' : '#e0c36a';
+        ctx.fillRect(Math.round(p.x - 3 * dpr), Math.round(p.y - 3 * dpr), Math.round(6 * dpr), Math.round(6 * dpr));
+      }
       ctx.fillStyle = '#e8ecd8';
       ctx.textAlign = 'left';
       ctx.fillText(h.name, p.x + 6 * dpr, p.y + 4 * dpr);
@@ -143,21 +150,22 @@
         continue;
       }
       if (s.entdeckt === 'nein') continue;
-      const bekannt = s.entdeckt === 'sicht' || s.ident >= 1;
+      const bekannt = S.sim.bekannt(s);
       const farbe = !bekannt ? '#9aa3a8' : s.typ === 'frachter' ? '#e39a4f' : s.typ === 'zerstoerer' ? '#e0574a' : '#7fd18b';
       ctx.fillStyle = farbe;
       const g = Math.round(4 * dpr);
-      if (bekannt) {
+      if (symbole) symbol(!bekannt ? 4 : s.typ === 'frachter' ? 1 : s.typ === 'zerstoerer' ? 2 : 3, p);
+      else if (bekannt) {
         ctx.fillRect(Math.round(p.x - g), Math.round(p.y - g / 2), g * 2, g);
         if (s.typ === 'zerstoerer') ctx.fillRect(Math.round(p.x - g / 2), Math.round(p.y - g), g, g / 2);
       } else {
         kreis(ctx, p.x, p.y, g, farbe);
       }
       ctx.textAlign = 'center';
-      let t = bekannt ? D.SCHIFFSTYPEN[s.typ].name : 'Horchkontakt ' + Math.round(s.ident * 100) + ' %';
+      let t = bekannt ? D.SCHIFFSTYPEN[s.typ].name : 'Horchkontakt ' + Math.round(s.ident * 100) + ' %' + (s.ident >= 1 ? ' – abgleichen' : '');
       if (s.mission) t += ' (Auftrag)';
       if (s.alarmiert) t += ' !';
-      ctx.fillText(t, p.x, p.y - 7 * dpr);
+      ctx.fillText(t, p.x, p.y - (symbole ? sg / 2 + 3 * dpr : 7 * dpr));
       if (st.ziel === s.id) kreis(ctx, p.x, p.y, 9 * dpr, '#ff6a4a');
     }
 
