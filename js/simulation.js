@@ -379,6 +379,18 @@
     }
   }
 
+  /* Freizeit: Ziellos durchs Boot schlendern – ein Stück gehen, ein paar Minuten bleiben
+     (Messe, Kameraden, Zigarette im Turm …), dann weiter. */
+  function freizeitZiel(st, c) {
+    const bz = c.bummel;
+    if (!bz || (bz.bis != null && st.zeit >= bz.bis)) {
+      const lo = D.ABTEILE[0].x0 + 8, hi = D.ABTEILE[D.ABTEILE.length - 1].x1 - 12;
+      const x = Math.random() < 0.3 ? c.messeX : c.x + (Math.random() * 2 - 1) * 90;
+      c.bummel = { x: klemme(x, lo, hi), bis: null };
+    } else if (bz.bis == null && Math.abs(c.x - bz.x) < 0.6) bz.bis = st.zeit + 3 + Math.random() * 17;
+    return { x: c.bummel.x, art: 'frei', langsam: true };
+  }
+
   function crewZiel(st, c, h) {
     if (c.befehl != null) return { x: c.befehl, art: 'befehl' };
     const p = st.schichten[c.schicht][h];
@@ -394,7 +406,8 @@
       c.koje = kojeFuer(st, c);
       z = { x: c.koje != null ? D.KOJEN[c.koje].x : c.messeX, art: 'schlaf' };
     }
-    else z = { x: c.messeX, art: 'frei' };
+    else z = freizeitZiel(st, c);
+    if (z.art !== 'frei') c.bummel = null;
     // Selbstschutz: nicht in geflutete Abteile, aus vollaufenden Abteilen fliehen.
     const hier = st.boot.abteile[abteilIndex(c.x)];
     const dort = st.boot.abteile[abteilIndex(z.x)];
@@ -443,7 +456,9 @@
       const ab = st.boot.abteile[i];
       if (st.gesteuert !== c.id) {
         const z = crewZiel(st, c, h);
-        const angekommen = bewege(st, c, z.x, 26 * (0.7 + 0.3 * c.moral / 100) * dt);
+        const angekommen = bewege(st, c, z.x, 26 * (0.7 + 0.3 * c.moral / 100) * dt * (z.langsam ? 0.45 : 1));
+        // Vor einem geschlossenen Schott hängen geblieben: anderes Ziel suchen
+        if (z.langsam && !angekommen && !c.laeuft && c.bummel) c.bummel.bis = st.zeit;
         c.taetigkeit = z.art === 'schlaf' ? (angekommen ? 'schlaf' : 'zurKoje') : z.art;
         c.aktPosten = angekommen && c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'frei' && c.taetigkeit !== 'reparatur' ? naechsterPosten(c) : null;
         if (c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'zurKoje') c.koje = null;
