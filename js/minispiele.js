@@ -26,11 +26,16 @@
     if (!n) { offen = null; S.ui.schliesse(); return; }
     offen = { art: 'funk', id };
     const sig = S.sim.funkSignal(n);
+    // Morse-Lehrgang: Der Funker schreibt die ersten 3 Zeichen mit, sobald das Signal klar ist.
+    if (sig === 'klar' && !n.fertig && S.sim.hatAusbau(st, 'morse') && n.eingabe.length < 3) {
+      const kt = n.spruch.replace(/ /g, '');
+      if (kt.startsWith(n.eingabe)) n.eingabe = kt.slice(0, 3);
+    }
     const d = Math.abs(n.f - n.freq);
     const stufe = Math.max(0, 16 - Math.round(d / 30));
     const F = D.FUNK;
     const besetzt = S.sim.eff.funk > 0;
-    const fach = S.sim.eff.funk >= 1;
+    const fach = S.sim.eff.funk >= 1 || S.sim.hatAusbau(st, 'funkpeiler');
 
     let h = '<h1>Funkgerät</h1>';
     h += '<div class="funk">';
@@ -175,7 +180,7 @@
     const kp = kontaktProfil(s);
     const ref = wahl ? profil(wahl) : null;
     const passt = ref ? uebereinstimmung(kp, ref) : 0;
-    const fach = S.sim.eff.sonar >= 1;
+    const fach = S.sim.eff.sonar >= 1 || S.sim.hatAusbau(st, 'kartei');
     const besetzt = S.sim.eff.sonar > 0;
     const erkannt = S.sim.bekannt(s);
 

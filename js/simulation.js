@@ -76,8 +76,23 @@
 
   function minRumpf(st) { return Math.min(...st.boot.abteile.map((a) => a.rumpf)); }
 
+  /* Ausbau aus dem Skilltree vorhanden? (Schalter oder Upgrade-Stufe) */
+  function hatAusbau(st, id) {
+    for (const ast of D.SKILLTREE) for (const k of ast.knoten) {
+      if (k.id !== id) continue;
+      return k.upgrade ? st.boot.upgrades[k.upgrade[0]] >= k.upgrade[1] : !!(st.boot.ausbau && st.boot.ausbau[id]);
+    }
+    return false;
+  }
+  function maxSicher(st) { return D.MAX_SICHER + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
+  function zerstoerungstiefe(st) { return D.ZERSTOERUNGSTIEFE + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
+  function horchweite(st, eff) {
+    if (eff.sonar <= 0) return 0;
+    return (unterWasser(st) ? 18 : 6) * Math.min(1, eff.sonar) * (hatAusbau(st, 'horchweite') ? 1.25 : 1);
+  }
+
   function sichereTiefe(st) {
-    return D.MAX_SICHER * (0.45 + 0.55 * minRumpf(st) / 100);
+    return maxSicher(st) * (0.45 + 0.55 * minRumpf(st) / 100);
   }
 
   function ladeEinheiten(l) {
@@ -218,6 +233,10 @@
       // Ertrinken
       if (ab.wasser > 0.8) {
         c.luft -= 9 * dt;
+        if (c.luft <= 0 && st.ladung.sanitaet > 0) {
+          st.ladung.sanitaet--; c.luft = 60;
+          log(st, c.name + ' wäre fast ertrunken – ein Sanitätskasten verschafft ihm Luft. Raus aus dem Wasser!', 'warn');
+        }
         if (c.luft <= 0) {
           c.tot = true; c.luft = 0; c.befehl = null; c.taetigkeit = 'tot';
           if (st.gesteuert === c.id) st.gesteuert = null;
@@ -229,8 +248,8 @@
 
       // Moral
       let dm = 0;
-      if (st.ladung.proviant <= 0) dm -= 3;
-      else dm += ({ 1: -1.2, 2: -0.4, 3: 0.15, 4: 0.5 })[st.ration];
+      if (st.ladung.proviant <= 0 && st.ladung.konserven <= 0) dm -= 3;
+      else dm += ({ 1: -1.2, 2: -0.4, 3: 0.15, 4: 0.5 })[st.ration] - (st.ladung.proviant <= 0 ? 0.3 : 0);
       if (!lebtRolle(st, 'smutje')) dm -= 0.4;
       if (c.wach > 26) dm -= 4; else if (c.wach > 19) dm -= 1.5;
       if (st.boot.tiefe > sichereTiefe(st)) dm -= 2;
@@ -326,12 +345,12 @@
     // Druck
     const sicher = sichereTiefe(st);
     if (b.tiefe > sicher) {
-      const x = (b.tiefe - sicher) / Math.max(1, D.ZERSTOERUNGSTIEFE - sicher);
+      const x = (b.tiefe - sicher) / Math.max(1, zerstoerungstiefe(st) - sicher);
       b.abteile.forEach((a) => { a.rumpf = Math.max(0, a.rumpf - 0.6 * x * dt); });
       if (!sim._druckWarnung) { log(st, 'Der Rumpf ächzt unter dem Druck! Sofort höher gehen!', 'alarm'); sim._druckWarnung = true; }
       if (Math.random() < 0.25 * x * x * x * dt) return verlieren(st, 'Der Rumpf hat dem Druck nicht standgehalten. Das Boot ist in ' + Math.round(b.tiefe) + ' m implodiert.');
     } else sim._druckWarnung = false;
-    if (b.tiefe >= D.ZERSTOERUNGSTIEFE) return verlieren(st, 'Das Boot hat die Zerstörungstiefe erreicht und ist implodiert.');
+    if (b.tiefe >= zerstoerungstiefe(st)) return verlieren(st, 'Das Boot hat die Zerstörungstiefe erreicht und ist implodiert.');
     if (fl >= 0.7) return verlieren(st, 'Das Boot ist vollgelaufen und gesunken.');
     return null;
   }
@@ -344,7 +363,7 @@
     if (!uw) {
       if (st.ladung.diesel > 0 && eff.antrieb > 0) {
         kn = f.ueber * (0.6 + 0.4 * Math.min(1, eff.antrieb));
-        st.ladung.diesel = Math.max(0, st.ladung.diesel - f.diesel * dt);
+        st.ladung.diesel = Math.max(0, st.ladung.diesel - f.diesel * dt * (hatAusbau(st, 'diesel') ? 0.8 : 1));
         b.batterie = Math.min(100, b.batterie + 0.15 * dt);
       } else if (b.batterie > 0 && eff.antrieb > 0) {
         kn = f.unter * (0.6 + 0.4 * Math.min(1, eff.antrieb));
@@ -421,7 +440,7 @@
     const b = st.boot;
     const uw = unterWasser(st);
     const sicht = !uw ? 14 : (antenneFrei(st) && eff.sehrohr > 0 ? 9 * Math.min(1, eff.sehrohr) : 0);
-    const sonar = eff.sonar > 0 ? (uw ? 18 : 6) * Math.min(1, eff.sonar) : 0;
+    const sonar = horchweite(st, eff);
 
     for (const s of st.schiffe) {
       if (s.versenkt) continue;
@@ -466,6 +485,10 @@
         // ident = Qualität der Horch-Aufnahme. Erkannt ist der Kontakt erst nach dem Abgleich im Horchraum.
         s.entdeckt = 'sonar';
         s.ident = Math.min(1, s.ident + eff.sonar * dt / 6);
+        if (!s.klass && s.ident >= 0.9 && hatAusbau(st, 'feingehoer')) {
+          s.klass = true;
+          log(st, 'Der Horcher erkennt das Schraubengeräusch: ' + D.SCHIFFSTYPEN[s.typ].name + '.', 'gut');
+        }
       } else {
         s.entdeckt = 'nein'; s.ident = Math.max(0, s.ident - dt / 120);
         if (s.ident <= 0) s.klass = false;
@@ -560,7 +583,7 @@
     const d = dist(s, b);
     if (d > 7) return 'Ziel zu weit entfernt (max. 7 km).';
     b.rohre[rohr] = false;
-    const chance = klemme(0.95 - d / 10 - (s.kn > 15 ? 0.15 : 0), 0.1, 0.95) * (0.6 + 0.4 * Math.min(1, sim.eff.torpedo));
+    const chance = Math.min(0.98, klemme(0.95 - d / 10 - (s.kn > 15 ? 0.15 : 0), 0.1, 0.95) * (0.6 + 0.4 * Math.min(1, sim.eff.torpedo)) * (hatAusbau(st, 'vorhalter') ? 1.15 : 1));
     st.torpedos.push({ x: b.x, y: b.y, ziel: s.id, chance, laufzeit: 0 });
     log(st, 'Rohr ' + (rohr + 1) + ' – los! Torpedo läuft.', 'info');
     for (const c of st.crew) if (!c.tot && c.aktPosten === 'torpedo') c.xp += 3;
@@ -570,7 +593,7 @@
   function nachladenSchritt(st, dt, eff) {
     const b = st.boot;
     if (eff.nachladen <= 0 || st.ladung.torpedos <= 0 || !b.rohre.includes(false)) return;
-    b.ladeFortschritt += eff.nachladen * dt / 20;
+    b.ladeFortschritt += eff.nachladen * dt / (hatAusbau(st, 'schnellladen') ? 14 : 20);
     if (b.ladeFortschritt >= 1) {
       b.ladeFortschritt = 0;
       b.rohre[b.rohre.indexOf(false)] = true;
@@ -695,16 +718,22 @@
     if (h === 7 || h === 13 || h === 19) {
       const n = lebende(st).length;
       const bedarf = Math.ceil(n * st.ration / 3);
-      if (st.ladung.proviant <= 0) log(st, 'Kein Proviant mehr an Bord! Die Crew hungert.', 'alarm');
+      if (st.ladung.proviant <= 0 && st.ladung.konserven <= 0) log(st, 'Kein Proviant mehr an Bord! Die Crew hungert.', 'alarm');
       else {
-        st.ladung.proviant = Math.max(0, st.ladung.proviant - bedarf);
-        if (st.ladung.proviant < n * 3) log(st, 'Der Proviant geht zur Neige.', 'warn');
+        const frisch = Math.min(bedarf, st.ladung.proviant);
+        st.ladung.proviant -= frisch;
+        if (bedarf > frisch) {
+          if (st.ladung.konserven > 0 && st.ladung.proviant <= 0 && frisch === 0) log(st, 'Frischer Proviant ist alle – der Smutje öffnet Konserven.', 'warn');
+          st.ladung.konserven = Math.max(0, st.ladung.konserven - (bedarf - frisch));
+        }
+        if (st.ladung.proviant + st.ladung.konserven < n * 3) log(st, 'Der Proviant geht zur Neige.', 'warn');
       }
     }
     if (st.boot.abteile[2].wasser > 0.5 && st.ladung.proviant > 0) {
       st.ladung.proviant = Math.floor(st.ladung.proviant * 0.97);
       log(st, 'Wasser im Laderaum verdirbt Proviant.', 'warn');
     }
+    if (h === 8 && hatAusbau(st, 'kaffee')) for (const c of lebende(st)) c.moral = Math.min(100, c.moral + 2);
     if (st.ladung.diesel <= 0 && !unterWasser(st)) log(st, 'Kein Diesel mehr! Nur noch Batteriebetrieb.', 'warn');
     S.speicher.autosaveSchreiben(st);
   }
@@ -824,6 +853,64 @@
     log(st, u.name + ' auf Stufe ' + st.boot.upgrades[id] + ' ausgebaut.', 'gut');
     return null;
   };
+  /* Inventar: Gegenstand benutzen oder über Bord werfen */
+  sim.benutzen = function (st, ware) {
+    const b = st.boot;
+    if (!(st.ladung[ware] > 0)) return 'Nichts davon an Bord.';
+    if (ware === 'batteriezelle') {
+      if (b.batterie >= 100) return 'Die Batterie ist schon voll.';
+      st.ladung.batteriezelle--; b.batterie = Math.min(100, b.batterie + 30);
+      log(st, 'Reservezelle eingesetzt: Batterie ' + Math.round(b.batterie) + ' %.', 'gut');
+      return null;
+    }
+    if (ware === 'druckflasche') {
+      if (b.druckluft >= 100) return 'Die Druckluft ist schon voll.';
+      st.ladung.druckflasche--; b.druckluft = Math.min(100, b.druckluft + 25);
+      log(st, 'Druckluftflasche angeschlossen: Druckluft ' + Math.round(b.druckluft) + ' %.', 'gut');
+      return null;
+    }
+    return 'Dieser Gegenstand wird automatisch benutzt.';
+  };
+  sim.abwerfen = function (st, ware) {
+    const w = D.WAREN[ware];
+    const menge = Math.min(st.ladung[ware] || 0, w.paket);
+    if (menge <= 0) return 'Nichts davon an Bord.';
+    st.ladung[ware] -= menge;
+    log(st, menge + ' ' + w.einheit + ' ' + w.name + ' über Bord geworfen.', 'info');
+    return null;
+  };
+
+  /* Skilltree: Knoten suchen, Status und Kauf (nur am Marinehauptstützpunkt) */
+  function knoten(id) {
+    for (const ast of D.SKILLTREE) {
+      const i = ast.knoten.findIndex((k) => k.id === id);
+      if (i >= 0) return { ast, i, k: ast.knoten[i] };
+    }
+    return null;
+  }
+  sim.ausbauStatus = function (st, id) {
+    const n = knoten(id);
+    if (!n) return null;
+    const hat = hatAusbau(st, id);
+    const frei = n.i === 0 || hatAusbau(st, n.ast.knoten[n.i - 1].id);
+    return { hat, frei, knoten: n.k, ast: n.ast };
+  };
+  sim.ausbauen = function (st, id) {
+    const z = sim.ausbauStatus(st, id);
+    if (!z) return 'Unbekannter Ausbau.';
+    const ort = sim.handelsort(st);
+    if (!ort || !ort.basis) return 'Ausbauen geht nur in der Werft am Marinehauptstützpunkt.';
+    if (z.hat) return 'Bereits eingebaut.';
+    if (!z.frei) return 'Erst die Stufe davor ausbauen.';
+    if (st.geld < z.knoten.preis) return 'Nicht genug Geld.';
+    st.geld -= z.knoten.preis;
+    if (z.knoten.upgrade) st.boot.upgrades[z.knoten.upgrade[0]] = z.knoten.upgrade[1];
+    else st.boot.ausbau[id] = true;
+    if (id === 'rohr5') st.boot.rohre.push(false);
+    log(st, 'Werft: ' + z.knoten.name + ' eingebaut.', 'gut');
+    return null;
+  };
+
   sim.anheuern = function (st, totId) {
     const alt = crewNachId(st, totId);
     if (!alt || !alt.tot) return 'Nicht möglich.';
@@ -840,6 +927,7 @@
 
   Object.assign(sim, {
     abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
+    hatAusbau, maxSicher, zerstoerungstiefe, horchweite,
     ladeEinheiten, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });
   S.sim = sim;

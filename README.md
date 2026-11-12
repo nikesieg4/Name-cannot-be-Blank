@@ -133,7 +133,20 @@ Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil bes
 - Häfen sind Orte auf der Karte. Fährt man an der Oberfläche hin, kann man **anlegen** und kommt in den **Handelsbildschirm**.
 - Auch mit **Händlerschiffen** auf See kann man handeln, wenn man neben ihnen auftaucht.
 - **Waren:** Diesel, Torpedos, Proviant, Ersatzteile. Der Laderaum hat eine begrenzte Kapazität (Ladeeinheiten).
-- **Marinehauptstützpunkt:** zusätzlich Werft (Rumpfreparatur), Ausbau (Lenzpumpen, Batterie, Rumpfverstärkung) und neue Crew für Gefallene anheuern.
+- **Marinehauptstützpunkt:** zusätzlich Werft (Rumpfreparatur), Ausbau über den Skilltree und neue Crew für Gefallene anheuern.
+
+**Inventar:** Der Laderaum fasst 200 LE in 40 Fächern. Konserven isst die Crew, wenn der frische Proviant alle ist (etwas weniger Moral); sie verderben nicht im Wasser. Batteriezellen (+30 % Batterie) und Druckluftflaschen (+25 % Druckluft) setzt man im Inventar ein, auch getaucht. Sanitätskästen werden automatisch benutzt, wenn jemand zu ertrinken droht.
+
+**Skilltree (Werft):** Jede Stufe setzt die vorige im selben Ast voraus. Ansehen geht überall, ausbauen nur am Stützpunkt.
+
+| Ast | Stufe 1 | Stufe 2 | Stufe 3 |
+|---|---|---|---|
+| Rumpf | Rumpf I (2 000 Kr): −15 % Schaden | Rumpf II (4 000 Kr): −15 % Schaden | Tieftauchen (6 000 Kr): sicher 170 m, Zerstörung 240 m |
+| Leckabwehr | Lenzpumpen I (1 500 Kr) | Lenzpumpen II (3 000 Kr) | Lenzpumpen III (5 000 Kr), je +50 % Pumpleistung |
+| Antrieb | Batterie I (1 200 Kr) | Batterie II (2 500 Kr) | Sparsame Diesel (4 500 Kr): Batterie III und −20 % Diesel |
+| Horchgerät | Horchweite +25 % (2 000 Kr) | Kartei: Übereinstimmung immer in % (3 000 Kr) | Feingehör: ab 90 % Aufnahme automatisch erkannt (5 000 Kr) |
+| Waffen | Schnellladen: Nachladen 30 % schneller (2 500 Kr) | Vorhalterechner: +15 % Trefferchance (3 500 Kr) | 5. Rohr (6 000 Kr) |
+| Funk & Crew | Funkpeiler: Sendeband markiert (1 500 Kr) | Morse-Lehrgang: erste 3 Zeichen automatisch (2 500 Kr) | Bohnenkaffee: +2 Moral täglich um 8 Uhr (2 000 Kr) |
 
 ## Spielstände
 
@@ -161,6 +174,7 @@ js/grafik.js      Pixel-Grafik des Bootes und der Crew
 js/karte.js       Seekarte
 js/ui.js          Seitenleisten und Fenster
 js/minispiele.js  Funkgerät (Frequenz + Morse) und Horchraum (Schraubengeräusch abgleichen)
+js/laderaum.js    Inventar (Laderaum) und Skilltree (Werft)
 js/main.js        Spielschleife, Maus, Tastatur, Befehle
 grafik/           Pixel-Grafiken (PNG)
 werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
@@ -188,6 +202,8 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 - [x] Pixel-Grafiken für Boot, Crew, Karte und Symbole
 - [x] Funk-Minispiel: Frequenz suchen, Morse entschlüsseln (oder den Funker machen lassen, dreimal langsamer)
 - [x] Horch-Minispiel: Schraubengeräusch mit der Geräuschkartei abgleichen, erst dann ist ein getauchter Kontakt erkannt
+- [x] Inventar (Taste `I`): Laderaum in 40 Fächern à 5 LE, Gegenstände benutzen oder über Bord werfen; neue Waren Konserven, Batteriezelle, Druckluftflasche, Sanitätskasten
+- [x] Skilltree in der Werft (Taste `U`): 6 Äste mit je 3 Stufen
 - [x] Torpedos mit Nachladen, Frachter, Zerstörer (Beschuss), Händlerschiffe
 - [x] Handel im Hafen und mit Händlerschiffen, Werft, Upgrades, Anheuern
 - [x] Pause, 1×, 2×, 4×, eigene Bordzeit (UTC) mit Tag und Nacht
@@ -197,7 +213,6 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 
 **Bis 1.0**
 - [ ] Animationen (Crew-Arbeitsbewegungen, Schraube, Blasen)
-- [ ] Inventar-Bildschirm und Skilltree (Entwürfe im Claude-Design-Canvas)
 - [ ] Admiral-Aufträge (im Hafen aufnehmen, als Beobachter mitfahren)
 - [ ] Mehr Auftragsarten (Geleitzug, Aufklärung, Transport)
 - [ ] Soundeffekte (Sonar-Ping, Alarm, Ächzen des Rumpfes)

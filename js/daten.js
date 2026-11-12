@@ -128,14 +128,31 @@
     torpedos: { name: 'Torpedos', einheit: 'Stk', le: 5, paket: 1 },
     proviant: { name: 'Proviant', einheit: 'Rationen', le: 1 / 20, paket: 50 },
     ersatzteile: { name: 'Ersatzteile', einheit: 'Stk', le: 1 / 2, paket: 5 },
+    konserven: { name: 'Konserven', einheit: 'Rationen', le: 1 / 20, paket: 20 },
+    batteriezelle: { name: 'Batteriezelle', einheit: 'Stk', le: 2, paket: 1 },
+    druckflasche: { name: 'Druckluftflasche', einheit: 'Stk', le: 1, paket: 1 },
+    sanitaet: { name: 'Sanitätskasten', einheit: 'Stk', le: 1 / 2, paket: 1 },
   };
+
+  /* Inventar: Kategorie, Bild in grafik/inventar_items.png (x, Breite) und was der Gegenstand tut. */
+  const INVENTAR = {
+    torpedos: { kat: 'waffen', bild: [0, 48], text: 'Reserve im Laderaum. Wird im Bugraum automatisch nachgeladen, sobald ein Rohr leer ist und jemand dort arbeitet.' },
+    diesel: { kat: 'treibstoff', bild: [48, 24], text: 'Treibstoff für die Fahrt an der Oberfläche. Die Diesel laden dabei auch die Batterie.' },
+    proviant: { kat: 'proviant', bild: [72, 24], text: 'Frisches Essen. Der Smutje kocht dreimal am Tag davon, so viele Rationen wie eingestellt.' },
+    konserven: { kat: 'proviant', bild: [96, 24], text: 'Haltbar und verdirbt nicht im Wasser. Wird gegessen, wenn der frische Proviant aufgebraucht ist – macht etwas weniger satt und froh.' },
+    ersatzteile: { kat: 'material', bild: [120, 24], text: 'Verbraucht die Leckabwehr beim Reparieren von Lecks und Rumpfschäden.' },
+    batteriezelle: { kat: 'material', bild: [144, 24], text: 'Geladene Reservezelle. Einsetzen bringt sofort +30 % Batterie – auch getaucht.', aktion: 'Zelle einsetzen' },
+    druckflasche: { kat: 'material', bild: [168, 24], text: 'Füllt die Druckluft fürs Notanblasen um +25 % auf – auch getaucht.', aktion: 'Anschließen' },
+    sanitaet: { kat: 'material', bild: [192, 24], text: 'Wird automatisch benutzt, wenn jemand zu ertrinken droht: Er bekommt Luft und Zeit, sich zu retten.' },
+  };
+  const KATEGORIEN = [['alle', 'Alle'], ['waffen', 'Waffen'], ['treibstoff', 'Treibstoff'], ['proviant', 'Proviant'], ['material', 'Material']];
   const LADERAUM_LE = 200;
 
   /* Preise je Einheit; null = nicht im Angebot. Ankauf durch den Händler = 60 %. */
   const PREISE = {
-    basis: { diesel: 0.8, torpedos: 600, proviant: 3, ersatzteile: 40 },
-    kalvik: { diesel: 0.6, torpedos: null, proviant: 2.5, ersatzteile: 50 },
-    haendler: { diesel: 1.1, torpedos: null, proviant: 4, ersatzteile: 60 },
+    basis: { diesel: 0.8, torpedos: 600, proviant: 3, ersatzteile: 40, konserven: 4, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
+    kalvik: { diesel: 0.6, torpedos: null, proviant: 2.5, ersatzteile: 50, konserven: 3.5, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
+    haendler: { diesel: 1.1, torpedos: null, proviant: 4, ersatzteile: 60, konserven: 5, batteriezelle: null, druckflasche: null, sanitaet: 180 },
   };
   const ANKAUF = 0.6;
 
@@ -144,6 +161,35 @@
     batterie: { name: 'Batterie', text: '−25 % Stromverbrauch je Stufe', preise: [1200, 2500, 4500] },
     rumpf: { name: 'Rumpfverstärkung', text: '−15 % Schaden und Lecks je Stufe', preise: [2000, 4000] },
   };
+
+  /* Skilltree der Werft: 6 Äste mit je 3 Stufen, jede Stufe setzt die vorige voraus.
+     upgrade: [Schlüssel in boot.upgrades, Stufe] – sonst ein Schalter in boot.ausbau. bild = Index in grafik/skill_symbole.png. */
+  const SKILLTREE = [
+    { id: 'rumpf', name: 'Rumpf', farbe: '#86a3a0', knoten: [
+      { id: 'rumpf1', name: 'Rumpf I', bild: 0, preis: 2000, text: '−15 % Schaden und Lecks bei Treffern.', upgrade: ['rumpf', 1] },
+      { id: 'rumpf2', name: 'Rumpf II', bild: 0, preis: 4000, text: 'Nochmals −15 % Schaden und Lecks.', upgrade: ['rumpf', 2] },
+      { id: 'tieftauchen', name: 'Tieftauchen', bild: 1, preis: 6000, text: 'Sichere Tiefe 150 → 170 m, Zerstörungstiefe 220 → 240 m.' }] },
+    { id: 'leck', name: 'Leckabwehr', farbe: '#6aa8c8', knoten: [
+      { id: 'pumpen1', name: 'Lenzpumpen I', bild: 2, preis: 1500, text: '+50 % Pumpleistung.', upgrade: ['pumpen', 1] },
+      { id: 'pumpen2', name: 'Lenzpumpen II', bild: 2, preis: 3000, text: 'Nochmals +50 % Pumpleistung.', upgrade: ['pumpen', 2] },
+      { id: 'pumpen3', name: 'Lenzpumpen III', bild: 3, preis: 5000, text: 'Nochmals +50 % Pumpleistung.', upgrade: ['pumpen', 3] }] },
+    { id: 'antrieb', name: 'Antrieb', farbe: '#4fc77c', knoten: [
+      { id: 'batterie1', name: 'Batterie I', bild: 4, preis: 1200, text: '−25 % Stromverbrauch.', upgrade: ['batterie', 1] },
+      { id: 'batterie2', name: 'Batterie II', bild: 4, preis: 2500, text: 'Nochmals −25 % Stromverbrauch.', upgrade: ['batterie', 2] },
+      { id: 'diesel', name: 'Sparsame Diesel', bild: 5, preis: 4500, text: 'Batterie III (−25 % Strom) und −20 % Dieselverbrauch.', upgrade: ['batterie', 3] }] },
+    { id: 'horch', name: 'Horchgerät', farbe: '#b8ffd0', knoten: [
+      { id: 'horchweite', name: 'Horchweite', bild: 6, preis: 2000, text: 'Horchweite +25 %. Kontakte tauchen früher auf.' },
+      { id: 'kartei', name: 'Kartei', bild: 7, preis: 3000, text: 'Der Horchraum zeigt die Übereinstimmung immer in Prozent, auch ohne Soni.' },
+      { id: 'feingehoer', name: 'Feingehör', bild: 7, preis: 5000, text: 'Ab 90 % Aufnahme erkennt der Horcher den Kontakt selbst.' }] },
+    { id: 'waffen', name: 'Waffen', farbe: '#ff8a6a', knoten: [
+      { id: 'schnellladen', name: 'Schnellladen', bild: 9, preis: 2500, text: 'Nachladen im Bugraum 30 % schneller.' },
+      { id: 'vorhalter', name: 'Vorhalterechner', bild: 8, preis: 3500, text: 'Torpedos treffen um 15 % besser.' },
+      { id: 'rohr5', name: '5. Rohr', bild: 10, preis: 6000, text: 'Ein zusätzliches Torpedorohr.' }] },
+    { id: 'funk', name: 'Funk & Crew', farbe: '#efd086', knoten: [
+      { id: 'funkpeiler', name: 'Funkpeiler', bild: 11, preis: 1500, text: 'Das Sendeband des Stützpunkts ist auf der Skala markiert.' },
+      { id: 'morse', name: 'Morse-Lehrgang', bild: 12, preis: 2500, text: 'Der Funker trägt die ersten 3 Zeichen eines Spruchs selbst ein.' },
+      { id: 'kaffee', name: 'Bohnenkaffee', bild: 13, preis: 2000, text: '+2 Moral für alle jeden Morgen um 8 Uhr.' }] },
+  ];
 
   const SCHIFFSTYPEN = {
     frachter: { name: 'Frachter', kn: 8, hp: 1, feind: true, kopfgeld: 500 },
@@ -178,6 +224,6 @@
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
     ZERSTOERUNGSTIEFE, MAX_SICHER, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, LADERAUM_LE, PREISE, ANKAUF,
-    UPGRADES, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
+    UPGRADES, SKILLTREE, INVENTAR, KATEGORIEN, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

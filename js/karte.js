@@ -100,7 +100,7 @@
     // Sicht- und Horchweite
     const eff = S.sim.eff;
     const sicht = !S.sim.unterWasser(st) ? 14 : (S.sim.antenneFrei(st) && eff.sehrohr > 0 ? 9 * Math.min(1, eff.sehrohr) : 0);
-    const sonar = eff.sonar > 0 ? (S.sim.unterWasser(st) ? 18 : 6) * Math.min(1, eff.sonar) : 0;
+    const sonar = S.sim.horchweite(st, eff);
     if (sicht > 0) kreis(ctx, bp.x, bp.y, sicht * m.s, 'rgba(240,220,140,0.35)', [4 * dpr, 4 * dpr]);
     if (sonar > 0) kreis(ctx, bp.x, bp.y, sonar * m.s, 'rgba(190,150,220,0.3)', [2 * dpr, 6 * dpr]);
 

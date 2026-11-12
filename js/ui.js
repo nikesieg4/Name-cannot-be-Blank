@@ -10,11 +10,8 @@
   const SYM = ['geld', 'moral', 'proviant', 'diesel', 'batterie', 'druckluft', 'rumpf', 'torpedo', 'funk', 'schlaf'];
   const sym = (n) => '<i class="sym" style="background-position:-' + SYM.indexOf(n) * 16 + 'px 0"></i>';
   /* Gegenstand aus grafik/inventar_items.png (Torpedo 48 × 24, sonst 24 × 24) */
-  const ITEM = { torpedos: [0, 48], diesel: [48, 24], proviant: [72, 24], ersatzteile: [120, 24] };
-  const item = (id) => ITEM[id] ? '<i class="item" style="width:' + ITEM[id][1] + 'px;background-position:-' + ITEM[id][0] + 'px 0"></i>' : '';
-  /* Upgrade-Symbol aus grafik/skill_symbole.png (24 × 24) */
-  const SKILL = { rumpf: 0, pumpen: 2, batterie: 4 };
-  const skill = (id) => SKILL[id] != null ? '<i class="item" style="background-image:url(grafik/skill_symbole.png);background-position:-' + SKILL[id] * 24 + 'px 0"></i>' : '';
+  const item = (id) => D.INVENTAR[id] ? '<i class="item" style="width:' + D.INVENTAR[id].bild[1] + 'px;background-position:-' + D.INVENTAR[id].bild[0] + 'px 0"></i>' : '';
+
 
   /* Nur neu schreiben, wenn sich etwas geändert hat – sonst gehen Klicks verloren. */
   function setze(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
@@ -42,18 +39,18 @@
     const b = st.boot;
     const leb = S.sim.lebende(st);
     const moral = leb.length ? leb.reduce((s, c) => s + c.moral, 0) / leb.length : 0;
-    const tage = leb.length ? st.ladung.proviant / (leb.length * st.ration) : 0;
+    const tage = leb.length ? (st.ladung.proviant + st.ladung.konserven) / (leb.length * st.ration) : 0;
     const le = S.sim.ladeEinheiten(st.ladung);
     const fl = S.sim.flutung(st);
     let h = '';
     h += '<div class="zeile"><span>' + sym('geld') + 'Geld</span><b>' + geld(st.geld) + '</b></div>';
     h += '<div class="zeile"><span>' + sym('moral') + 'Moral (Schnitt)</span><b>' + pz(moral) + '</b></div>' + balken(moral, moralKlasse(moral));
-    h += '<div class="zeile"><span>' + sym('proviant') + 'Proviant</span><b>' + st.ladung.proviant + ' Rat. (' + tage.toFixed(1) + ' Tage)</b></div>';
+    h += '<div class="zeile"><span>' + sym('proviant') + 'Proviant</span><b>' + (st.ladung.proviant + st.ladung.konserven) + ' Rat. (' + tage.toFixed(1) + ' Tage)</b></div>';
     h += '<div class="zeile"><span>' + sym('diesel') + 'Diesel</span><b>' + Math.round(st.ladung.diesel).toLocaleString('de-DE') + ' L</b></div>';
     h += '<div class="zeile"><span>' + sym('batterie') + 'Batterie</span><b>' + pz(b.batterie) + '</b></div>' + balken(b.batterie, b.batterie < 20 ? 'rot' : 'blau');
     h += '<div class="zeile"><span>' + sym('druckluft') + 'Druckluft</span><b>' + pz(b.druckluft) + '</b></div>' + balken(b.druckluft, 'blau');
     h += '<div class="zeile"><span>' + sym('rumpf') + 'Ersatzteile</span><b>' + st.ladung.ersatzteile + '</b></div>';
-    h += '<div class="zeile"><span>Laderaum</span><b>' + Math.round(le) + ' / ' + D.LADERAUM_LE + ' LE</b></div>';
+    h += '<div class="zeile"><span>Laderaum</span><button data-aktion="inventar" title="Inventar öffnen (I)">' + Math.round(le) + ' / ' + D.LADERAUM_LE + ' LE</button></div>';
     if (fl > 0.005) h += '<div class="zeile warnung"><span>Wasser im Boot</span><b>' + pz(fl * 100) + '</b></div>' + balken(fl / 0.7 * 100, 'rot');
     setze($('status'), h);
 
@@ -88,9 +85,10 @@
     const b = st.boot;
     const sicher = S.sim.sichereTiefe(st);
     const ziel = D.TIEFEN[b.zielTiefe];
-    const pos = (m) => Math.min(100, m / D.ZERSTOERUNGSTIEFE * 100);
+    const zt = S.sim.zerstoerungstiefe(st);
+    const pos = (m) => Math.min(100, m / zt * 100);
     let h = '<div class="zeile"><span>Tiefe</span><b style="font-size:24px">' + Math.round(b.tiefe) + ' m</b></div>';
-    h += '<div class="tiefenskala" title="Grün: Zieltiefe · Orange: sichere Tiefe bei aktuellem Rumpfzustand · Rot: Zerstörungstiefe ' + D.ZERSTOERUNGSTIEFE + ' m">' +
+    h += '<div class="tiefenskala" title="Grün: Zieltiefe · Orange: sichere Tiefe bei aktuellem Rumpfzustand · Rot: Zerstörungstiefe ' + zt + ' m">' +
       '<span class="ziel" style="left:' + pos(ziel.m) + '%"></span><span class="sicher" style="left:' + pos(sicher) + '%"></span>' +
       '<span class="marke" style="left:' + pos(b.tiefe) + '%"></span></div>';
     h += '<div class="klein">Ziel: ' + ziel.name + ' (' + ziel.m + ' m) · sicher bis ' + Math.round(sicher) + ' m</div>';
@@ -320,13 +318,7 @@
       h += '<button data-aktion="werft"' + (kosten <= 0 ? ' disabled' : '') + '>Rumpf reparieren für ' + geld(kosten) + '</button>';
     }
     if (ort.basis) {
-      h += '<h3>Ausbau</h3><table>';
-      for (const [id, u] of Object.entries(D.UPGRADES)) {
-        const s = st.boot.upgrades[id];
-        h += '<tr><td>' + skill(id) + u.name + ' <span class="klein">' + u.text + '</span></td><td>Stufe ' + s + ' / ' + u.preise.length + '</td><td>' +
-          (s < u.preise.length ? '<button data-aktion="upgrade" data-arg="' + id + '">Ausbauen für ' + geld(u.preise[s]) + '</button>' : 'voll') + '</td></tr>';
-      }
-      h += '</table>';
+      h += '<h3>Ausbau</h3><p>In der Werft lässt sich das Boot verbessern: Rumpf, Leckabwehr, Antrieb, Horchgerät, Waffen, Funk und Crew. <button class="aktiv" data-aktion="werftBaum">Skilltree öffnen</button></p>';
       const tote = st.crew.filter((c) => c.tot);
       if (tote.length) {
         h += '<h3>Anheuern</h3>';
@@ -344,12 +336,13 @@
       '<b>Übernehmen</b> (Knopf oder Doppelklick auf die Figur): selbst steuern mit <kbd>A</kbd>/<kbd>D</kbd> oder Pfeiltasten. <b>Klick auf ein Abteil:</b> Pumpe und Schotten. <b>Klick auf ein Schott:</b> öffnen/schließen. ' +
       '<b>Mausrad</b> zoomt, <b>Ziehen</b> verschiebt die Ansicht.</p>' +
       '<h3>Funk und Horchgerät</h3><p>Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
+      '<h3>Laderaum und Ausbau</h3><p>Im <b>Laderaum</b> siehst du, was an Bord ist, und kannst Reservezellen einsetzen, Druckluftflaschen anschließen oder Ladung über Bord werfen. Konserven isst die Crew, wenn der frische Proviant alle ist; Sanitätskästen retten automatisch vor dem Ertrinken. In der <b>Werft</b> am Stützpunkt baust du das Boot über den Skilltree aus – jede Stufe schaltet die nächste frei.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +
       '<h3>Tauchen und Lecks</h3><p>Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
       '<h3>Energie</h3><p>An der Oberfläche laufen die Diesel und laden die Batterie. Getaucht fährt das Boot mit der E-Maschine und verbraucht Batterie. Funk und Sehrohr gehen nur bis Sehrohrtiefe.</p>' +
       '<h3>Kampf</h3><p>Klicke auf der Karte auf einen Kontakt, um ihn als Ziel zu wählen. Torpedos gehen nur bis Sehrohrtiefe und bis 7 km Entfernung. Zerstörer beschießen dich an der Oberfläche – tauch ab!</p>' +
       '<h3>Crew</h3><p>Moral hängt von Essen und Schlaf ab und bestimmt, wie schnell die Crew arbeitet. Im <b>Schichtplan</b> legst du Dienst, Schlaf und Freizeit fest. Erfahrung steigt mit der Arbeit.</p>' +
-      '<h3>Tasten</h3><p><kbd>Leertaste</kbd> Pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×/2×/4× · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>Esc</kbd> Auswahl aufheben</p>' +
+      '<h3>Tasten</h3><p><kbd>Leertaste</kbd> Pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×/2×/4× · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>I</kbd> Laderaum · <kbd>U</kbd> Ausbau · <kbd>Esc</kbd> Auswahl aufheben</p>' +
       '<h3>Speichern</h3><p>„Speichern“ lädt eine .srt-Datei herunter. Die Datei ist verschlüsselt und signiert – wird sie verändert, lässt sie sich nicht mehr laden. Zusätzlich wird jede Spielstunde automatisch im Browser gesichert.</p>' +
       '<p><button data-aktion="modalZu">Los geht\'s</button></p>');
   }

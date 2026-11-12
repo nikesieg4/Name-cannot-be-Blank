@@ -256,6 +256,8 @@
     if (k === '1') aktion('tempo', '1');
     if (k === '2') aktion('tempo', '2');
     if (k === '3') aktion('tempo', '4');
+    if (k === 'i' || k === 'I') aktion('inventar');
+    if (k === 'u' || k === 'U') aktion('werftBaum');
     if (k === '+') zoomen(1);
     if (k === '-') zoomen(-1);
     if (k === 'Escape') { if (st.gesteuert != null) st.gesteuert = null; else { auswahl.crew = null; auswahl.abteil = null; } }
@@ -341,14 +343,18 @@
       case 'hilfe': pausieren(); S.ui.hilfe(); break;
       case 'modalZu':
         if (st.verloren) return;
-        S.minispiele.geschlossen();
+        S.minispiele.geschlossen(); S.laderaum.geschlossen();
         S.ui.schliesse(); fortsetzen();
         break;
       case 'funkgeraet': case 'horch':
         if (!S.ui.offen()) pausieren();
         S.minispiele.aktion(st, name, arg);
         break;
-      default: S.minispiele.aktion(st, name, arg); break;
+      case 'inventar': case 'werftBaum':
+        if (!S.ui.offen()) pausieren();
+        S.laderaum.aktion(st, name, arg);
+        break;
+      default: if (!S.minispiele.aktion(st, name, arg)) S.laderaum.aktion(st, name, arg); break;
     }
     S.ui.aktualisiere(st, auswahl);
   }

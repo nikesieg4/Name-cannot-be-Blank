@@ -53,9 +53,9 @@
         abteile: D.ABTEILE.map(() => ({ wasser: 0, rumpf: 100, pumpe: true })),
         schotten: D.ABTEILE.slice(0, -1).map(() => false), // true = geschlossen
         rohre: [true, true, true, true], ladeFortschritt: 0, teileRest: 0,
-        upgrades: { pumpen: 0, batterie: 0, rumpf: 0 },
+        upgrades: { pumpen: 0, batterie: 0, rumpf: 0 }, ausbau: {},
       },
-      ladung: { diesel: 9000, torpedos: 6, proviant: 600, ersatzteile: 20 },
+      ladung: { diesel: 9000, torpedos: 6, proviant: 600, ersatzteile: 20, konserven: 40, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
       crew,
       schichten: D.STANDARD_SCHICHTEN.map((p) => p.slice()),
       schiffe: [],
@@ -71,5 +71,12 @@
     };
   }
 
-  S.zustand = { neuesSpiel, neuesCrewmitglied, neuerName, zufall };
+  /* Ältere Spielstände um neue Felder ergänzen. */
+  function ergaenze(st) {
+    for (const k of Object.keys(D.WAREN)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
+    if (!st.boot.ausbau) st.boot.ausbau = {};
+    return st;
+  }
+
+  S.zustand = { neuesSpiel, ergaenze, neuesCrewmitglied, neuerName, zufall };
 })(window.Spiel = window.Spiel || {});

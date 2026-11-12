@@ -63,7 +63,7 @@
       for (let i = 0; i < versch.length; i++) klar[i] = versch[i] ^ strom[i];
       const stand = JSON.parse(K.text(klar));
       if (!stand || stand.version !== 1) return { ok: false, grund: 'Unbekannte Spielstand-Version.' };
-      return { ok: true, stand };
+      return { ok: true, stand: S.zustand.ergaenze(stand) };
     } catch (e) {
       return { ok: false, grund: 'Der Spielstand konnte nicht gelesen werden.' };
     }
