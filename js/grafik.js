@@ -306,24 +306,31 @@
     return { z, tx: Math.round(W / 2 - ans.cx * F * z), ty: Math.round(H / 2 - ans.cy * F * z) };
   }
 
+  /* Hintergrund: Himmel, Wasser, Oberfläche und Meeresgrund.
+     Die Oberfläche sieht man nur nahe unter Wasser (Licht bis etwa 45 m), den Grund nur, wenn er
+     höchstens rund 70 m unter dem Kiel liegt – und ganz, wenn das Boot aufliegt. */
   function hintergrund(ctx, st, W, H, t, dtReal) {
     const licht = tageslicht(st);
-    const oberY = Math.round(t.ty + (B.WASSERLINIE_Y * F - st.boot.tiefe * PX_PRO_M) * t.z);
+    const b = st.boot;
+    const oberY = Math.round(t.ty + (B.WASSERLINIE_Y * F - b.tiefe * PX_PRO_M) * t.z);
+    const sichtOben = Math.max(0, Math.min(1, (45 - b.tiefe) / 30));
+    const tiefe = Math.min(1, b.tiefe / 160);
+    const wasserOben = mische(mische('#10283a', '#2f6f86', licht), '#071723', tiefe);
     if (oberY > 0) {
       const g = ctx.createLinearGradient(0, 0, 0, oberY);
-      g.addColorStop(0, mische('#0a1020', '#5d7f97', licht));
-      g.addColorStop(1, mische('#1a2436', '#a9bccb', licht));
+      g.addColorStop(0, mische(wasserOben, mische('#0a1020', '#5d7f97', licht), sichtOben));
+      g.addColorStop(1, mische(wasserOben, mische('#1a2436', '#a9bccb', licht), sichtOben));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, oberY);
     }
-    const tiefe = Math.min(1, st.boot.tiefe / 160);
     const g2 = ctx.createLinearGradient(0, Math.max(0, oberY), 0, H);
-    g2.addColorStop(0, mische(mische('#10283a', '#2f6f86', licht), '#071723', tiefe));
+    g2.addColorStop(0, wasserOben);
     g2.addColorStop(1, mische(mische('#081722', '#16445a', licht), '#02080d', tiefe));
     ctx.fillStyle = g2;
     ctx.fillRect(0, Math.max(0, oberY), W, H - Math.max(0, oberY));
     const p = Math.max(1, Math.round(t.z));
-    if (oberY > 0 && oberY < H) {
+    if (oberY > 0 && oberY < H && sichtOben > 0) {
+      ctx.globalAlpha = sichtOben;
       ctx.fillStyle = mische('#5f8ea3', '#cfe3ea', licht);
       const welle = (performance.now() / 160) % 24;
       for (let x = -24 * p; x < W + 24 * p; x += 12 * p) {
@@ -333,13 +340,43 @@
       }
       ctx.fillStyle = 'rgba(255,255,255,0.08)';
       ctx.fillRect(0, oberY + p, W, 2 * p);
+      ctx.globalAlpha = 1;
     }
     teilchenVersatz += (S.sim.knoten || 0) * dtReal * 0.004 * st.tempo;
     ctx.fillStyle = 'rgba(190,220,230,0.22)';
     for (const q of teilchen) {
       const x = (((q.x - teilchenVersatz) % 1) + 1) % 1 * W, y = q.y * H;
-      if (y < oberY) continue;
+      if (y < oberY && sichtOben > 0) continue;
       ctx.fillRect(Math.round(x), Math.round(y), q.s * p, q.s * p);
+    }
+
+    // Meeresgrund
+    const luecke = S.sim.grundTiefe(st) - b.tiefe;           // Meter zwischen Kiel und Grund
+    const sichtGrund = Math.max(0, Math.min(1, (70 - luecke) / 50));
+    if (sichtGrund > 0) {
+      const grundY = Math.round(t.ty + (MITTE_Y + 82 + luecke * PX_PRO_M) * t.z);
+      if (grundY < H) {
+        ctx.globalAlpha = sichtGrund;
+        const boden = S.bilder.bild('umwelt_meeresboden');
+        const z = t.z;
+        if (boden) {
+          const bw = boden.naturalWidth * z, bh = boden.naturalHeight * z;
+          const off = ((teilchenVersatz * W * 0.6) % bw + bw) % bw;
+          const by = grundY - Math.round(30 * z);
+          for (let x = -off; x < W; x += bw) ctx.drawImage(boden, Math.round(x), by, Math.round(bw), Math.round(bh));
+          ctx.fillStyle = '#1d1a14';
+          ctx.fillRect(0, by + Math.round(bh) - 1, W, H);
+          const wrack = S.bilder.bild('umwelt_wrack');
+          if (wrack && Math.round(b.x * 7 + b.y * 3) % 5 === 0) ctx.drawImage(wrack, Math.round(W * 0.15 - off * 0.3), grundY - Math.round(46 * z), wrack.naturalWidth * z, wrack.naturalHeight * z);
+        } else {
+          ctx.fillStyle = '#3e372a'; ctx.fillRect(0, grundY, W, 2 * p);
+          ctx.fillStyle = '#1d1a14'; ctx.fillRect(0, grundY + 2 * p, W, H);
+        }
+        // in der Tiefe wird es dunkel
+        ctx.fillStyle = 'rgba(2,8,13,' + Math.min(0.75, b.tiefe / 260).toFixed(2) + ')';
+        ctx.fillRect(0, grundY - Math.round(40 * z), W, H);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 

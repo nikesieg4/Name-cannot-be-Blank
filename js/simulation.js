@@ -35,6 +35,52 @@
     return sp + (klemme(Math.floor(p.y / D.WELT.PLAN), 0, 6) + 1);
   }
 
+  /* ---------- Wassertiefe (Bathymetrie), 1 km-Raster ----------
+     Flaches Schelf vor den Küsten, offene See bis rund 300 m, ein tiefer Graben im Westen
+     und eine flache Bank in der Mitte, auf die man sich legen kann. */
+  let tiefenKarte = null;
+  function baueTiefenKarte() {
+    const B = D.WELT.B, H = D.WELT.H;
+    const abst = new Float32Array(B * H).fill(1e9);
+    const q = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < B; x++) {
+      if (imLand(x + 0.5, y + 0.5)) { abst[y * B + x] = 0; q.push(y * B + x); }
+    }
+    // Abstand zur Küste (Chamfer, 8 Nachbarn)
+    for (let k = 0; k < q.length; k++) {
+      const i = q[k], x = i % B, y = (i - x) / B, d = abst[i];
+      for (const [dx, dy, w] of [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.41], [-1, 1, 1.41], [1, -1, 1.41], [-1, -1, 1.41]]) {
+        const X = x + dx, Y = y + dy;
+        if (X < 0 || Y < 0 || X >= B || Y >= H) continue;
+        const j = Y * B + X;
+        if (abst[j] > d + w) { abst[j] = d + w; q.push(j); }
+      }
+    }
+    tiefenKarte = new Float32Array(B * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < B; x++) {
+      const d = abst[y * B + x];
+      if (d === 0) { tiefenKarte[y * B + x] = 0; continue; }
+      // Schelf (bis 10 km), Abhang (bis 25 km), offene See
+      let t = d < 10 ? 8 + d * 7 : d < 25 ? 78 + (d - 10) * 9 : 213 + Math.min(1, (d - 25) / 30) * 90;
+      t += Math.min(1, d / 6) * (22 * Math.sin(x / 17) * Math.cos(y / 13) + 12 * Math.sin((x + y) / 9));
+      // Graben im Westen
+      const g = Math.abs(x - (70 + Math.sin(y / 25) * 12));
+      if (g < 9) t += (1 - g / 9) * 140;
+      // flache Bank (Hiddensee-Bank) südöstlich der Insel
+      const bank = Math.hypot(x - 192, y - 130);
+      if (bank < 16) t = Math.min(t, 28 + bank * 6);
+      tiefenKarte[y * B + x] = Math.max(4, Math.min(420, t));
+    }
+  }
+  function wassertiefe(x, y) {
+    if (!tiefenKarte) baueTiefenKarte();
+    const X = Math.max(0, Math.min(D.WELT.B - 1, Math.floor(x))), Y = Math.max(0, Math.min(D.WELT.H - 1, Math.floor(y)));
+    return tiefenKarte[Y * D.WELT.B + X];
+  }
+  /* Tiefster Punkt, den das Boot erreichen kann, bevor der Kiel aufsetzt (Rumpfhöhe ~10 m) */
+  const KIEL_M = 10;
+  function grundTiefe(st) { return Math.max(0, wassertiefe(st.boot.x, st.boot.y) - KIEL_M); }
+
   function imLand(x, y) {
     if (x < 0 || y < 0 || x > D.WELT.B || y > D.WELT.H) return true;
     for (const poly of D.LAND) {
@@ -468,6 +514,27 @@
     if (b.anblasen > 0) { rate = -14; sinken *= 0.3; b.anblasen = Math.max(0, b.anblasen - dt); }
     const vorher = b.tiefe;
     b.tiefe = Math.max(0, b.tiefe + (rate + sinken) * dt);
+    // Meeresgrund: tiefer geht es nicht – das Boot setzt auf
+    const grund = grundTiefe(st);
+    if (b.tiefe >= grund && b.tiefe > 0.5) {
+      const aufprall = (b.tiefe - vorher) / Math.max(dt, 0.001);
+      if (vorher > grund + 1) {
+        // flacher werdendes Wasser: das Boot läuft mit dem Bug auf den Grund
+        const bug = b.abteile[abteilNachId('bug')];
+        bug.rumpf = Math.max(0, bug.rumpf - Math.min(25, 3 + (sim.knoten || 0) * 2));
+        log(st, 'Das Boot rammt den ansteigenden Grund! Bugraum beschädigt.', 'alarm');
+      } else if (!b.aufGrund && aufprall > 6) {
+        b.abteile[0].rumpf = Math.max(0, b.abteile[0].rumpf - aufprall);
+        log(st, 'Hart auf Grund gesetzt! Heckraum beschädigt.', 'alarm');
+      }
+      b.tiefe = grund;
+      if (!b.aufGrund) { b.aufGrund = true; log(st, 'Boot liegt auf Grund (' + Math.round(wassertiefe(b.x, b.y)) + ' m Wassertiefe).', 'info'); }
+      if ((sim.knoten || 0) > 0.5) {
+        const bug = b.abteile[abteilNachId('bug')];
+        bug.rumpf = Math.max(0, bug.rumpf - 0.4 * sim.knoten * dt);
+        if (!b.schrammt) { b.schrammt = true; log(st, 'Das Boot schrammt über den Grund! Maschinen stoppen oder höher gehen.', 'warn'); }
+      } else b.schrammt = false;
+    } else if (b.aufGrund && b.tiefe < grund - 1) { b.aufGrund = false; b.schrammt = false; log(st, 'Boot ist vom Grund frei.', 'info'); }
     if (b.tiefe === 0 && !unterWasser(st)) b.druckluft = Math.min(100, b.druckluft + 1.5 * dt);
     if (vorher <= 4 && b.tiefe > 4) log(st, 'Boot ist getaucht.', 'info');
     if (vorher > 4 && b.tiefe <= 4) log(st, 'Boot ist aufgetaucht.', 'info');
@@ -1155,7 +1222,7 @@
 
   Object.assign(sim, {
     abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
-    hatAusbau, maxSicher, zerstoerungstiefe, horchweite,
+    hatAusbau, maxSicher, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
     lagerVon, kapazitaet, bestand, platz, torpedosGesamt, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });
   S.sim = sim;

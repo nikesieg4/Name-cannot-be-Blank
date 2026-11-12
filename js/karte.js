@@ -53,6 +53,28 @@
     basis = c;
   }
 
+  /* Tiefenlinien (Isobathen) bei 20, 50, 100, 200 und 300 m aus der Wassertiefe der Simulation */
+  let isobathen = null;
+  function baueIsobathen() {
+    const B = W.B, H = W.H, KF = 2;
+    const c = document.createElement('canvas');
+    c.width = B * KF; c.height = H * KF;
+    const g = c.getContext('2d');
+    const stufen = [20, 50, 100, 200, 300];
+    const klasse = (t) => stufen.filter((x) => t >= x).length;
+    for (let y = 0; y < H * KF; y++) for (let x = 0; x < B * KF; x++) {
+      const t = S.sim.wassertiefe(x / KF, y / KF);
+      if (t <= 0) continue;
+      const k = klasse(t);
+      if (k !== klasse(S.sim.wassertiefe((x + 1) / KF, y / KF)) || k !== klasse(S.sim.wassertiefe(x / KF, (y + 1) / KF))) {
+        if ((x + y) % 3 === 0) continue;
+        g.fillStyle = k >= 4 ? 'rgba(10,30,60,0.55)' : k >= 2 ? 'rgba(160,200,215,0.35)' : 'rgba(200,230,235,0.55)';
+        g.fillRect(x, y, 1, 1);
+      }
+    }
+    isobathen = c;
+  }
+
   function masstab(cv) {
     const s = Math.min(cv.width / W.B, cv.height / W.H);
     return { s, ox: Math.round((cv.width - W.B * s) / 2), oy: Math.round((cv.height - W.H * s) / 2) };
@@ -77,6 +99,8 @@
     const m = masstab(cv);
     const P = (p) => ({ x: m.ox + p.x * m.s, y: m.oy + p.y * m.s });
     ctx.drawImage(S.bilder.bild('karte_leer') || basis, m.ox, m.oy, W.B * m.s, W.H * m.s);
+    if (!isobathen) baueIsobathen();
+    ctx.drawImage(isobathen, m.ox, m.oy, W.B * m.s, W.H * m.s);
     const dpr = cv.width / cv.clientWidth || 1;
     const fs = Math.round(13 * dpr);
     const symbole = S.bilder.bild('karte_symbole');
@@ -193,7 +217,9 @@
     ctx.restore();
 
     // Legende
-    const legende = 'Tippen/Klicken: Kurs · auf Kontakt: Ziel · Boot in ' + S.sim.planquadrat(b);
+    const maus = S.karte.maus;
+    const legende = 'Klick: Kurs · auf Kontakt: Ziel · Boot in ' + S.sim.planquadrat(b) + ', ' + Math.round(S.sim.wassertiefe(b.x, b.y)) + ' m tief' +
+      (maus ? ' · Zeiger ' + S.sim.planquadrat(maus) + ', ' + (S.sim.imLand(maus.x, maus.y) ? 'Land' : Math.round(S.sim.wassertiefe(maus.x, maus.y)) + ' m') : '') + ' · Linien: 20/50/100/200/300 m';
     ctx.textAlign = 'left';
     const lw = ctx.measureText(legende).width;
     const lx = m.ox + 6 * dpr, ly = m.oy + W.H * m.s - 6 * dpr;
@@ -218,5 +244,5 @@
     return best;
   }
 
-  S.karte = { zeichne, zuWelt, schiffBei, masstab };
+  S.karte = { zeichne, zuWelt, schiffBei, masstab, maus: null };
 })(window.Spiel = window.Spiel || {});

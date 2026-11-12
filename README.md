@@ -117,6 +117,11 @@ Das Boot ist ein **Typ VIIC** der Kriegsmarine (67,1 m, 17,7 kn aufgetaucht, 7,6
 - **Abschotten, Auspumpen, Reparieren:** wie bisher; Schotten lassen sich einzeln schließen, jedes Abteil hat eine Lenzpumpe, die Leckabwehr verbraucht Ersatzteile.
 - **Gewicht:** Zu viel Wasser im Boot macht es schwer, es sinkt. Ab 70 % Flutung ist es verloren.
 
+**Wassertiefe:** Jede Stelle der Karte hat eine eigene Tiefe (1-km-Raster): flaches Schelf bis 10 km vor der Küste (8–80 m), dann ein Abhang bis gut 200 m und offene See um 210–300 m, dazu ein tiefer Graben im Westen und eine flache Bank (~28 m) südöstlich der Insel. Die Karte zeigt Tiefenlinien bei 20, 50, 100, 200 und 300 m, die Legende die Tiefe am Boot und unter dem Mauszeiger.
+
+- **Auf Grund legen:** Will das Boot tiefer als der Grund, setzt es auf und liegt still. Mit Fahrt schrammt es über den Grund (Schaden am Bug), fährt es in flacheres Wasser, rammt es den Hang. Der Tiefenmesser zeigt den Grund als braune Marke.
+- **Sicht:** Die Oberfläche sieht man nur bis etwa 45 m Tiefe (Licht), den Grund nur, wenn er höchstens rund 70 m unter dem Kiel liegt. Je tiefer, desto dunkler.
+
 **Tiefen:**
 
 | Stufe | Tiefe |

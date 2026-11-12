@@ -230,6 +230,14 @@
   }
 
   /* ---------- Karte ---------- */
+  // Zeiger über der Karte: Wassertiefe an dieser Stelle in der Legende
+  karteCv.addEventListener('mousemove', (e) => {
+    const rect = karteCv.getBoundingClientRect();
+    const dpr = karteCv.width / rect.width;
+    const p = S.karte.zuWelt(karteCv, (e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr);
+    S.karte.maus = p.x >= 0 && p.y >= 0 && p.x <= D.WELT.B && p.y <= D.WELT.H ? p : null;
+  });
+  karteCv.addEventListener('mouseleave', () => { S.karte.maus = null; });
   karteCv.addEventListener('click', (e) => {
     if (st.verloren) return;
     const rect = karteCv.getBoundingClientRect();

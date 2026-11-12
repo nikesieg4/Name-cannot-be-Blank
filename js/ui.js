@@ -101,6 +101,7 @@
       '<span class="ziel" style="left:' + pos(ziel.m) + '%"></span><span class="sicher" style="left:' + pos(sicher) + '%"></span>' +
       '<span class="marke" style="left:' + pos(b.tiefe) + '%"></span></div>';
     h += '<div class="klein">Ziel: ' + ziel.name + ' (' + ziel.m + ' m) · sicher bis ' + Math.round(sicher) + ' m</div>';
+    h += '<div class="klein">Wassertiefe hier ' + Math.round(S.sim.wassertiefe(b.x, b.y)) + ' m' + (b.aufGrund ? ' · Boot liegt auf Grund' : '') + '</div>';
     if (b.tiefe > sicher) h += '<div class="warnung">⚠ Zu tief für den Rumpfzustand – Implosionsgefahr!</div>';
     if (S.sim.eff.tauchen <= 0) h += '<div class="warnung">Niemand an Tiefenruder oder Tauchzellen.</div>';
     if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot ist zu schwer und sinkt! Lenzen oder anblasen.</div>';
@@ -303,6 +304,9 @@
       const xy = p(m, 29).split(' ');
       s += '<text x="' + xy[0] + '" y="' + (Number(xy[1]) + 3) + '" font-size="8" text-anchor="middle" fill="#2a261c" font-family="VT323, monospace">' + m + '</text>';
     }
+    // Meeresgrund (braun), falls er auf der Skala liegt
+    const grund = S.sim.grundTiefe(st);
+    if (grund <= zt) s += '<path d="M ' + p(grund, 48) + ' L ' + p(grund, 36) + '" stroke="#6b4a2a" stroke-width="4"/>';
     // Zieltiefe (grün) und Zeiger
     const ziel = D.TIEFEN[b.zielTiefe].m;
     s += '<path d="M ' + p(ziel, 45) + ' L ' + p(ziel, 37) + '" stroke="#2f8a4c" stroke-width="3"/>';
@@ -314,10 +318,14 @@
 
   function hudTiefe(st) {
     const b = st.boot, sicher = S.sim.sichereTiefe(st);
-    let h = '<h2>Tiefe · sicher bis ' + Math.round(sicher) + ' m</h2><div class="tiefe">' + tiefenSVG(st) + '<div class="tiefenwahl">';
+    const wt = S.sim.wassertiefe(b.x, b.y);
+    let h = '<h2>Tiefe · Grund ' + Math.round(wt) + ' m · sicher ' + Math.round(sicher) + ' m</h2><div class="tiefe">' + tiefenSVG(st) + '<div class="tiefenwahl">';
     D.TIEFEN.forEach((t, i) => { h += '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>'; });
     h += '<button data-aktion="anblasen" class="warn">Anblasen ' + Math.round(b.druckluft) + ' %</button></div></div>';
+    const luecke = S.sim.grundTiefe(st) - b.tiefe;
     if (b.tiefe > sicher) h += '<div class="warnung">⚠ Zu tief – Implosionsgefahr!</div>';
+    else if (b.aufGrund) h += '<div class="' + (b.schrammt ? 'warnung' : 'gut') + '">' + (b.schrammt ? 'Schrammt über den Grund!' : 'Liegt auf Grund') + '</div>';
+    else if (b.tiefe > 4 && luecke < 25) h += '<div class="warnung">Grund ' + Math.round(luecke) + ' m unter dem Kiel</div>';
     else if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot zu schwer – es sinkt!</div>';
     else if (S.sim.eff.tauchen <= 0) h += '<div class="warnung">Niemand an der Tiefensteuerung!</div>';
     setze($('hudTiefe'), h);
