@@ -60,7 +60,7 @@
       alarm: false,
       naechsteId: id,
       boot: {
-        x: basis.x + 4, y: basis.y - 2, kurs: 0, wegpunkt: null,
+        x: basis.x + 4, y: basis.y - 2, kurs: 0, wegpunkt: null, koppel: { x: basis.x + 4, y: basis.y - 2 }, unsicher: 0.2, besteck: null,
         tiefe: 0, zielTiefe: 0, zielM: 0, fahrt: 0, luft: 100,
         batterie: 100, druckluft: 100, anblasen: 0,
         abteile: D.ABTEILE.map(() => ({ wasser: 0, rumpf: 100, pumpe: true })),
@@ -74,12 +74,13 @@
       schichten: D.STANDARD_SCHICHTEN.map((p) => p.slice()),
       schiffe: [],
       torpedos: [],
-      funk: { anfrage: null, nachrichten: [] },
+      funk: { anfrage: null, nachrichten: [], wiederholung: null },
+      schluesselSeed: 1 + Math.floor(Math.random() * 1e9),
       missionen: [],
       ziel: null,               // ausgewähltes Schiff für Torpedo
       gesteuert: null,          // Crew-ID unter direkter Kontrolle
       statistik: { versenkt: 0, auftraege: 0, tote: 0 },
-      log: [{ zeit: 12 * 60, text: 'Boot liegt am Marinehauptstützpunkt. Funken Sie den Stützpunkt an, um einen Auftrag zu erhalten.', art: 'info' }],
+      log: [{ zeit: 12 * 60, text: 'Boot liegt am Marinehauptstützpunkt. Der BdU sendet alle 4 Stunden einen Rundspruch auf Kurzwelle. Mit einem Kurzsignal fordern Sie einen Auftrag an.', art: 'info' }],
       verloren: null,
       naechsteStunde: 13 * 60,
     };
@@ -89,6 +90,8 @@
   function ergaenze(st) {
     for (const k of Object.keys(D.INVENTAR)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
     if (!st.boot.ausbau) st.boot.ausbau = {};
+    if (!st.schluesselSeed) st.schluesselSeed = 1 + Math.floor(Math.random() * 1e9);
+    if (!st.boot.koppel) { st.boot.koppel = { x: st.boot.x, y: st.boot.y }; st.boot.unsicher = 0.3; }
     if (st.boot.zielM == null) st.boot.zielM = D.TIEFEN[st.boot.zielTiefe || 0].m;
     while (st.schichten.length < D.STANDARD_SCHICHTEN.length) st.schichten.push(D.STANDARD_SCHICHTEN[st.schichten.length].slice());
     return st;

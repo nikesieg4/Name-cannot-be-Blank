@@ -140,10 +140,10 @@ Die Prüfungstiefe sinkt mit dem Rumpfzustand. Der Tiefenmesser zeigt den Bereic
 
 ## Welt, Aufträge und Kampf
 
-- **Seekarte** mit Planquadraten (A1–J7), dem Marinehauptstützpunkt, dem Freihafen Kalvik und den Hoheitsgewässern des Feindes (Arbeitsname „Vardanien“).
-- **Funkrufe:** Der Stützpunkt ruft alle paar Stunden von selbst – mit neuen Aufträgen oder Feindmeldungen. Eine Meldung oben mit Knopf „Zum Funkgerät“ und ein kurzes Morsezeichen kündigen das an. Der Spruch läuft **40 Minuten** und muss in dieser Zeit am Funkgerät auf der richtigen Frequenz aufgefangen werden – nur an der Oberfläche oder auf Sehrohrtiefe. Wer ihn verpasst, bekommt ihn erst Stunden später wieder. Feindmeldungen markieren die gemeldete Position auf der Karte.
+- **Seekarte** mit Marinequadraten (AM 11 bis BG 99), dem Marinehauptstützpunkt, dem Freihafen Kalvik und den Hoheitsgewässern des Feindes (Arbeitsname „Vardanien“).
+- **Funkrufe:** Liegt im Rundspruch ein Spruch für das Boot, erscheint oben eine Meldung mit Knopf „Zum Funkgerät“ und ein kurzes Morsezeichen. Der Spruch läuft **40 Minuten** und kann nur an der Oberfläche oder auf Sehrohrtiefe aufgefangen werden. Feindmeldungen markieren die gemeldete Position auf der Karte.
 - **Aufträge** bekommt man außerdem, indem man den Stützpunkt über den **Funker** anfunkt. Das geht nur bis Sehrohrtiefe. Die Antwort kommt **verschlüsselt** und muss vom Funker am Funkgerät entschlüsselt werden.
-  - **Patrouille:** ein Planquadrat aufsuchen
+  - **Patrouille:** ein Marinequadrat aufsuchen
   - **Frachter versenken:** einen gemeldeten Frachter abfangen, bevor er seinen Zielhafen erreicht
   - geplant: **Admiral als Beobachter** an Bord nehmen und mit ihm einen Auftrag fahren
 - **Entdecken:** An der Oberfläche sieht man weit, auf Sehrohrtiefe nur mit jemandem am Sehrohr. Getaucht hilft nur das Horchgerät, und der Soni muss Kontakte erst identifizieren.
@@ -154,6 +154,10 @@ Die Prüfungstiefe sinkt mit dem Rumpfzustand. Der Tiefenmesser zeigt den Bereic
 - **Schleichfahrt:** getaucht fast lautlos – jeder bleibt auf seiner Station (Trimm), nur Notfälle zählen. **Pumpen und Echolot sind laut** und verraten das Boot.
 - **Sprungschicht:** In 40–90 m liegt eine Temperaturgrenze (HUD zeigt sie getaucht an). Darunter liegt das Boot für ASDIC oft im Schallschatten.
 - **Echolot:** zeigt die Wassertiefe und den Grund am Tiefenmesser – ist aber zu hören. Ausgeschaltet steht dort „Grund ?“.
+- **Funk (Kap. 7):** Der BdU sendet alle 4 Stunden (00, 04, 08 … UTC) einen Rundspruch auf Kurzwelle (3,75–15 MHz; Tagwelle 8–14, Nachtwelle 4–8 MHz). Ein verpasster Spruch wird beim nächsten Termin wiederholt. Ein eigenes Kurzsignal kann der Gegner einpeilen (HF/DF) – ein Zerstörer läuft dann die gepeilte Position an.
+- **Schlüsselmaschine M (Enigma M3):** echte Walzen I–VIII, Umkehrwalze B, Ringstellung, zehn Steckerverbindungen und Doppelschritt. Jeden Tag gilt ein neuer Tagesschlüssel aus der Schlüsseltafel. Ablauf: Morse als Fünfergruppen mitschreiben → Walzen auf Grundstellung → Schlüsselgruppe tasten → Walzen auf den Spruchschlüssel → Gruppen tasten und den Klartext von den Lampen ablesen (Zahlen ausgeschrieben, X als Trennzeichen). Der Funkmaat kann es auch allein, braucht aber dreimal so lang.
+- **Marinequadrate (Kap. 8):** Großquadrate AM, AN, AO, BE, BF, BG (je 100 km), darin 3 × 3 Felder und noch einmal 3 × 3 – z. B. „AN 57“.
+- **Koppelnavigation:** Die Karte zeigt den Koppelort mit Unsicherheitskreis, nicht den wahren Standort. Strömung (0,2–0,6 kn) versetzt das Boot unbemerkt. Aufgetaucht nimmt der Obersteuermann ein Sternbesteck in der Morgen- und Abenddämmerung, mittags die Mittagsbreite und bei Tag in Küstennähe eine Kreuzpeilung. Kontakte werden vom Koppelort aus eingetragen.
 - **U-Jagd:** Zerstörer suchen auch getauchte Boote. Mit dem **Horchgerät** hören sie das Boot – je schneller es fährt, desto weiter (bei eigener Jagdfahrt sind sie taub). Haben sie Verdacht, orten sie mit **ASDIC** bis 2,5 km (direkt über dem Boot gibt es eine tote Zone). Über der vermuteten Position werfen sie **Wasserbomben** (6 pro Wurf, wirksam bis etwa 60 m zur Seite und 30 m in der Tiefe, einstellbar bis 180 m; 15 Würfe, dann dreht der Zerstörer ab). Das HUD warnt bei ASDIC-Ortung, Wasserbomben erschüttern das Bild.
 - **Taktik:** Ein Boot **auf Grund mit gestoppten Maschinen** ist für ASDIC kaum vom Meeresboden zu unterscheiden (in flachem Wasser noch weniger) und für das Horchgerät fast lautlos – im Test wurde es rund zehnmal seltener geortet und kaum getroffen. Tiefer als 180 m reichen die Wasserbomben nicht mehr ganz heran.
 
@@ -175,7 +179,7 @@ Die Prüfungstiefe sinkt mit dem Rumpfzustand. Der Tiefenmesser zeigt den Bereic
 | Antrieb | Batterie I (1 200 Kr) | Batterie II (2 500 Kr) | Sparsame Diesel (4 500 Kr): Batterie III und −20 % Diesel |
 | Horchgerät | Horchweite +25 % (2 000 Kr) | Kartei: Übereinstimmung immer in % (3 000 Kr) | Feingehör: ab 90 % Aufnahme automatisch erkannt (5 000 Kr) |
 | Waffen | Schnellladen: Nachladen 30 % schneller (2 500 Kr) | Vorhalterechner: +15 % Trefferchance (3 500 Kr) | 5. Rohr (6 000 Kr) |
-| Funk & Crew | Funkpeiler: Sendeband markiert (1 500 Kr) | Morse-Lehrgang: erste 3 Zeichen automatisch (2 500 Kr) | Bohnenkaffee: +2 Moral täglich um 8 Uhr (2 000 Kr) |
+| Funk & Crew | Funkpeiler: Tag-/Nachtwelle markiert (1 500 Kr) | Morse-Lehrgang: Schlüsselgruppe automatisch (2 500 Kr) | Bohnenkaffee: +2 Moral täglich um 8 Uhr (2 000 Kr) |
 
 ## Spielstände
 
@@ -202,7 +206,8 @@ js/bilder.js      lädt die PNG-Grafiken aus grafik/
 js/grafik.js      Pixel-Grafik des Bootes und der Crew
 js/karte.js       Seekarte
 js/ui.js          Seitenleisten und Fenster
-js/minispiele.js  Funkgerät (Frequenz + Morse) und Horchraum (Schraubengeräusch abgleichen)
+js/minispiele.js  Funkraum (Kurzwelle, Morse, Schlüsselmaschine M) und Horchraum (Schraubengeräusch abgleichen)
+js/enigma.js      Schlüsselmaschine M (Enigma M3) und Tagesschlüssel
 js/laderaum.js    Inventar (Laderaum) und Skilltree (Werft)
 js/main.js        Spielschleife, Maus, Tastatur, Befehle
 grafik/           Pixel-Grafiken (PNG)
@@ -229,7 +234,7 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 - [x] Seekarte mit Kurs, Häfen, Feindgebiet, Sicht- und Horchweite
 - [x] Funk mit Entschlüsselung, Aufträge (Patrouille, Frachter versenken)
 - [x] Pixel-Grafiken für Boot, Crew, Karte und Symbole
-- [x] Funk-Minispiel: Frequenz suchen, Morse entschlüsseln (oder den Funker machen lassen, dreimal langsamer)
+- [x] Funk-Minispiel: Kurzwelle suchen, Morse mitschreiben, an der Enigma entschlüsseln (oder den Funkmaat machen lassen, dreimal langsamer)
 - [x] Horch-Minispiel: Schraubengeräusch mit der Geräuschkartei abgleichen, erst dann ist ein getauchter Kontakt erkannt
 - [x] Inventar (Taste `I`): Laderaum in 40 Fächern à 5 LE, Gegenstände benutzen oder über Bord werfen; neue Waren Konserven, Batteriezelle, Druckluftflasche, Sanitätskasten
 - [x] Skilltree in der Werft (Taste `U`): 6 Äste mit je 3 Stufen

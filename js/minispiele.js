@@ -1,4 +1,4 @@
-/* Sehrohrtiefe – Minispiele: Funkgerät (Frequenz suchen, Morse entschlüsseln)
+/* Sehrohrtiefe – Minispiele: Funkraum (Kurzwelle suchen, Morse mitschreiben, Schlüsselmaschine M)
    und Horchraum (Schraubengeräusch mit der Geräuschkartei abgleichen). */
 (function (S) {
   'use strict';
@@ -31,48 +31,48 @@
     const sig = n.empfangen ? 'klar' : echt;
     const antenne = S.sim.antenneFrei(st);
     const ruf = st.funk.ruf && st.funk.ruf.id === n.id ? st.funk.ruf : null;
-    // Morse-Lehrgang: Der Funker schreibt die ersten 3 Zeichen mit, sobald das Signal klar ist.
-    if (sig === 'klar' && !n.fertig && S.sim.hatAusbau(st, 'morse') && n.eingabe.length < 3) {
-      const kt = n.spruch.replace(/ /g, '');
-      if (kt.startsWith(n.eingabe)) n.eingabe = kt.slice(0, 3);
-    }
+    const geheim = n.spruch.replace(/ /g, '');
+    // Morse-Lehrgang: Der Funker schreibt die Schlüsselgruppe mit, sobald das Signal klar ist.
+    if (sig === 'klar' && !n.fertig && !n.mitgeschrieben && S.sim.hatAusbau(st, 'morse') && n.eingabe.length < 3 && geheim.startsWith(n.eingabe)) n.eingabe = geheim.slice(0, 3);
     const d = Math.abs(n.f - n.freq);
     const stufe = Math.max(0, 16 - Math.round(d / 30));
     const F = D.FUNK;
     const besetzt = S.sim.eff.funk > 0;
     const fach = S.sim.eff.funk >= 1 || S.sim.hatAusbau(st, 'funkpeiler');
+    const tagWelle = n.freq > F.nacht[1];
+    const proz = (f) => (f - F.min) / (F.max - F.min) * 100;
 
-    let h = '<h1>Funkgerät</h1>';
+    let h = '<h1>Funkraum</h1>';
     h += '<div class="funk">';
     // Empfänger
     h += '<div class="empfaenger">';
-    h += '<div class="zeile"><span class="etikett">KURZWELLE · EMPFÄNGER E-52</span><span class="lampe ' + echt + '">' +
+    h += '<div class="zeile"><span class="etikett">KURZWELLE · ALLWELLENEMPFÄNGER</span><span class="lampe ' + echt + '">' +
       (echt === 'klar' ? 'Signal klar' : echt === 'schwach' ? 'Signal schwach' : 'Rauschen') + '</span></div>';
-    h += '<div class="anzeige">' + String(n.f).replace(/^(\d)/, '$1 ') + ' <small>kHz</small></div>';
+    h += '<div class="anzeige">' + n.f.toLocaleString('de-DE') + ' <small>kHz</small></div>';
     h += '<div class="skala">';
-    for (let i = 0; i <= 50; i++) h += '<i style="left:' + (i * 2) + '%;height:' + (i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 4) + 'px"></i>';
-    if (fach) h += '<b class="band" style="left:' + ((F.basisVon - F.min) / (F.max - F.min) * 100) + '%;width:' + ((F.basisBis - F.basisVon) / (F.max - F.min) * 100) + '%"></b>';
-    h += '<em style="left:' + ((n.f - F.min) / (F.max - F.min) * 100) + '%"></em></div>';
-    h += '<div class="skalazahlen"><span>4 000</span><span>5 000</span><span>6 000</span><span>7 000</span><span>8 000</span><span>9 000</span></div>';
-    h += '<div class="knopfraster vier">' + [-100, -10, 10, 100].map((x) =>
-      '<button data-aktion="funkDreh" data-arg="' + x + '"' + (besetzt && !n.fertig ? '' : ' disabled') + '>' + (x < 0 ? (x === -100 ? '« ' : '‹ ') + x : '+' + x + (x === 100 ? ' »' : ' ›')) + '</button>').join('') + '</div>';
+    for (let f = 4000; f <= 15000; f += 500) h += '<i style="left:' + proz(f) + '%;height:' + (f % 1000 === 0 ? (f % 5000 === 0 ? 12 : 8) : 4) + 'px"></i>';
+    if (fach) h += '<b class="band" style="left:' + proz((tagWelle ? F.tag : F.nacht)[0]) + '%;width:' + (proz((tagWelle ? F.tag : F.nacht)[1]) - proz((tagWelle ? F.tag : F.nacht)[0])) + '%"></b>';
+    h += '<em style="left:' + proz(n.f) + '%"></em></div>';
+    h += '<div class="skalazahlen"><span>3,75</span><span>6</span><span>9</span><span>12</span><span>15 MHz</span></div>';
+    h += '<div class="knopfraster sechs">' + [-1000, -100, -10, 10, 100, 1000].map((x) =>
+      '<button data-aktion="funkDreh" data-arg="' + x + '"' + (besetzt && !n.fertig ? '' : ' disabled') + '>' + (x > 0 ? '+' : '−') + Math.abs(x).toLocaleString('de-DE') + '</button>').join('') + '</div>';
     h += '<div class="etikett">SIGNALSTÄRKE</div><div class="pegel">';
     for (let i = 0; i < 16; i++) h += '<i class="' + (i < stufe ? (i > 12 ? 'h3' : i > 8 ? 'h2' : 'h1') : '') + '" style="height:' + (20 + i * 5) + '%"></i>';
     h += '</div>';
+    const welle = tagWelle ? 'Tagwelle, 8–14 MHz' : 'Nachtwelle, 4–8 MHz';
     const text = !besetzt ? 'Niemand sitzt am Funkgerät. Schick jemanden hin, sonst lässt sich nichts einstellen.'
-      : !n.empfangen && !antenne ? 'Funker: „Antenne unter Wasser, Herr Kaleu. Wir müssen auf Sehrohrtiefe.“'
-        : n.empfangen ? 'Funker: „Spruch ist auf dem Block. Jetzt entschlüsseln.“'
-          : echt === 'klar' ? 'Funker: „Ich hab ihn, Herr Kaleu. Der Stützpunkt sendet.“'
-            : echt === 'schwach' ? 'Funker: „Da ist was. Noch ein Stück weiter drehen.“'
-              : 'Funker: „Nur Rauschen. Der Stützpunkt sendet zwischen 6 und 7 MHz.“';
+      : !n.empfangen && !antenne ? 'Funkmaat: „Antenne unter Wasser, Herr Kaleu. Wir müssen auf Sehrohrtiefe.“'
+        : n.empfangen ? 'Funkmaat: „Spruch ist auf dem Block.“'
+          : echt === 'klar' ? 'Funkmaat: „Ich hab ihn. Der BdU sendet.“'
+            : echt === 'schwach' ? 'Funkmaat: „Da ist was. Noch ein Stück weiter drehen.“'
+              : 'Funkmaat: „Nur Rauschen. Der Rundspruch läuft auf der ' + welle + '.“';
     h += '<p class="funker">' + text + '</p>';
-    if (ruf) h += '<p class="warnung">Der Stützpunkt sendet noch ' + Math.max(0, Math.ceil(ruf.bis - st.zeit)) + ' Minuten.</p>';
+    if (ruf) h += '<p class="warnung">Der BdU sendet noch ' + Math.max(0, Math.ceil(ruf.bis - st.zeit)) + ' Minuten.</p>';
     h += '</div>';
 
-    // Morse
-    const klartext = n.spruch.replace(/ /g, '');
+    // Morse: Fünfergruppen mitschreiben
     h += '<div class="morse">';
-    h += '<div class="etikett">EMPFANGEN</div><div class="band">';
+    h += '<div class="etikett">EMPFANGEN · SCHLÜSSELGRUPPE + FÜNFERGRUPPEN</div><div class="band">';
     n.spruch.split('').forEach((ch, i) => {
       if (ch === ' ') { h += '<span class="luecke"></span>'; return; }
       const verrauscht = sig !== 'klar' && (sig === 'rauschen' || i % 2 === 1);
@@ -81,30 +81,65 @@
     });
     h += '</div>';
     if (sig === 'klar') h += '<button data-aktion="funkHoeren">▶ Abhören</button>';
-
-    const fehler = n.eingabe.split('').some((c, i) => c !== klartext[i]);
-    h += '<div class="zeile"><span class="etikett">ENTSCHLÜSSELT</span><span class="' + (n.fertig ? 'gut' : fehler ? 'warnung' : 'klein') + '">' +
-      (n.fertig ? 'Auftrag entschlüsselt' : fehler ? 'Fehler im Spruch' : n.eingabe.length + ' / ' + klartext.length) + '</span></div>';
+    const fehler = !n.mitgeschrieben && n.eingabe.split('').some((c, i) => c !== geheim[i]);
+    h += '<div class="zeile"><span class="etikett">FUNKBLOCK</span><span class="' + (n.mitgeschrieben ? 'gut' : fehler ? 'warnung' : 'klein') + '">' +
+      (n.mitgeschrieben ? 'Mitgeschrieben' : fehler ? 'Fehler auf dem Block' : n.eingabe.length + ' / ' + geheim.length) + '</span></div>';
     h += '<div class="felder">';
     let k = 0;
-    for (const ch of n.spruch) {
-      if (ch === ' ') { h += '<span class="luecke"></span>'; continue; }
-      const e = n.fertig ? ch : n.eingabe[k]; k++;
-      h += '<span class="feld ' + (!e ? '' : e === ch ? 'richtig' : 'falsch') + '">' + (e || '') + '</span>';
+    const gruppen = n.spruch.split(' ');
+    gruppen.forEach((grp, gi) => {
+      if (gi) h += '<span class="luecke"></span>';
+      for (const ch of grp) {
+        const e = n.mitgeschrieben ? ch : n.eingabe[k]; k++;
+        h += '<span class="feld ' + (!e ? '' : e === ch ? 'richtig' : 'falsch') + '">' + (e || '') + '</span>';
+      }
+    });
+    h += '</div>';
+    if (!n.mitgeschrieben) {
+      h += '<div class="tasten">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((z) => '<button data-aktion="funkTaste" data-arg="' + z + '">' + z + '</button>').join('') +
+        '<button class="zurueck" data-aktion="funkTaste" data-arg="" aria-label="Letztes Zeichen löschen">⌫</button></div>';
+      h += '<p class="klein">Morsezeichen in Buchstaben übertragen – auch per Tastatur (A–Z, Rücktaste).</p>';
+      h += '<div class="tabelle">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((z) => '<span><b>' + z + '</b> ' + D.MORSE[z].replace(/\./g, '·').replace(/-/g, '−') + '</span>').join('') + '</div>';
     }
     h += '</div>';
-    if (!n.fertig) {
-      h += '<div class="tasten">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').map((z) => '<button data-aktion="funkTaste" data-arg="' + z + '">' + z + '</button>').join('') +
-        '<button class="zurueck" data-aktion="funkTaste" data-arg="" aria-label="Letztes Zeichen löschen">⌫</button></div>';
-      h += '<p class="klein">Du kannst auch mit der Tastatur tippen (A–Z, 0–9, Rücktaste).</p>';
-    } else {
-      h += '<div class="nachricht"><b>' + esc(n.mission.titel) + ':</b> ' + esc(n.mission.text) + '</div>';
-    }
-    h += '<div class="tabelle">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').map((z) => '<span><b>' + z + '</b> ' + D.MORSE[z].replace(/\./g, '·').replace(/-/g, '−') + '</span>').join('') + '</div>';
-    h += '</div></div>';
-    h += '<p>' + (n.fertig ? '' : '<button data-aktion="funkAuto"' + (n.auto ? ' disabled' : '') + '>' + (n.auto ? 'Funker entschlüsselt selbst …' : 'Funker machen lassen (dauert 3× länger)') + '</button> ') +
+
+    // Schlüsselmaschine M
+    if (n.mitgeschrieben) h += enigma(st, n, gruppen);
+    h += '</div>';
+    h += '<p>' + (n.fertig ? '' : '<button data-aktion="funkAuto"' + (n.auto ? ' disabled' : '') + '>' + (n.auto ? 'Funkmaat arbeitet …' : 'Funkmaat machen lassen (dauert 3× länger)') + '</button> ') +
       '<button data-aktion="modalZu">Schließen</button></p>';
     S.ui.oeffne(h);
+  }
+
+  function enigma(st, n, gruppen) {
+    const E = S.enigma;
+    const sch = S.sim.tagesschluessel(st, n.tag);
+    let h = '<div class="enigma">';
+    h += '<div class="etikett">SCHLÜSSELMASCHINE M · SCHLÜSSELTAFEL „M ALLGEMEIN“</div>';
+    h += '<table class="tafel"><tr><th>Tag</th><th>Walzenlage</th><th>Ringstellung</th><th>Steckerverbindungen</th><th>Grundstellung</th></tr>' +
+      '<tr><td>' + n.tag + '</td><td>' + sch.walzen.join(' ') + '</td><td>' + sch.ringe.map((r) => String(r).padStart(2, '0')).join(' ') + '</td><td>' + sch.stecker + '</td><td><b>' + sch.grund + '</b></td></tr></table>';
+    h += '<p class="klein">Walzenlage, Ringe und Stecker hat der Funkmaat schon eingestellt. Verfahren: <b>1.</b> Walzen auf die Grundstellung drehen. <b>2.</b> Die Schlüsselgruppe (3 Buchstaben) tasten – die Lampen zeigen den Spruchschlüssel. <b>3.</b> Walzen auf den Spruchschlüssel drehen. <b>4.</b> Die Fünfergruppen tasten und den Klartext ablesen.</p>';
+    if (n.fertig) {
+      h += '<div class="nachricht"><b>' + esc(n.mission.titel) + ':</b> ' + esc(n.mission.text) + '</div>';
+      h += '<div class="mitschrift">' + esc(n.klar.replace(/X/g, ' ').trim()) + '</div></div>';
+      return h;
+    }
+    h += '<div class="enigmafeld"><div class="walzen">';
+    for (let i = 0; i < 3; i++) {
+      h += '<div class="walze"><button data-aktion="enigmaWalze" data-arg="' + i + ',-1" aria-label="Walze ' + (i + 1) + ' zurück">▲</button><b>' + n.walzen[i] + '</b>' +
+        '<button data-aktion="enigmaWalze" data-arg="' + i + ',1" aria-label="Walze ' + (i + 1) + ' vor">▼</button><small>' + sch.walzen[i] + '</small></div>';
+    }
+    h += '</div><div class="lampen">';
+    for (const reihe of E.TASTEN) h += '<div>' + reihe.split('').map((z) => '<i class="' + (n.lampe === z ? 'an' : '') + '">' + z + '</i>').join('') + '</div>';
+    h += '</div><div class="tastatur">';
+    for (const reihe of E.TASTEN) h += '<div>' + reihe.split('').map((z) => '<button data-aktion="enigmaTaste" data-arg="' + z + '">' + z + '</button>').join('') + '</div>';
+    h += '</div></div>';
+    h += '<div class="etikett">SPRUCH – GRUPPE ANKLICKEN, UM SIE ZU TASTEN</div><div class="gruppen">' +
+      gruppen.map((g, i) => '<button data-aktion="enigmaGruppe" data-arg="' + i + '" class="' + (i === 0 ? 'kopf' : '') + '">' + g + '</button>').join('') + '</div>';
+    h += '<div class="zeile"><span class="etikett">LAMPEN MITGESCHRIEBEN</span><span><button data-aktion="enigmaTaste" data-arg="" aria-label="Letzte Taste zurück">⌫</button> <button data-aktion="enigmaNeu">Block leeren</button></span></div>';
+    h += '<div class="mitschrift">' + (n.mitschrift ? esc(n.mitschrift.match(/.{1,5}/g).join(' ')) : '<span class="klein">–</span>') + '</div>';
+    h += '</div>';
+    return h;
   }
 
   /* Morse als Ton abspielen (Web Audio, 600 Hz). */
@@ -265,6 +300,13 @@
         if (f) S.sim.log(st, f, 'warn');
         funkgeraet(st, offen.id); return true;
       }
+      case 'enigmaTaste': case 'enigmaGruppe': case 'enigmaWalze': case 'enigmaNeu':
+        if (!offen || offen.art !== 'funk') return true;
+        if (name === 'enigmaTaste') S.sim.enigmaTaste(st, offen.id, arg ? arg : null);
+        else if (name === 'enigmaGruppe') S.sim.enigmaGruppe(st, offen.id, Number(arg));
+        else if (name === 'enigmaWalze') { const [i, d] = arg.split(',').map(Number); S.sim.enigmaWalze(st, offen.id, i, d); }
+        else S.sim.enigmaNeu(st, offen.id);
+        funkgeraet(st, offen.id); return true;
       case 'funkTaste':
         if (!offen || offen.art !== 'funk') return true;
         S.sim.funkTaste(st, offen.id, arg ? arg : null);
@@ -292,7 +334,7 @@
   function taste(st, e) {
     if (!offen || offen.art !== 'funk' || !S.ui.offen()) return false;
     const k = e.key;
-    if (/^[a-zA-Z0-9]$/.test(k)) { aktion(st, 'funkTaste', k.toUpperCase()); return true; }
+    if (/^[a-zA-Z]$/.test(k)) { aktion(st, 'funkTaste', k.toUpperCase()); return true; }
     if (k === 'Backspace') { e.preventDefault(); aktion(st, 'funkTaste', ''); return true; }
     return false;
   }

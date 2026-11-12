@@ -30,15 +30,22 @@
     if (st.log.length > 80) st.log.splice(0, st.log.length - 80);
   }
 
-  function planquadrat(p) {
-    const sp = 'ABCDEFGHIJ'[klemme(Math.floor(p.x / D.WELT.PLAN), 0, 9)];
-    return sp + (klemme(Math.floor(p.y / D.WELT.PLAN), 0, 6) + 1);
+  /* Marinequadrat (Kap. 8): Großquadrat aus zwei Buchstaben, darin 3 × 3 Felder (erste Ziffer),
+     jedes wieder 3 × 3 (zweite Ziffer), gezählt von links oben – z. B. „AN 57“. */
+  function quadratTeile(p) {
+    const G = D.WELT.GROSS;
+    const gx = klemme(Math.floor(p.x / G), 0, D.GROSSQUADRATE[0].length - 1), gy = klemme(Math.floor(p.y / G), 0, D.GROSSQUADRATE.length - 1);
+    const lx = klemme((p.x - gx * G) / G, 0, 0.9999), ly = klemme((p.y - gy * G) / G, 0, 0.9999);
+    const a = Math.floor(lx * 3), b = Math.floor(ly * 3);
+    const c = Math.floor((lx * 3 - a) * 3), d = Math.floor((ly * 3 - b) * 3);
+    return { name: D.GROSSQUADRATE[gy][gx], z1: b * 3 + a + 1, z2: d * 3 + c + 1 };
   }
+  function planquadrat(p) { const q = quadratTeile(p); return q.name + ' ' + q.z1 + q.z2; }
 
   /* ---------- Wassertiefe (Bathymetrie), 1 km-Raster ----------
      Flaches Schelf vor den Küsten, offene See bis rund 300 m, ein tiefer Graben im Westen
      und eine flache Bank in der Mitte, auf die man sich legen kann. */
-  let tiefenKarte = null;
+  let tiefenKarte = null, landAbst = null;
   function baueTiefenKarte() {
     const B = D.WELT.B, H = D.WELT.H;
     const abst = new Float32Array(B * H).fill(1e9);
@@ -56,6 +63,7 @@
         if (abst[j] > d + w) { abst[j] = d + w; q.push(j); }
       }
     }
+    landAbst = abst;
     tiefenKarte = new Float32Array(B * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < B; x++) {
       const d = abst[y * B + x];
@@ -76,6 +84,11 @@
     if (!tiefenKarte) baueTiefenKarte();
     const X = Math.max(0, Math.min(D.WELT.B - 1, Math.floor(x))), Y = Math.max(0, Math.min(D.WELT.H - 1, Math.floor(y)));
     return tiefenKarte[Y * D.WELT.B + X];
+  }
+  function landAbstand(x, y) {
+    if (!tiefenKarte) baueTiefenKarte();
+    const X = Math.max(0, Math.min(D.WELT.B - 1, Math.floor(x))), Y = Math.max(0, Math.min(D.WELT.H - 1, Math.floor(y)));
+    return landAbst[Y * D.WELT.B + X];
   }
   /* Tiefster Punkt, den das Boot erreichen kann, bevor der Kiel aufsetzt (Rumpfhöhe ~10 m) */
   const KIEL_M = 10;
@@ -647,14 +660,16 @@
 
   function fahrtSchritt(st, dt, eff) {
     const b = st.boot;
+    const k = koppelOrt(st);
     if (b.wegpunkt) {
-      const soll = Math.atan2(b.wegpunkt.y - b.y, b.wegpunkt.x - b.x);
+      // Gesteuert wird nach dem Koppelort – nicht nach dem wahren Standort.
+      const soll = Math.atan2(b.wegpunkt.y - k.y, b.wegpunkt.x - k.x);
       let d = soll - b.kurs;
       while (d > Math.PI) d -= 2 * Math.PI;
       while (d < -Math.PI) d += 2 * Math.PI;
       const max = (6 * Math.PI / 180) * eff.ruder * dt * (sim.knoten > 0 ? 1 : 0.2);
       b.kurs += klemme(d, -max, max);
-      if (dist(b, b.wegpunkt) < 0.6) { b.wegpunkt = null; b.fahrt = 0; log(st, 'Wegpunkt erreicht. Maschinen gestoppt.', 'info'); }
+      if (dist(k, b.wegpunkt) < 0.6) { b.wegpunkt = null; b.fahrt = 0; log(st, 'Wegpunkt erreicht. Maschinen gestoppt.', 'info'); }
     }
     const km = sim.knoten * 1.852 / 60 * dt;
     if (km > 0) {
@@ -663,7 +678,62 @@
         b.fahrt = 0; b.wegpunkt = null;
         b.abteile[abteilNachId('bug')].rumpf = Math.max(0, b.abteile[abteilNachId('bug')].rumpf - 10);
         log(st, 'Das Boot ist auf Grund gelaufen! Bugraum beschädigt.', 'alarm');
-      } else { b.x = nx; b.y = ny; }
+      } else { b.x = nx; b.y = ny; k.x += Math.cos(b.kurs) * km; k.y += Math.sin(b.kurs) * km; }
+    }
+    navSchritt(st, dt);
+  }
+
+  /* ---------------- Navigation (Kap. 8): Koppeln und Besteck ----------------
+     Der Obersteuermann koppelt aus Kurs und Fahrt. Strömung versetzt das Boot unbemerkt.
+     Ein Besteck gibt es nur aufgetaucht: Sterne in der Morgen- und Abenddämmerung,
+     Mittagsbreite mit der Sonne, Kreuzpeilung bei Tag in Küstennähe. */
+  function koppelOrt(st) {
+    const b = st.boot;
+    if (!b.koppel) { b.koppel = { x: b.x, y: b.y }; b.unsicher = 0.3; }
+    return b.koppel;
+  }
+  sim.koppelOrt = koppelOrt;
+  /* Wahre Position eines Kontakts so, wie sie auf der Karte eingetragen wird (relativ zum Koppelort). */
+  sim.aufKarte = function (st, p) { const k = koppelOrt(st); return { x: p.x - st.boot.x + k.x, y: p.y - st.boot.y + k.y }; };
+  sim.vonKarte = function (st, p) { const k = koppelOrt(st); return { x: p.x - k.x + st.boot.x, y: p.y - k.y + st.boot.y }; };
+
+  function besteck(st, art, fehler, nurBreite, leise) {
+    const b = st.boot, k = koppelOrt(st);
+    const ab = nurBreite ? Math.abs(k.y - b.y) : Math.hypot(k.x - b.x, k.y - b.y);
+    const w = Math.random() * Math.PI * 2, f = Math.random() * fehler;
+    if (!nurBreite) k.x = b.x + Math.cos(w) * f;
+    k.y = b.y + Math.sin(w) * f;
+    b.unsicher = nurBreite ? Math.max(fehler, b.unsicher * 0.6) : fehler;
+    b.besteck = { zeit: st.zeit, art };
+    if (!leise || ab >= 1) log(st, 'Obersteuermann: ' + art + ' genommen. ' + (ab < 0.5 ? 'Koppelort stimmte.' : 'Wir standen ' + ab.toFixed(1).replace('.', ',') + ' km ' + (nurBreite ? 'in der Breite ' : '') + 'neben dem Koppelort.') + ' Boot in ' + planquadrat(k) + '.', 'info');
+    for (const c of st.crew) if (!c.tot && c.rolle === 'nav') c.xp += 1;
+  }
+
+  function navSchritt(st, dt) {
+    const b = st.boot, k = koppelOrt(st);
+    const ort = sim.handelsort(st);
+    if (ort && ort.art === 'hafen' && b.fahrt === 0) { k.x = b.x; k.y = b.y; b.unsicher = 0.2; return; }
+    // Strömung (0,2–0,6 kn), dreht langsam
+    if (!b.stroemung) b.stroemung = { w: Math.random() * Math.PI * 2, kn: 0.2 + Math.random() * 0.4 };
+    const sr = b.stroemung;
+    sr.w += (Math.random() - 0.5) * 0.004 * dt;
+    sr.kn = klemme(sr.kn + (Math.random() - 0.5) * 0.002 * dt, 0.2, 0.6);
+    const km = sr.kn * 1.852 / 60 * dt;
+    const nx = b.x + Math.cos(sr.w) * km, ny = b.y + Math.sin(sr.w) * km;
+    if (!imLand(nx, ny)) { b.x = nx; b.y = ny; }
+    b.unsicher = Math.min(60, (b.unsicher || 0.3) + 0.012 * dt);
+
+    if (unterWasser(st) || !lebtRolle(st, 'nav')) return;
+    const m = st.zeit % 1440, tag = Math.floor(st.zeit / 1440);
+    const daemmerung = m >= 330 && m < 420 ? 0 : m >= 1140 && m < 1230 ? 1 : -1;
+    if (daemmerung >= 0 && b.besteckKey !== tag * 3 + daemmerung) {
+      b.besteckKey = tag * 3 + daemmerung;
+      besteck(st, daemmerung ? 'Sternbesteck in der Abenddämmerung' : 'Sternbesteck in der Morgendämmerung', 0.6);
+    } else if (m >= 690 && m < 750 && b.besteckKey !== tag * 3 + 2) {
+      b.besteckKey = tag * 3 + 2;
+      besteck(st, 'Mittagsbreite (Sonnenhöhe)', 0.4, true);
+    } else if (istTag(st) && b.unsicher > 2 && landAbstand(b.x, b.y) < 18) {
+      besteck(st, 'Kreuzpeilung an Landmarken', 0.3, false, true);
     }
   }
 
@@ -1046,71 +1116,108 @@
       const fr = neuesSchiff(st, 'frachter', { mission: id });
       return { id, typ: 'versenken', status: 'aktiv', schiff: fr.id, belohnung: 1500 + Math.round(Math.random() * 10) * 100,
         titel: 'Frachter versenken',
-        text: 'Feindlicher Frachter in Planquadrat ' + planquadrat(fr) + ' gemeldet, Kurs auf die Küste von ' + D.FEIND_NAME + ' (' + planquadrat(fr.ziel) + '). Abfangen und versenken.' };
+        text: 'Feindlicher Frachter in Quadrat ' + planquadrat(fr) + ' gemeldet, Kurs auf die Küste von ' + D.FEIND_NAME + ' (' + planquadrat(fr.ziel) + '). Abfangen und versenken.' };
     }
     const p = zufallsPunkt(150, 255, 25, 185);
     return { id, typ: 'patrouille', status: 'aktiv', ziel: p, belohnung: 600 + Math.round(Math.random() * 6) * 50,
-      titel: 'Patrouille', text: 'Patrouillieren Sie Planquadrat ' + planquadrat(p) + ' und melden Sie Feindbewegungen.' };
+      titel: 'Patrouille', text: 'Patrouillieren Sie Quadrat ' + planquadrat(p) + ' und melden Sie Feindbewegungen.' };
   }
 
 
+  /* ---------------- Funk (Kap. 7) ----------------
+     Der BdU sendet nur zu festen Zeiten (alle 4 Stunden) einen Rundspruch auf Kurzwelle.
+     Der Spruch kommt als Morse in Fünfergruppen, verschlüsselt mit der Schlüsselmaschine M
+     (Tagesschlüssel aus der Schlüsseltafel, Spruchschlüssel in der Schlüsselgruppe). */
+  const SENDE_ABSTAND = 240;
+  function naechsteSendezeit(st) { return (Math.floor(st.zeit / SENDE_ABSTAND) + 1) * SENDE_ABSTAND; }
+  sim.naechsteSendezeit = function (st) { const t = naechsteSendezeit(st); return String(Math.floor(t % 1440 / 60)).padStart(2, '0') + ':00'; };
+  sim.tagesschluessel = function (st, tag) {
+    if (!st.schluesselSeed) st.schluesselSeed = 1 + Math.floor(Math.random() * 1e9);
+    return S.enigma.tagesschluessel(st.schluesselSeed, tag);
+  };
+
   sim.anfunken = function (st) {
-    if (st.funk.anfrage) return 'Es läuft bereits ein Funkspruch.';
+    const f = st.funk;
+    if (f.anfrage) return f.anfrage.rest > 0 ? 'Es wird bereits gesendet.' : 'Die Antwort kommt mit dem nächsten Rundspruch um ' + sim.naechsteSendezeit(st) + ' Uhr.';
     if (!antenneFrei(st)) return 'Funk nur an der Oberfläche oder auf Sehrohrtiefe möglich.';
     if (sim.eff.funk <= 0) return 'Niemand sitzt am Funkgerät.';
-    if (st.missionen.filter((m) => m.status === 'aktiv').length >= 3) return 'Stützpunkt: Erst laufende Aufträge erledigen.';
-    st.funk.anfrage = { rest: 8 };
-    log(st, 'Funkspruch an den Marinehauptstützpunkt abgesetzt.', 'info');
+    if (st.missionen.filter((m) => m.status === 'aktiv').length >= 3) return 'Erst laufende Aufträge erledigen.';
+    f.anfrage = { rest: 8 };
+    log(st, 'Kurzsignal an den BdU wird abgesetzt. Achtung: Der Gegner peilt Funksprüche ein.', 'info');
     return null;
   };
 
-  /* Der Stützpunkt ruft von selbst: neuer Auftrag oder Feindmeldung. Der Spruch läuft 40 Minuten und muss
-     am Funkgerät auf der richtigen Frequenz aufgefangen werden – getaucht nur bis Sehrohrtiefe. */
-  function funkRuf(st) {
-    const f = st.funk;
-    let m;
-    if (st.missionen.filter((x) => x.status === 'aktiv').length < 3 && Math.random() < 0.6) m = neueMission(st);
-    else {
-      const fr = neuesSchiff(st, 'frachter');
-      m = { id: st.naechsteId++, typ: 'meldung', status: 'info', schiff: fr.id, belohnung: 0, titel: 'Feindmeldung',
-        text: 'Feindlicher Frachter in Planquadrat ' + planquadrat(fr) + ' gesichtet, Kurs ' + planquadrat(fr.ziel) + '. Angriff freigegeben.' };
-    }
+  /* Feindliche Funkpeilung (HF/DF): Ein Zerstörer in der Nähe läuft die eingepeilte Position an. */
+  function eingepeilt(st) {
+    const b = st.boot;
+    let best = null;
+    for (const z of st.schiffe) if (z.typ === 'zerstoerer' && !z.versenkt && dist(z, b) < 120 && (!best || dist(z, b) < dist(best, b))) best = z;
+    if (!best || Math.random() > 0.5) return;
+    const w = Math.random() * Math.PI * 2, f = 3 + Math.random() * 8;
+    best.alarmiert = true; best.suche = 90;
+    best.letzteSicht = { x: b.x + Math.cos(w) * f, y: b.y + Math.sin(w) * f };
+  }
+
+  function neueNachricht(st, m) {
     const n = { id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false, ruf: true, empfangen: false };
     funkFelder(st, n);
+    return n;
+  }
+
+  /* Rundspruch zur festen Sendezeit */
+  function rundspruch(st) {
+    const f = st.funk;
+    let n = null;
+    if (f.wiederholung) {
+      n = f.wiederholung; f.wiederholung = null;
+      n.empfangen = false; n.ruf = true;
+      n.freq = funkFrequenz(st); n.f = startFrequenz(n.freq);
+    } else {
+      let m = null;
+      const platz = st.missionen.filter((x) => x.status === 'aktiv').length < 3;
+      if (f.anfrage && f.anfrage.rest <= 0) { f.anfrage = null; if (platz) m = neueMission(st); }
+      else if (Math.random() < 0.55) {
+        if (platz && Math.random() < 0.6) m = neueMission(st);
+        else {
+          const fr = neuesSchiff(st, 'frachter');
+          m = { id: st.naechsteId++, typ: 'meldung', status: 'info', schiff: fr.id, belohnung: 0, titel: 'Feindmeldung',
+            text: 'Feindlicher Frachter in Quadrat ' + planquadrat(fr) + ' gesichtet, Kurs ' + planquadrat(fr.ziel) + '. Angriff freigegeben.' };
+        }
+      }
+      if (!m) return;
+      n = neueNachricht(st, m);
+    }
     f.nachrichten.unshift(n);
     if (f.nachrichten.length > 8) f.nachrichten.length = 8;
     f.ruf = { id: n.id, bis: st.zeit + 40 };
-    log(st, 'Funkruf vom Stützpunkt! Der Spruch läuft 40 Minuten.' + (antenneFrei(st) ? '' : ' Auf Sehrohrtiefe gehen, sonst geht er verloren!'), 'warn');
+    log(st, 'BdU-Rundspruch auf Kurzwelle – ein Spruch für uns! Er läuft 40 Minuten.' + (antenneFrei(st) ? '' : ' Auf Sehrohrtiefe gehen, sonst geht er verloren!'), 'warn');
   }
 
   function funkSchritt(st, dt, eff) {
     const f = st.funk;
-    if (f.naechsterRuf == null) f.naechsterRuf = st.zeit + 120 + Math.random() * 240;
-    if (!f.ruf && st.zeit >= f.naechsterRuf) funkRuf(st);
+    const slot = Math.floor(st.zeit / SENDE_ABSTAND);
+    if (f.slot == null) f.slot = slot;
+    if (slot !== f.slot) { f.slot = slot; if (!f.ruf) rundspruch(st); }
     if (f.ruf) {
       const n = f.nachrichten.find((x) => x.id === f.ruf.id);
       if (!n || n.empfangen) f.ruf = null;
       else if (st.zeit > f.ruf.bis) {
         f.nachrichten.splice(f.nachrichten.indexOf(n), 1);
         f.ruf = null;
-        f.naechsterRuf = st.zeit + 120 + Math.random() * 120;
-        log(st, 'Funkspruch des Stützpunkts verpasst. Er wird in einigen Stunden wiederholt.', 'alarm');
+        f.wiederholung = n;
+        log(st, 'Rundspruch verpasst. Der BdU wiederholt ihn um ' + sim.naechsteSendezeit(st) + ' Uhr.', 'alarm');
       }
     }
-    if (f.anfrage && antenneFrei(st) && eff.funk > 0) {
+    if (f.anfrage && f.anfrage.rest > 0 && antenneFrei(st) && eff.funk > 0) {
       f.anfrage.rest -= dt * eff.funk;
       if (f.anfrage.rest <= 0) {
-        f.anfrage = null;
-        const m = neueMission(st);
-        f.nachrichten.unshift({ id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false, empfangen: false });
-        funkFelder(st, f.nachrichten[0]);
-        if (f.nachrichten.length > 8) f.nachrichten.length = 8;
-        log(st, 'Verschlüsselter Funkspruch vom Stützpunkt empfangen. Am Funkgerät entschlüsseln.', 'info');
+        eingepeilt(st);
+        log(st, 'Kurzsignal abgesetzt und quittiert. Antwort mit dem Rundspruch um ' + sim.naechsteSendezeit(st) + ' Uhr.', 'info');
       }
     }
     for (const n of f.nachrichten) {
       funkFelder(st, n);
-      // Ohne Minispiel: der Funker entschlüsselt selbst, aber dreimal langsamer.
+      // Ohne Minispiel: Der Funkmaat schreibt mit und schlüsselt selbst – dauert dreimal so lang.
       if (n.fertig || !n.auto || !n.empfangen || eff.funk <= 0) continue;
       n.fortschritt = Math.min(1, n.fortschritt + eff.funk * dt / 45);
       if (n.fortschritt >= 1) nachrichtFertig(st, n);
@@ -1119,31 +1226,57 @@
 
   function nachrichtFertig(st, n) {
     if (n.fertig) return;
-    n.fertig = true; n.fortschritt = 1;
+    n.fertig = true; n.fortschritt = 1; n.mitgeschrieben = true;
+    n.eingabe = n.spruch.replace(/ /g, '');
+    if (!n.mitschrift || !n.mitschrift.includes(n.klar)) n.mitschrift = n.spruchSchl + n.klar;
+    for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
     if (n.mission.typ === 'meldung') {
       const s = st.schiffe.find((x) => x.id === n.mission.schiff && !x.versenkt);
       if (s) s.gemeldet = { x: s.x, y: s.y };
       log(st, 'Feindmeldung entschlüsselt: ' + n.mission.text + ' Auf der Karte markiert.', 'gut');
-      for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
       return;
     }
     st.missionen.push(n.mission);
-    for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
     log(st, 'Neuer Auftrag: ' + n.mission.titel + '. ' + n.mission.text, 'gut');
   }
 
-  /* Funk-Minispiel: Frequenz und Klartext des Spruchs (auch für ältere Spielstände nachgetragen). */
-  function funkFelder(st, n) {
-    if (n.spruch) return;
-    const m = n.mission;
-    const fr = m.typ === 'versenken' ? st.schiffe.find((x) => x.id === m.schiff) : null;
-    const sch = m.typ === 'meldung' ? st.schiffe.find((x) => x.id === m.schiff) : null;
-    n.spruch = m.typ === 'versenken' ? 'FRACHTER ' + (fr ? planquadrat(fr) : 'X') : m.typ === 'meldung' ? 'FEIND ' + (sch ? planquadrat(sch) : 'X') : 'PATROUILLE ' + planquadrat(m.ziel);
-    if (n.empfangen === undefined) n.empfangen = false;
+  /* Kurzwelle 3 750–15 000 kHz. Tagwelle höher, Nachtwelle tiefer. */
+  function funkFrequenz(st) {
+    const F = D.FUNK, b = istTag(st) ? F.tag : F.nacht;
+    return b[0] + 10 * Math.round(Math.random() * (b[1] - b[0]) / 10);
+  }
+  function startFrequenz(freq) {
     const F = D.FUNK;
-    n.freq = F.basisVon + 10 * Math.round(Math.random() * (F.basisBis - F.basisVon) / 10);
-    do { n.f = F.min + 10 * Math.round(Math.random() * (F.max - F.min) / 10); } while (Math.abs(n.f - n.freq) < 400);
-    n.eingabe = '';
+    let f;
+    do { f = F.min + 10 * Math.round(Math.random() * (F.max - F.min) / 10); } while (Math.abs(f - freq) < 1500);
+    return f;
+  }
+  function quadratKlar(p) {
+    const q = quadratTeile(p);
+    return q.name + S.enigma.klartext(String(q.z1)) + S.enigma.klartext(String(q.z2));
+  }
+
+  /* Spruch: Klartext nach Marine-Verfahren, verschlüsselt in Fünfergruppen (auch für ältere Spielstände nachgetragen). */
+  function funkFelder(st, n) {
+    if (n.klar) return;
+    const m = n.mission;
+    const fr = m.schiff != null ? st.schiffe.find((x) => x.id === m.schiff) : null;
+    const E = S.enigma;
+    const klar = m.typ === 'versenken' ? 'FRACHTERXQUX' + (fr ? quadratKlar(fr) : 'UNBEKANNT') + 'XANGREIFEN'
+      : m.typ === 'meldung' ? 'FEINDXQUX' + (fr ? quadratKlar(fr) : 'UNBEKANNT') + 'XANGRIFFXFREI'
+        : 'PATROUILLEXQUX' + quadratKlar(m.ziel);
+    n.tag = Math.floor(st.zeit / 1440) + 1;
+    const sch = sim.tagesschluessel(st, n.tag);
+    n.spruchSchl = '';
+    for (let i = 0; i < 3; i++) n.spruchSchl += E.A[Math.floor(Math.random() * 26)];
+    const v = E.verschluessele(sch, klar, n.spruchSchl);
+    n.klar = v.klar;
+    n.spruch = [v.kopf].concat(v.gruppen).join(' ');
+    if (n.empfangen === undefined) n.empfangen = false;
+    n.freq = funkFrequenz(st);
+    n.f = startFrequenz(n.freq);
+    n.eingabe = ''; n.mitgeschrieben = false;
+    n.walzen = 'AAA'; n.mitschrift = ''; n.verlauf = []; n.lampe = null;
   }
 
   sim.funkSignal = function (n, st) {
@@ -1159,25 +1292,71 @@
     n.f = klemme(n.f + delta, D.FUNK.min, D.FUNK.max);
     if (!n.empfangen && sim.funkSignal(n, st) === 'klar') {
       n.empfangen = true;
-      if (st.funk.ruf && st.funk.ruf.id === n.id) { st.funk.ruf = null; st.funk.naechsterRuf = st.zeit + 300 + Math.random() * 360; }
-      log(st, 'Funkspruch aufgefangen. Jetzt entschlüsseln.', 'gut');
+      if (st.funk.ruf && st.funk.ruf.id === n.id) st.funk.ruf = null;
+      log(st, 'Rundspruch aufgefangen. Fünfergruppen mitschreiben, dann an der Schlüsselmaschine entschlüsseln.', 'gut');
     }
     return null;
   };
+  /* Morse mitschreiben (Fünfergruppen). Danach gehen Tasten an die Schlüsselmaschine. */
   sim.funkTaste = function (st, id, z) {
     const n = sim.funkNachricht(st, id);
     if (!n || n.fertig) return;
-    const klar = n.spruch.replace(/ /g, '');
+    if (n.mitgeschrieben) { sim.enigmaTaste(st, id, z); return; }
+    const geheim = n.spruch.replace(/ /g, '');
     if (z === null) { n.eingabe = n.eingabe.slice(0, -1); return; }
-    if (n.eingabe.length >= klar.length) return;
+    if (n.eingabe.length >= geheim.length) return;
     n.eingabe += z;
-    if (n.eingabe === klar) nachrichtFertig(st, n);
+    if (n.eingabe === geheim) {
+      n.mitgeschrieben = true;
+      log(st, 'Spruch vollständig mitgeschrieben. Jetzt an der Schlüsselmaschine M entschlüsseln.', 'info');
+    }
+  };
+
+  /* Schlüsselmaschine M: Walzenlage, Ringe und Stecker stellt der Funkmaat nach der Schlüsseltafel ein.
+     Der Spieler stellt die Walzen, tastet und liest die Lampen ab. */
+  const ZAHL = (t) => t.split('').map((c) => c.charCodeAt(0) - 65);
+  const TEXT = (p) => p.map((x) => String.fromCharCode(65 + x)).join('');
+  sim.enigmaTaste = function (st, id, z) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig || !n.mitgeschrieben) return;
+    if (z === null) {
+      const v = n.verlauf.pop();
+      if (v) { n.walzen = v; n.mitschrift = n.mitschrift.slice(0, -1); n.lampe = null; }
+      return;
+    }
+    if (!/^[A-Z]$/.test(z)) return;
+    const m = S.enigma.maschine(sim.tagesschluessel(st, n.tag));
+    const e = m.taste(z, ZAHL(n.walzen));
+    n.verlauf.push(n.walzen);
+    if (n.verlauf.length > 120) n.verlauf.shift();
+    n.walzen = TEXT(e.pos);
+    n.lampe = e.aus;
+    n.mitschrift = (n.mitschrift + e.aus).slice(-120);
+    if (n.mitschrift.includes(n.klar)) nachrichtFertig(st, n);
+  };
+  sim.enigmaGruppe = function (st, id, g) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig || !n.mitgeschrieben) return;
+    const grp = n.spruch.split(' ')[g];
+    if (grp) for (const ch of grp) { if (!n.fertig) sim.enigmaTaste(st, id, ch); }
+  };
+  sim.enigmaWalze = function (st, id, i, d) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig) return;
+    const p = ZAHL(n.walzen);
+    p[i] = (p[i] + d + 26) % 26;
+    n.walzen = TEXT(p); n.lampe = null;
+  };
+  sim.enigmaNeu = function (st, id) {
+    const n = sim.funkNachricht(st, id);
+    if (!n || n.fertig) return;
+    n.mitschrift = ''; n.verlauf = []; n.lampe = null;
   };
   sim.funkAuto = function (st, id) {
     const n = sim.funkNachricht(st, id);
     if (n && !n.fertig) {
       if (!n.empfangen) return 'Erst den Spruch auf der richtigen Frequenz auffangen.';
-      n.auto = true; log(st, 'Der Funker entschlüsselt den Spruch selbst. Das dauert.', 'info');
+      n.auto = true; log(st, 'Der Funkmaat schreibt mit und schlüsselt selbst. Das dauert.', 'info');
     }
     return null;
   };
@@ -1463,7 +1642,7 @@
   sim.auftanken = function (st) { st.boot.druckluft = 100; st.boot.batterie = Math.max(st.boot.batterie, 100); };
 
   Object.assign(sim, {
-    abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
+    abteilIndex, abteilNachId, uhrzeit, log, planquadrat, quadratTeile, landAbstand, imLand, flutung, minRumpf, sichereTiefe,
     hatAusbau, maxSicher, konstruktionstiefe, sprungschicht, reserveNehmen, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
     lagerVon, kapazitaet, bestand, platz, torpedosGesamt, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });

@@ -259,6 +259,31 @@ th { color: var(--leise); font-weight: normal; }
 .skalazahlen { display: flex; justify-content: space-between; font-size: 15px; color: #d9cfae; }
 .knopfraster.vier { grid-template-columns: repeat(4, 1fr); }
 .knopfraster.vier button { min-height: 40px; background: #3a3226; border-color: #86662a; }
+.knopfraster.sechs { grid-template-columns: repeat(6, 1fr); }
+.knopfraster.sechs button { min-height: 40px; padding: 0; background: #3a3226; border-color: #86662a; font-size: 16px; }
+/* Schlüsselmaschine M */
+.funk > * { min-width: 0; }
+.enigma { grid-column: 1 / -1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #15130f; border: 2px solid #5a4a2a; }
+.enigma .etikett { color: #e3c47a; }
+.tafel { border-collapse: collapse; font-size: 17px; width: 100%; table-layout: fixed; overflow-wrap: anywhere; }
+.tafel th, .tafel td { border: 1px solid #4a3e26; padding: 2px 6px; text-align: left; }
+.tafel th { color: var(--leise); font-weight: normal; font-size: 15px; }
+.tafel td { color: #efe2bd; }
+.enigmafeld { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 8px 16px; align-items: center; }
+.walzen { grid-row: span 2; display: flex; gap: 6px; }
+.walze { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.walze b { display: block; width: 34px; text-align: center; font-size: 26px; background: #e9dfc4; color: #1a1610; border: 2px solid #5a4a2a; }
+.walze button { width: 34px; padding: 0; min-height: 26px; }
+.walze small { color: var(--leise); font-size: 14px; }
+.lampen > div, .tastatur > div { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
+.lampen i { font-style: normal; width: 26px; height: 26px; line-height: 24px; text-align: center; border-radius: 50%; background: #23201a; color: #6d6450; border: 1px solid #3a3426; }
+.lampen i.an { background: #ffe58a; color: #2a2210; box-shadow: 0 0 10px #ffd34d; }
+.tastatur button { width: 30px; min-height: 30px; padding: 0; border-radius: 50%; background: #1d1b17; border-color: #6d6450; }
+.gruppen { display: flex; flex-wrap: wrap; gap: 6px; }
+.gruppen button { letter-spacing: 2px; }
+.gruppen button.kopf { border-color: #e3c47a; color: #e3c47a; }
+.mitschrift { font-size: 20px; letter-spacing: 1px; padding: 6px 8px; background: #efe6cc; color: #1f1a12; min-height: 34px; word-break: break-all; }
+@media (max-width: 760px) { .tafel { font-size: 15px; } .tafel th, .tafel td { padding: 2px 3px; } .tafel th { font-size: 12px; } .enigmafeld { grid-template-columns: 1fr; } .walzen { grid-row: auto; justify-content: center; } .tastatur button { width: 26px; } .lampen i { width: 22px; height: 22px; line-height: 20px; } .knopfraster.sechs button { font-size: 14px; } }
 .pegel { display: flex; gap: 3px; align-items: flex-end; height: 36px; padding: 4px; background: #0a0806; border: 3px solid #1d1912; }
 .pegel i { flex: 1; background: #1d1912; }
 .pegel i.h1 { background: #23784a; } .pegel i.h2 { background: #4fc77c; } .pegel i.h3 { background: #b8ffd0; }

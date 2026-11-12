@@ -275,7 +275,7 @@
     if (S.sim.imLand(p.x, p.y)) { S.sim.log(st, 'Der Navigator: Dort ist Land, Herr Kaleu.', 'warn'); return; }
     st.boot.wegpunkt = { x: p.x, y: p.y };
     if (st.boot.fahrt === 0) st.boot.fahrt = 2;
-    S.sim.log(st, 'Neuer Kurs auf Planquadrat ' + S.sim.planquadrat(p) + '.', 'info');
+    S.sim.log(st, 'Neuer Kurs auf Quadrat ' + S.sim.planquadrat(p) + '.', 'info');
   });
 
   /* ---------- Tastatur ---------- */

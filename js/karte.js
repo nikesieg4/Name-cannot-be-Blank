@@ -45,7 +45,6 @@
         if (naehe <= 1) f = '#3f7f8c';
         else if (naehe <= 2) f = (x + y) % 2 ? '#2c6273' : '#22505f';
         else if (naehe <= 4) f = (x + y) % 2 ? '#1a4556' : f;
-        if ((x % (W.PLAN * KF) === 0 || y % (W.PLAN * KF) === 0) && (x + y) % 3 !== 0) f = '#24515f';
         farbe(i, f);
       }
     }
@@ -110,23 +109,46 @@
     ctx.font = fs + 'px VT323, monospace';
     ctx.lineWidth = Math.max(1, dpr);
 
-    // Planquadrat-Beschriftung
-    ctx.fillStyle = 'rgba(160,200,210,0.45)';
+    // Marinequadratkarte: Großquadrate (100 km) und ihre 3 × 3 Unterteilung
+    const G = W.GROSS;
+    ctx.lineWidth = 1;
+    for (let gx = 0; gx <= W.B; gx += G / 3) {
+      ctx.strokeStyle = Math.round(gx) % G === 0 ? 'rgba(170,210,220,0.45)' : 'rgba(120,170,185,0.16)';
+      ctx.beginPath(); ctx.moveTo(Math.round(m.ox + gx * m.s) + 0.5, m.oy); ctx.lineTo(Math.round(m.ox + gx * m.s) + 0.5, m.oy + W.H * m.s); ctx.stroke();
+    }
+    for (let gy = 0; gy <= W.H; gy += G / 3) {
+      ctx.strokeStyle = Math.round(gy) % G === 0 ? 'rgba(170,210,220,0.45)' : 'rgba(120,170,185,0.16)';
+      ctx.beginPath(); ctx.moveTo(m.ox, Math.round(m.oy + gy * m.s) + 0.5); ctx.lineTo(m.ox + W.B * m.s, Math.round(m.oy + gy * m.s) + 0.5); ctx.stroke();
+    }
     ctx.textAlign = 'left';
-    for (let i = 0; i < 10; i++) ctx.fillText('ABCDEFGHIJ'[i], m.ox + (i * W.PLAN + 2) * m.s, m.oy + fs);
-    for (let j = 0; j < 7; j++) ctx.fillText(String(j + 1), m.ox + 3, m.oy + (j * W.PLAN + 16) * m.s);
+    D.GROSSQUADRATE.forEach((reihe, j) => reihe.forEach((nm, i) => {
+      ctx.fillStyle = 'rgba(200,225,230,0.6)';
+      ctx.fillText(nm, m.ox + (i * G + 2) * m.s, m.oy + j * G * m.s + fs);
+      ctx.fillStyle = 'rgba(160,200,210,0.3)';
+      for (let k = 0; k < 9; k++) ctx.fillText(String(k + 1), m.ox + (i * G + (k % 3) * G / 3 + G / 3 - 3) * m.s - fs / 2, m.oy + (j * G + Math.floor(k / 3) * G / 3 + 1) * m.s + fs);
+    }));
+    ctx.lineWidth = Math.max(1, dpr);
     ctx.fillStyle = 'rgba(220,120,120,0.5)';
     ctx.textAlign = 'center';
     ctx.fillText('Hoheitsgewässer ' + D.FEIND_NAME, m.ox + 238 * m.s, m.oy + 175 * m.s);
 
     const b = st.boot;
-    const bp = P(b);
+    const k = S.sim.koppelOrt(st);
+    const bp = P(k);
+    const K = (p) => P(S.sim.aufKarte(st, p)); // Kontakte werden vom Koppelort aus eingetragen
     // Sicht- und Horchweite
     const eff = S.sim.eff;
     const sicht = !S.sim.unterWasser(st) ? 14 : (S.sim.antenneFrei(st) && eff.sehrohr > 0 ? 9 * Math.min(1, eff.sehrohr) : 0);
     const sonar = S.sim.horchweite(st, eff);
     if (sicht > 0) kreis(ctx, bp.x, bp.y, sicht * m.s, 'rgba(240,220,140,0.35)', [4 * dpr, 4 * dpr]);
     if (sonar > 0) kreis(ctx, bp.x, bp.y, sonar * m.s, 'rgba(190,150,220,0.3)', [2 * dpr, 6 * dpr]);
+    // Unsicherheit des Koppelorts
+    const uns = b.unsicher || 0;
+    if (uns > 0.8) {
+      ctx.fillStyle = 'rgba(241,237,226,0.07)';
+      ctx.beginPath(); ctx.arc(bp.x, bp.y, uns * m.s, 0, Math.PI * 2); ctx.fill();
+      kreis(ctx, bp.x, bp.y, uns * m.s, 'rgba(241,237,226,0.4)', [1 * dpr, 3 * dpr]);
+    }
 
     // Häfen
     for (const h of D.HAEFEN) {
@@ -165,7 +187,7 @@
 
     // Schiffe
     for (const s of st.schiffe) {
-      const p = P(s);
+      const p = K(s);
       if (s.versenkt) {
         if (!s.versenktZeit) continue;
         ctx.strokeStyle = 'rgba(200,200,200,0.5)';
@@ -204,7 +226,7 @@
 
     // Torpedos
     ctx.fillStyle = '#ffffff';
-    for (const t of st.torpedos) { const p = P(t); ctx.fillRect(Math.round(p.x - dpr), Math.round(p.y - dpr), Math.round(2 * dpr), Math.round(2 * dpr)); }
+    for (const t of st.torpedos) { const p = K(t); ctx.fillRect(Math.round(p.x - dpr), Math.round(p.y - dpr), Math.round(2 * dpr), Math.round(2 * dpr)); }
 
     // Boot
     ctx.save();
@@ -218,8 +240,10 @@
 
     // Legende
     const maus = S.karte.maus;
-    const legende = 'Klick: Kurs · auf Kontakt: Ziel · Boot in ' + S.sim.planquadrat(b) + ', ' + Math.round(S.sim.wassertiefe(b.x, b.y)) + ' m tief' +
-      (maus ? ' · Zeiger ' + S.sim.planquadrat(maus) + ', ' + (S.sim.imLand(maus.x, maus.y) ? 'Land' : Math.round(S.sim.wassertiefe(maus.x, maus.y)) + ' m') : '') + ' · Linien: 20/50/100/200/300 m';
+    const seit = b.besteck ? Math.round((st.zeit - b.besteck.zeit) / 60) : null;
+    const legende = 'Koppelort Qu. ' + S.sim.planquadrat(k) + ' ±' + Math.max(1, Math.round(uns)) + ' km' + (seit != null ? ' · Besteck vor ' + seit + ' h' : '') +
+      ' · Klick: Kurs · auf Kontakt: Ziel' +
+      (maus ? ' · Zeiger Qu. ' + S.sim.planquadrat(maus) + ', ' + (S.sim.imLand(maus.x, maus.y) ? 'Land' : Math.round(S.sim.wassertiefe(maus.x, maus.y)) + ' m') : '') + ' · Linien: 20/50/100/200/300 m';
     ctx.textAlign = 'left';
     const lw = ctx.measureText(legende).width;
     const lx = m.ox + 6 * dpr, ly = m.oy + W.H * m.s - 6 * dpr;
@@ -238,7 +262,8 @@
     let best = null, bd = radiusKm;
     for (const s of st.schiffe) {
       if (s.versenkt || s.entdeckt === 'nein') continue;
-      const d = Math.hypot(s.x - p.x, s.y - p.y);
+      const q = S.sim.aufKarte(st, s);
+      const d = Math.hypot(q.x - p.x, q.y - p.y);
       if (d < bd) { bd = d; best = s; }
     }
     return best;

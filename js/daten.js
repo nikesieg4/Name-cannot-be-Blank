@@ -146,7 +146,9 @@
   ].map((f) => ({ ...f, diesel: dieselVerbrauch(f.ueber), strom: stromVerbrauch(f.unter) }));
 
   /* Karte: 300 × 200 km, 1 Pixel = 1 km. */
-  const WELT = { B: 300, H: 200, PLAN: 30 };
+  const WELT = { B: 300, H: 200, GROSS: 100 };
+  /* Großquadrate der Marinequadratkarte (je 100 km) */
+  const GROSSQUADRATE = [['AM', 'AN', 'AO'], ['BE', 'BF', 'BG']];
   const LAND = [
     [[0, 0], [24, 0], [30, 40], [22, 80], [32, 120], [26, 150], [40, 175], [30, 200], [0, 200]],
     [[120, 80], [140, 70], [158, 82], [150, 104], [128, 108]],
@@ -253,7 +255,7 @@
       { id: 'reserve8', name: 'Torpedohalter', bild: 10, preis: 6000, text: 'Zwei zusätzliche Reserve-Torpedos im Bugraum (6 → 8).' }] },
     { id: 'funk', name: 'Funk & Crew', farbe: '#efd086', knoten: [
       { id: 'funkpeiler', name: 'Funkpeiler', bild: 11, preis: 1500, text: 'Das Sendeband des Stützpunkts ist auf der Skala markiert.' },
-      { id: 'morse', name: 'Morse-Lehrgang', bild: 12, preis: 2500, text: 'Der Funker trägt die ersten 3 Zeichen eines Spruchs selbst ein.' },
+      { id: 'morse', name: 'Morse-Lehrgang', bild: 12, preis: 2500, text: 'Der Funker schreibt die Schlüsselgruppe (die ersten 3 Zeichen) selbst mit.' },
       { id: 'kaffee', name: 'Bohnenkaffee', bild: 13, preis: 2000, text: '+2 Moral für alle jeden Morgen um 8 Uhr.' }] },
   ];
 
@@ -263,13 +265,13 @@
     haendler: { name: 'Händlerschiff', kn: 6, hp: 1, feind: false, kopfgeld: 0 },
   };
 
-  /* Funk: Morsealphabet. Der Stützpunkt sendet zwischen 6 000 und 7 000 kHz. */
+  /* Funk: Morsealphabet. Kurzwelle 3 750–15 000 kHz: Tagwelle 8–14 MHz, Nachtwelle 4–8 MHz. */
   const MORSE = {
     A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--',
     N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
     0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.',
   };
-  const FUNK = { min: 4000, max: 9000, basisVon: 6000, basisBis: 7000, schwach: 60 };
+  const FUNK = { min: 3750, max: 15000, tag: [8000, 14000], nacht: [4000, 8000], schwach: 60 };
 
   /* Horchgerät: Geräuschkartei. linien = Frequenzlinien im Wasserfall (0–200), takt = Zeilen pro Schraubenschlag,
      spitzen = Klangprofil [Band 0–23, Stärke], grund = Grundrauschen. Das U-Boot dient als Fehlerquelle. */
@@ -289,7 +291,7 @@
 
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
-    ZERSTOERUNGSTIEFE, MAX_SICHER, KONSTRUKTIONSTIEFE, BATTERIERAEUME, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM, TORPEDOTYPEN, VERSAGER, WABO_LAERM,
+    ZERSTOERUNGSTIEFE, MAX_SICHER, KONSTRUKTIONSTIEFE, BATTERIERAEUME, FAHRT, WELT, GROSSQUADRATE, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM, TORPEDOTYPEN, VERSAGER, WABO_LAERM,
     UPGRADES, SKILLTREE, INVENTAR, KATEGORIEN, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

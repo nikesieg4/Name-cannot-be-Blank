@@ -123,7 +123,7 @@
     if (S.sim.eff.antrieb <= 0) h += '<div class="warnung">Niemand an Diesel oder E-Maschine.</div>';
     if (b.wegpunkt && S.sim.eff.ruder <= 0) h += '<div class="warnung">Niemand am Seitenruder – Kurs wird nicht gehalten.</div>';
     if (uw && b.batterie <= 0) h += '<div class="warnung">Batterie leer! Auftauchen zum Laden.</div>';
-    if (b.wegpunkt) h += '<div class="zeile"><span class="klein">Wegpunkt ' + S.sim.planquadrat(b.wegpunkt) + ', ' + S.sim.dist(b, b.wegpunkt).toFixed(1) + ' km</span><button data-aktion="kursWeg">Löschen</button></div>';
+    if (b.wegpunkt) h += '<div class="zeile"><span class="klein">Wegpunkt ' + S.sim.planquadrat(b.wegpunkt) + ', ' + S.sim.dist(S.sim.koppelOrt(st), b.wegpunkt).toFixed(1) + ' km</span><button data-aktion="kursWeg">Löschen</button></div>';
     else h += '<div class="klein">Klicke auf die Karte, um einen Kurs zu setzen.</div>';
     const ort = S.sim.handelsort(st);
     if (ort) h += '<button class="breit aktiv" data-aktion="handel">' + (ort.art === 'hafen' ? 'Anlegen: ' : 'Handeln: ') + esc(ort.name) + '</button>';
@@ -168,13 +168,14 @@
 
   function funk(st) {
     const f = st.funk;
-    let h = '<button class="breit" data-aktion="anfunken"' + (f.anfrage ? ' disabled' : '') + '>Stützpunkt anfunken</button>';
-    if (f.anfrage) h += '<div class="klein">Funkverkehr läuft … noch ' + Math.ceil(f.anfrage.rest) + ' min</div>';
+    let h = '<div class="klein">BdU-Rundspruch alle 4 Stunden · nächster um ' + S.sim.naechsteSendezeit(st) + ' Uhr</div>';
+    h += '<button class="breit" data-aktion="anfunken"' + (f.anfrage ? ' disabled' : '') + ' title="Funksprüche können vom Gegner eingepeilt werden">Kurzsignal an BdU</button>';
+    if (f.anfrage) h += '<div class="klein">' + (f.anfrage.rest > 0 ? 'Kurzsignal wird gesendet … noch ' + Math.ceil(f.anfrage.rest) + ' min' : 'Quittiert – Antwort mit dem nächsten Rundspruch.') + '</div>';
     if (!S.sim.antenneFrei(st)) h += '<div class="klein">Antenne unter Wasser – kein Funkverkehr.</div>';
     for (const n of f.nachrichten.slice(0, 3)) {
       if (n.fertig) h += '<div class="nachricht"><b>' + esc(n.mission.titel) + ':</b> ' + esc(n.mission.text) + '</div>';
       else {
-        h += '<div class="nachricht verschluesselt">' + (n.empfangen ? esc(verschleiert(n.mission.text, n.fortschritt, n.id)) : (n.ruf ? 'Funkruf läuft – noch nicht aufgefangen' : 'Spruch liegt an – Frequenz suchen')) + '</div>';
+        h += '<div class="nachricht verschluesselt">' + (n.empfangen ? esc(verschleiert(n.mission.text, n.fortschritt, n.id)) : (n.ruf ? 'Rundspruch läuft – noch nicht aufgefangen' : 'Spruch liegt an – Frequenz suchen')) + '</div>';
         if (n.auto) {
           h += balken(n.fortschritt * 100, 'gelb');
           if (S.sim.eff.funk <= 0) h += '<div class="klein">Entschlüsselung ruht – niemand am Funkgerät.</div>';
@@ -291,7 +292,7 @@
       h += '<button data-aktion="fahrt" data-arg="' + i + '" class="' + (b.fahrt === i ? 'aktiv' : '') + '">' + D.FAHRT[i].kurz + '</button>';
     }
     h += '</div><div class="fahrtwert"><b>' + (S.sim.knoten || 0).toFixed(1) + '</b><span>Knoten</span><span>Kurs ' + String(grad).padStart(3, '0') + '°</span>' +
-      (b.wegpunkt ? '<span>→ ' + S.sim.planquadrat(b.wegpunkt) + ' · ' + S.sim.dist(b, b.wegpunkt).toFixed(0) + ' km</span>' : '<span>kein Kurs</span>') + '</div></div>';
+      (b.wegpunkt ? '<span>→ Qu. ' + S.sim.planquadrat(b.wegpunkt) + ' · ' + S.sim.dist(S.sim.koppelOrt(st), b.wegpunkt).toFixed(0) + ' km</span>' : '<span>kein Kurs</span>') + '</div></div>';
     if (S.sim.eff.antrieb <= 0) h += '<div class="warnung">Niemand an der Maschine!</div>';
     else if (uw && b.batterie <= 0) h += '<div class="warnung">Batterie leer!</div>';
     setze($('hudFahrt'), h);
@@ -441,7 +442,7 @@
     let el = box.querySelector('.funkruf');
     if (ruf) {
       const rest = Math.max(0, Math.ceil(ruf.bis - st.zeit));
-      const text = 'FUNKRUF: Der Stützpunkt ruft! Noch ' + rest + ' min' + (S.sim.antenneFrei(st) ? '' : ' – auf Sehrohrtiefe gehen!');
+      const text = 'RUNDSPRUCH: Der BdU sendet für uns! Noch ' + rest + ' min' + (S.sim.antenneFrei(st) ? '' : ' – auf Sehrohrtiefe gehen!');
       if (!el || el.dataset.id !== String(ruf.id)) {
         if (el) el.remove();
         el = document.createElement('div');
@@ -533,7 +534,7 @@
       '<b>Übernehmen</b> (Knopf oder Doppelklick auf die Figur): selbst steuern mit <kbd>A</kbd>/<kbd>D</kbd> oder Pfeiltasten. <b>Klick auf ein Abteil:</b> Pumpe und Schotten. <b>Klick auf ein Schott:</b> öffnen/schließen. ' +
       '<b>Mausrad</b> zoomt, <b>Ziehen</b> verschiebt die Ansicht.</p>' +
       '<h3>Ansicht</h3><p>Im normalen Blick siehst du nur Maschinentelegraf, Tiefenmesser und die wichtigsten Zähler. Karte, Besatzung, Kommando, Vorräte, Ausbau, Wachen und Meldungen klappst du oben oder per Taste auf.</p>' +
-      '<h3>Funk und Horchgerät</h3><p>Der Stützpunkt ruft auch von selbst – dann erscheint oben eine Meldung. Fang den Spruch innerhalb von 40 Minuten an der Oberfläche oder auf Sehrohrtiefe auf, sonst ist er verloren. Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
+      '<h3>Funk, Enigma und Navigation</h3><p>Der BdU sendet nur zu festen Zeiten – alle 4 Stunden ein Rundspruch auf Kurzwelle. Liegt ein Spruch für dich an, erscheint oben eine Meldung. Er läuft 40 Minuten; verpasst du ihn, wiederholt der BdU ihn beim nächsten Termin. Am <b>Funkgerät</b> suchst du die Welle (3,75–15 MHz, Tagwelle 8–14, Nachtwelle 4–8 MHz) und schreibst die Morsezeichen als Fünfergruppen mit. Dann entschlüsselst du sie an der <b>Schlüsselmaschine M</b>: Walzen auf die Grundstellung aus der Schlüsseltafel, Schlüsselgruppe tasten, Walzen auf den Spruchschlüssel, Gruppen tasten. Ein eigenes Kurzsignal an den BdU kann der Gegner einpeilen. Deinen Standort kennst du nur aus dem <b>Koppeln</b>: Strömung versetzt das Boot. Aufgetaucht nimmt der Obersteuermann in der Dämmerung ein Sternbesteck, mittags die Mittagsbreite und bei Tag in Küstennähe Peilungen. Die Karte ist in Marinequadrate geteilt (z. B. „AN 57“). Getauchte Kontakte erkennst du im <b>Horchraum</b> mit der Geräuschkartei.</p>' +
       '<h3>Laderaum und Ausbau</h3><p>Im <b>Laderaum</b> siehst du, was an Bord ist, und kannst Reservezellen einsetzen, Druckluftflaschen anschließen oder Ladung über Bord werfen. Konserven isst die Crew, wenn der frische Proviant alle ist; Sanitätskästen retten automatisch vor dem Ertrinken. In der <b>Werft</b> am Stützpunkt baust du das Boot über den Skilltree aus – jede Stufe schaltet die nächste frei.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +
       '<h3>Tauchen und Lecks</h3><p>Die gewünschte Tiefe stellst du mit den Knöpfen ein, mit −10/+10, als Zahl im Feld oder indem du den grünen Soll-Zeiger am Tiefenmesser ziehst. Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
