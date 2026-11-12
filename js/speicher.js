@@ -62,8 +62,8 @@
       const klar = new Uint8Array(versch.length);
       for (let i = 0; i < versch.length; i++) klar[i] = versch[i] ^ strom[i];
       const stand = JSON.parse(K.text(klar));
-      if (stand && stand.version === 1) return { ok: false, grund: 'Dieser Spielstand stammt aus der Zeit vor dem Umbau zum Typ VIIC und passt nicht mehr zum neuen Boot. Bitte ein neues Spiel starten.' };
-      if (!stand || stand.version !== 2) return { ok: false, grund: 'Unbekannte Spielstand-Version.' };
+      if (stand && stand.version < 3) return { ok: false, grund: 'Dieser Spielstand stammt aus einer älteren Version des Bootes (vor dem Umbau nach dem Handbuch) und passt nicht mehr dazu. Bitte ein neues Spiel starten.' };
+      if (!stand || stand.version !== 3) return { ok: false, grund: 'Unbekannte Spielstand-Version.' };
       return { ok: true, stand: S.zustand.ergaenze(stand) };
     } catch (e) {
       return { ok: false, grund: 'Der Spielstand konnte nicht gelesen werden.' };

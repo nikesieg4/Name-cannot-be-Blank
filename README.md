@@ -55,6 +55,7 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 | `1` / `2` / `3` | Tempo 1× / 2× / 4× |
 | `+` / `−` | Zoom |
 | `A` / `D`, `←` / `→` | Übernommenes Crewmitglied laufen lassen |
+| `T` | Alarmtauchen |
 | `M` / `C` / `K` / `L` | Karte, Besatzung, Kommando, Meldungen auf- und zuklappen |
 | `I` / `U` | Vorräte, Ausbau |
 | `Esc` | Aufgeklapptes schließen, sonst Auswahl bzw. Übernahme aufheben |
@@ -67,7 +68,7 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 |---|---|
 | **Moral** | Entscheidet, wie motiviert die Crew ist und wie schnell sie arbeitet (je Crewmitglied). Hängt vor allem von **Essen** und **Schlaf** ab. Gefallene Kameraden senken sie, Erfolge heben sie. |
 | **Geld** | Spielgeld. Damit kauft man im Hafen Upgrades, Reparaturen und Waren und handelt mit anderen Schiffen. Man verdient es mit Aufträgen und versenkten Schiffen. |
-| **Essen** | Proviant an Bord. Man legt fest, wie viele **Rationen pro Person und Tag** ausgegeben werden (Minimum 1, Maximum 4). Der Smutje kocht dreimal täglich. |
+| **Essen** | Proviant an Bord. Man legt fest, wie viele **Rationen pro Person und Tag** ausgegeben werden (Minimum 1, Maximum 4). Der Smut kocht dreimal täglich. |
 | **Schlaf** | Jedes Crewmitglied hat einen eigenen Wach-Zähler. Wer zu lange ohne Schlaf ist (über 19 Stunden), verliert Moral und arbeitet langsamer. |
 | **Diesel** | Treibstoff für die Fahrt an der Oberfläche. Wird im **Laderaum** gelagert. |
 | **Batterie** | Strom für die E-Maschine unter Wasser und für die Pumpen. Lädt an der Oberfläche über die Diesel. |
@@ -78,61 +79,64 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 
 Jedes Crewmitglied hat einen **Namen**, eine **Rolle**, **Moral**, einen **Wach-Zähler** und **Erfahrung** (Stufe 1–5, macht schneller). Crewmitglieder können **ertrinken**. Krankheiten gibt es vorerst nicht.
 
-Die Rollen stammen von [ubootworkshop.de/rollen.php](https://www.ubootworkshop.de/rollen.php), ohne Reporter und Schiffsjunge/-mädel. Die Stärke entspricht einem **Typ-VIIC-Boot der Kriegsmarine: 44 Mann**, davon 5 Offiziere:
+Die Besatzung folgt dem **Handbuch U-Boot Typ VII C** (Kapitel 9): **50 Mann** – 4 Offiziere, Portepee-Unteroffiziere, Maate und Mannschaften. Der Kommandant führt über vier Bereichsleiter (I. WO, II. WO, LI, Obersteuermann).
 
 | Rolle | Anzahl | Aufgabe im Spiel | Standard-Posten |
 |---|---|---|---|
-| Kapitänleutnant (Kaleu) | 1 | Spielfigur. Kommandant, führt Wache A | Sehrohr |
-| 1. Wachoffizier (1WO) | 1 | Führt Wache B, leitet bei Gefechtsstationen den Torpedoangriff | Sehrohr (Gefecht: Vorhalterechner) |
-| 2. Wachoffizier (2WO) | 1 | Führt Wache C | Sehrohr |
-| Leitender Ingenieur (LI) | 1 | Tiefensteuerung, steuert die Pumpen aus der Zentrale | Tiefenruder |
-| Obersteuermann (NAV) | 1 | Karte und Kurs, kann das Ruder übernehmen | Kartentisch |
-| Brandmeister | 2 | Leckabwehr, repariert am schnellsten | Leckabwehr |
-| Seemann | 4 | Ausguck, Leinen im Hafen, Leckabwehr | Leckabwehr |
-| Funker | 3 | Funk senden, empfangen und **entschlüsseln**, einer pro Wache | Funkgerät |
-| Horchfunker (Soni) | 3 | Horchgerät, einer pro Wache | Horchgerät |
-| Maschinist | 14 | Diesel und E-Maschinen | Diesel / E-Maschine |
-| Tauchzellen-Gast | 3 | Tauchstation | Tauchzellen-Ventile |
-| Rudergänger | 3 | Steuert das Boot | Seitenruder |
-| Torpedomechaniker | 5 | Wartet die Torpedos, lädt nach | Bugraum |
-| Logistik-Maat | 1 | Lager, 10 % Rabatt beim Handeln (Tagesdienst) | Lagerverwaltung |
-| Smutje | 1 | Kocht, ohne Smutje sinkt die Moral (Tagesdienst) | Kombüse |
-| Admiral | – | **Nicht von Anfang an an Bord.** Kommt bei bestimmten Aufträgen als Beobachter dazu (geplant). | – |
+| Kommandant | 1 | Spielfigur, Gesamtverantwortung, **keine feste Wache** (Tagesdienst), bei jedem Alarm da | Sehrohr |
+| I. Wachoffizier | 1 | 1. Brückenwache, Torpedowaffe – bei Gefechtsstationen am Vorhaltrechner | Sehrohr (Gefecht: Vorhaltrechner) |
+| II. Wachoffizier | 1 | 2. Brückenwache, Geschütz und Flak, Funkpersonal | Sehrohr |
+| Leitender Ingenieur | 1 | Tauchen, Trimmen, Maschine, Leckabwehr; Pumpen aus der Zentrale | Tiefenruderstand |
+| Obersteuermann | 1 | 3. Brückenwache, Navigation, Proviant | Sehrohr (Gefecht: Kartentisch) |
+| Bootsmann | 1 | „Nummer Eins“, seemännischer Dienst, führt die Leckabwehr | Leckabwehr |
+| Dieselpersonal | 10 | Obermaschinist, Dieselmaate, Heizer | Diesel |
+| E-Personal | 6 | E-Obermaschinist, E-Maate, E-Heizer | Fahrschalter E-Maschinen |
+| Zentralegast | 3 | Zentralemaat und -gasten: Flut-, Entlüftungs- und Anblaseventile | Flutventile |
+| Rudergänger | 3 | Rudergeber im Turm | Rudergeber |
+| Torpedomixer | 5 | Torpedomechaniker und -gasten, laden nach (4 im Bug, 1 im Heck) | Bugraum / Heckrohr |
+| Funker | 3 | Funkmaat und Funkgefreite, rund um die Uhr | Funkgerät |
+| Horcher | 3 | Funker mit Horchausbildung am GHG | Horchgerät |
+| Seemann | 10 | Tiefenruder, Rudergang, Ausguck, Geschütz, Leckabwehr | Tiefenruder / Leckabwehr |
+| Smut | 1 | Kocht drei Mahlzeiten am Tag, Frischware zuerst (Tagesdienst) | Kombüse |
 
-**Posten:** Ein System funktioniert nur, wenn jemand am passenden Posten steht. Fachleute (★) arbeiten mit voller Leistung, alle anderen mit halber. Wer denselben Posten hat, steht nebeneinander; die Leistung zählt vom Besten.
+**Posten:** Ein System funktioniert nur, wenn jemand am passenden Posten steht. Fachleute (★) arbeiten mit voller Leistung, alle anderen mit halber.
 
-**Schichten:** Drei-Wachen-System wie auf See: Wache A, B und C haben je 4 Stunden Dienst, 4 Stunden Schlaf und 4 Stunden frei, zweimal am Tag – so schläft immer nur ein Drittel. Dazu kommt der Tagesdienst (Smutje, Logistik-Maat). Alles ist im Schichtplan frei einstellbar. Beim Wachwechsel bleibt die alte Wache am Posten, bis die Ablösung da ist. **Gefechtsstationen** schickt alle sofort auf ihre Gefechtsposten, dann schläft aber niemand mehr.
+**Wachen:** Drei Brückenwachen à 4 Stunden (I. WO, II. WO, Obersteuermann), dazwischen 4 Stunden Schlaf und 4 Stunden frei; Tagesdienst für Kommandant, LI und Smut. Beim Wachwechsel bleibt die alte Wache am Posten, bis die Ablösung da ist. **Gefechtsstationen** schickt alle auf ihre Gefechtsposten.
 
-**Hot Bunking:** Es gibt weniger Kojen als Leute. Wer schlafen geht, nimmt eine freie Koje (Offiziere zuerst im Kommandanten- und Funkraum), sonst schläft er auf dem Boden.
+**Kojen** werden „warm“ geteilt: 22 Kojen und Hängematten – Bugraum für die Mannschaft, Offiziersraum für LI, I. und II. WO und Obersteuermann, Unteroffiziersraum für die Maate, die **Kommandantenkoje hinter dem Vorhang** neben Funk und Horcher. Wer keine findet, schläft auf dem Boden.
 
-**Proviant:** 44 Mann essen bei 3 Rationen etwa 132 Rationen am Tag. Das Boot startet mit 3 000 Rationen frischem Proviant und 400 Rationen Konserven (gut drei Wochen).
+**Proviant:** Für eine Feindfahrt von 8–10 Wochen: 3 500 Rationen Frischware und 5 000 Rationen Konserven, in jedem freien Winkel verstaut (bis 9 000). Frischware verdirbt (2 % am Tag) und wird zuerst gegessen.
 
 ## Boot
 
-Das Boot ist ein **Typ VIIC** der Kriegsmarine (67,1 m, 17,7 kn aufgetaucht, 7,6 kn getaucht) im Pixel-Stil. Acht Abteile (Heck → Bug): **Heck- & E-Maschinenraum** (Heckrohr, 2 E-Maschinen), **Dieselraum** (2 Diesel, Maschinentelegraf), **Unteroffiziersraum & Kombüse**, **Zentrale** (unter dem Turm, mit Sehrohr, Tiefen- und Seitenruder, Vorhalterechner, Kartentisch), **Funk- & Horchraum**, **Offiziersraum**, **Oberfeldwebelraum**, **Bugtorpedoraum** (4 Rohre, 8 Kojen). Außen: Turm mit Wintergarten und 2-cm-Flak, 8,8-cm-Deckgeschütz.
+Das Boot ist ein **Typ VII C** der Kriegsmarine nach dem *Handbuch U-Boot Typ VII C*: Einhüllen-Boot mit Satteltanks, 67,1 m lang, Druckkörper 50,5 m × 4,7 m. Die Außenansicht folgt der Risszeichnung: Druckkörper mit acht Abteilungen, nicht druckfeste Außenhülle mit Oberdeck und Flutschlitzen, Satteltanks (Tauchzelle 2 und 4) mittschiffs, Tauchzelle 1 im Bug und 5 im Heck, Turm mit Wintergarten und 2-cm-Flak, 8,8-cm-Geschütz vor dem Turm, Gruppenhorchgerät unter dem Vorschiff, Netzabweiser vom Bug über den Turm zum Heck.
 
-- **Torpedos (14):** 4 Bugrohre und 1 Heckrohr geladen, 6 Reserve unter den Bodenplatten im Bugraum, 1 im Heckraum, 2 in Oberdeckbehältern. Das Ziel bestimmt das Rohr: vorn (bis 100° zur Seite) die Bugrohre, achtern das Heckrohr. Die Oberdeckbehälter lassen sich nur aufgetaucht bei Kleiner Fahrt ins Boot holen (2 Stunden).
-- **Stauraum statt Laderaum:** Diesel in den Bunkern (135 000 L), Verpflegung überall im Boot verstaut (bis 5 000 Rationen), Material in Werkzeugkisten, Batterieraum, Zentrale und Offiziersraum.
-- **Rumpf pro Abteil:** Treffer beschädigen einzelne Abteile. Beschädigte Abteile lecken, unter Wasser umso stärker, je tiefer man ist.
-- **Abschotten, Auspumpen, Reparieren:** wie bisher; Schotten lassen sich einzeln schließen, jedes Abteil hat eine Lenzpumpe, die Leckabwehr verbraucht Ersatzteile.
-- **Gewicht:** Zu viel Wasser im Boot macht es schwer, es sinkt. Ab 70 % Flutung ist es verloren.
+**Acht Abteilungen** (Heck → Bug): **E-Maschinenraum** (2 E-Maschinen, Schaltpulte, Heckrohr, Notruderstand), **Dieselraum** (2 Diesel beidseitig des Mittelgangs, Maschinentelegraf), **Kombüse** (zwei Kochplatten, Kombüsenluk), **Unteroffiziersraum** (Kojen der Maate, darunter Batterie II), **Zentrale** (Tiefenruderstand, Flut- und Entlüftungsventile, Luftzielsehrohr, Kartentisch, darunter Tauchzelle 3, darüber der Turm mit Angriffssehrohr, Vorhaltrechner und Rudergeber), **Kommandant, Funk und Horch**, **Offiziersraum** (darunter Batterie I), **Bugtorpedoraum** (4 Rohre, Reserveaale, Kojen und Hängematten). Vor und hinter der Zentrale liegen die Kugelschotten.
+
+- **Torpedos (14):** 4 Bugrohre und 1 Heckrohr geladen, 6 Reserve unter den Bodenplatten im Bugraum, 1 im Heckraum, 2 in Oberdeckbehältern. Vorn (bis 100° zur Seite) feuern die Bugrohre, achtern das Heckrohr. Die Oberdeckbehälter lassen sich nur aufgetaucht bei Langsamer Fahrt ins Boot holen (2 Stunden).
+- **Stauraum:** Treiböl rund 113 t (135 000 L), Verpflegung in jedem freien Winkel (bis 9 000 Rationen), Material in Kisten.
+- **Antrieb:** Aufgetaucht 2 Diesel (bis 17,6 kn, laden dabei die Batterie; im Stand schneller), getaucht 2 E-Maschinen aus 124 Zellen (bis 7,6 kn). Maschinenkommandos: Stopp – Schleichfahrt – Langsame – Halbe – Große Fahrt – Äußerste Kraft. Verbrauch nach P ~ v³: 6.500 sm bei 12 kn aufgetaucht, 80 sm bei 4 kn getaucht (20 h), AK getaucht nur gut 2 Stunden.
+- **Alarmtauchen** (Taste `T`): Diesel aus, E-Maschinen Große Fahrt, Fluten – der Turm schneidet in rund 30 s unter, dann steuert der LI auf 40 m ein. Normal taucht das Boot etwa 10 m pro Minute.
+- **Atemluft:** 72 h für 37 Mann (bei 50 Mann rund 53 h), aufgetaucht wird gelüftet. Unter 40 % Kopfschmerzen und sinkende Moral, bei 0 erstickt die Besatzung.
+- **Chlorgas:** Dringt Seewasser in Batterie I (Offiziersraum) oder II (Unteroffiziersraum), entsteht Chlorgas – die Abteilung wird geräumt, die Batterie verliert Ladung.
+- **Rumpf pro Abteil, Abschotten, Lenzen, Reparieren:** Treffer beschädigen einzelne Abteile, beschädigte lecken umso stärker, je tiefer man ist.
+- **Schwimmfähigkeit:** Ein gefluteter Endraum (Bug- oder E-Raum) lässt das Boot aufgetaucht noch schwimmfähig, getaucht wird es schwer und braucht Fahrt; **zwei geflutete Räume nicht mehr** (ab 30 % Flutung sinkt es).
 
 **Wassertiefe:** Jede Stelle der Karte hat eine eigene Tiefe (1-km-Raster): flaches Schelf bis 10 km vor der Küste (8–80 m), dann ein Abhang bis gut 200 m und offene See um 210–300 m, dazu ein tiefer Graben im Westen und eine flache Bank (~28 m) südöstlich der Insel. Die Karte zeigt Tiefenlinien bei 20, 50, 100, 200 und 300 m, die Legende die Tiefe am Boot und unter dem Mauszeiger.
 
 - **Auf Grund legen:** Will das Boot tiefer als der Grund, setzt es auf und liegt still. Mit Fahrt schrammt es über den Grund (Schaden am Bug), fährt es in flacheres Wasser, rammt es den Hang. Der Tiefenmesser zeigt den Grund als braune Marke.
 - **Sicht:** Die Oberfläche sieht man nur bis etwa 45 m Tiefe (Licht), den Grund nur, wenn er höchstens rund 70 m unter dem Kiel liegt. Je tiefer, desto dunkler.
 
-**Tiefen:**
+**Tauchtiefen** (Handbuch, Kap. 4):
 
-| Stufe | Tiefe |
-|---|---|
-| Oberfläche | 0 m |
-| Sehrohrtiefe | 13 m (Funk, Sehrohr und Torpedos möglich) |
-| Schleichtiefe | 80 m |
-| Prüftiefe | 220 m |
-| Zerstörungstiefe | 260 m (**nicht wählbar**, Quellen nennen 250–295 m) |
+| Begriff | Tiefe | Bedeutung |
+|---|---|---|
+| Sehrohrtiefe | 13 m | Angriff, Funk und Rundblick getaucht |
+| Konstruktionstauchtiefe | 100 m | dauerhaft zulässig |
+| Prüfungstauchtiefe | 165 m | nur im Notfall – darunter beult der Druckkörper und es gibt Schäden |
+| Rechnerische Zerstörungstiefe | 250 m | Druckkörper versagt rechnerisch, real hielten Boote oft etwas mehr |
 
-Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil beschädigt, wird es schon über der „maximalen sicheren Tiefe“ gefährlich. Je weiter man darüber liegt, desto höher ist die Chance zu implodieren.
+Die Prüfungstiefe sinkt mit dem Rumpfzustand. Der Tiefenmesser zeigt den Bereich unter der Konstruktionstiefe gelb und unter der Prüfungstiefe rot. Mit dem Ausbau „Druckkörper C/41“ gelten die Werte des VII C/41 (120 / 200 / 300 m).
 
 ## Welt, Aufträge und Kampf
 
@@ -212,7 +216,7 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 - [x] Crew anklicken, Befehle geben, Crewmitglieder übernehmen und selbst steuern
 - [x] 13 Rollen mit Posten, Fachgebieten und Erfahrung
 - [x] Schichtplan (3 Gruppen × 24 Stunden), Dienstposten frei wählbar, Gefechtsstationen
-- [x] Moral aus Essen und Schlaf, Rationen 1–4 pro Tag, Smutje
+- [x] Moral aus Essen und Schlaf, Rationen 1–4 pro Tag, Smut
 - [x] Wasser, Lecks, Rumpf pro Abteil, Schotten, Pumpen, Reparatur, Ertrinken
 - [x] Tiefensteuerung mit vier Stufen, Druck, Implosion, Sinken, Notanblasen
 - [x] Diesel, Batterie, Druckluft, Laderaum
@@ -240,7 +244,7 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 
 **Nach 1.0**
 - [ ] Ausweichmanöver und Täuschkörper (Bold)
-- [ ] Feuer an Bord (Brandmeister), Krankheiten
+- [ ] Feuer an Bord, Krankheiten
 - [ ] Meuterei bei sehr niedriger Moral
 - [ ] Anbindung an Maiskolbistan (Login, Spielstände auf dem Server)
 

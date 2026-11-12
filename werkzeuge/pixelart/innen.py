@@ -28,7 +28,19 @@ def rundanzeige(g, cx, cy, rad):
         g.px(round(cx + math.cos(w) * (rad - 1.6)), round(cy + math.sin(w) * (rad - 1.6)), P['rotHell'])
 
 
+def haengematte(g, xf):
+    """Hängematte im Bugraum (Mannschaft), hängt an zwei Haken unter der Decke."""
+    for k in range(-17, 18):
+        y = 166 + round(4 * (1 - (k / 17) ** 2))
+        g.px(xf + k, y, P['stoff']); g.px(xf + k, y + 1, P['stoffHell'] if k % 3 else P['stoff']); g.px(xf + k, y + 2, '#3e3528')
+    for d in (-18, 18):
+        for k in range(10):
+            g.px(xf + d + (1 if d < 0 else -1) * (k // 4), 156 + k, '#5a4a36')
+
+
 def koje(g, xf, o, vorhang):
+    if o == 2:
+        return haengematte(g, xf)
     y = 184 if o else 208
     g.r(xf - 18, y, 36, 3, P['holzDunkel']); g.r(xf - 18, y, 36, 1, P['holz'])
     g.r(xf - 17, y - 3, 34, 3, P['matratze']); g.r(xf - 17, y - 3, 34, 1, P['matratzeHell'])
@@ -100,95 +112,101 @@ def innenraum(g, ABT, KOJEN, WAND, sehrohr):
     g.r(bx0, BODEN + 6, bx1 - bx0, 10, P['bilge'])
     g.r(bx0, BODEN + 12, bx1 - bx0, 2, P['bilgeWasser'])
     g.dither(bx0, BODEN + 11, bx1 - bx0, 1, '#22484a')
-    # Batterie II unter dem U-Raum, Batterie I unter Offiziers- und Oberfeldwebelraum
-    for (a, b) in ((452, 590), (824, 984)):
-        for x in range(a, b, 14):
-            g.r(x, BODEN + 7, 10, 4, '#1f2622'); g.px(x + 2, BODEN + 7, P['rotHell']); g.px(x + 7, BODEN + 7, '#3c5c46')
+    # Batterie II unter dem Unteroffiziersraum, Batterie I unter dem Offiziersraum (je 62 Zellen)
+    for (a, b) in ((482, 588), (816, 966)):
+        for x in range(a, b, 9):
+            g.r(x, BODEN + 7, 7, 5, '#1f2622'); g.px(x + 1, BODEN + 7, P['rotHell']); g.px(x + 5, BODEN + 7, '#3c5c46')
+    # Tauchzelle 3 unter der Zentrale (im Druckkörper)
+    g.r(600, BODEN + 7, 140, 6, '#1d3340'); g.r(600, BODEN + 7, 140, 1, '#2f4f60')
 
-    # ---- Heck- und E-Maschinenraum (88–256): Heckrohr, 2 E-Maschinen, Koje ----
+    # ---- E-Maschinenraum (88–232): Heckrohr, 2 E-Maschinen auf den Wellen, Schaltpulte, Notruderstand ----
     g.r(88, 152, 18, 66, '#323937'); g.r(88, 152, 1, 66, '#56605c')
     torpedorohr_innen(g, 92, 160)
     g.r(96, 186, 10, 2, P['messing'])
-    g.r(160, 176, 96, 6, P['metallDunkel']); g.r(160, 176, 96, 1, P['metall'])  # Welle
-    for x0 in (172, 214):
+    g.r(108, 176, 124, 6, P['metallDunkel']); g.r(108, 176, 124, 1, P['metall'])   # Wellen
+    for x0 in (150, 192):
         g.r(x0, 184, 38, 36, P['metall'])
         g.r(x0, 184, 38, 2, P['metallGlanz']); g.dither(x0, 186, 38, 3, P['metallHell'])
         for x in range(x0 + 3, x0 + 36, 3):
             g.r(x, 192, 1, 22, P['metallDunkel'])
         g.r(x0 + 10, 198, 18, 8, P['kupfer']); g.r(x0 + 10, 198, 18, 1, P['kupferHell'])
         g.r(x0, 216, 38, 4, P['metallDunkel']); g.r(x0, 219, 38, 1, P['kontur'])
-    schrank(g, 186, 152, 52, 22)
-    g.r(190, 156, 44, 8, '#14191a')
-    for i in range(6):
-        g.r(192 + i * 7, 168, 3, 2, P['rotHell'] if i % 2 else P['sonar4'])
-    rundanzeige(g, 224, 160, 3)
+    schrank(g, 160, 150, 66, 24)                                   # Schaltpulte, Fahrschalter
+    g.r(164, 154, 58, 8, '#14191a')
+    for i in range(8):
+        g.r(166 + i * 7, 166, 3, 2, P['rotHell'] if i % 2 else P['sonar4'])
+    rundanzeige(g, 216, 158, 3)
+    handrad(g, 128, 198, 6, P['messingHell'], P['messingGlanz'])   # Notruderstand
+    g.r(126, 205, 4, 15, P['metallDunkel'])
 
-    # ---- Dieselraum (256–448): zwei MAN-Diesel, Maschinentelegraf in der Mitte ----
-    for x0 in (262, 364):
-        g.r(x0, 184, 80, 36, P['metall'])
-        g.r(x0, 184, 80, 2, P['metallGlanz']); g.dither(x0, 186, 80, 2, P['metallHell'])
-        g.r(x0, 212, 80, 8, P['metallDunkel']); g.r(x0, 219, 80, 1, P['kontur'])
-        g.r(x0 + 79, 184, 1, 36, P['kontur'])
+    # ---- Dieselraum (232–422): zwei Diesel beidseitig des Mittelgangs, Maschinentelegraf ----
+    for x0 in (240, 336):
+        g.r(x0, 184, 78, 36, P['metall'])
+        g.r(x0, 184, 78, 2, P['metallGlanz']); g.dither(x0, 186, 78, 2, P['metallHell'])
+        g.r(x0, 212, 78, 8, P['metallDunkel']); g.r(x0, 219, 78, 1, P['kontur'])
+        g.r(x0 + 77, 184, 1, 36, P['kontur'])
         for k in range(6):
-            kx = x0 + 4 + k * 13
+            kx = x0 + 4 + k * 12
             g.r(kx, 172, 9, 12, '#343a3f'); g.r(kx, 172, 9, 1, '#5b6166'); g.r(kx + 3, 167, 3, 5, '#262a2e')
             g.px(kx + 4, 166, P['rohrHell'])
-        g.r(x0 - 2, 162, 84, 4, P['messing']); g.r(x0 - 2, 162, 84, 1, P['messingGlanz'])
+        g.r(x0 - 2, 162, 82, 4, P['messing']); g.r(x0 - 2, 162, 82, 1, P['messingGlanz'])
         for k in range(6):
-            g.r(x0 + 7 + k * 13, 166, 2, 6, P['messing'])
+            g.r(x0 + 7 + k * 12, 166, 2, 6, P['messing'])
         for k in range(5):
-            g.r(x0 + 8 + k * 15, 198, 8, 1, P['metallHell'])
-        g.r(x0 + 4, 204, 72, 2, P['rostMitte'])
-        g.dither(x0 + 4, 206, 72, 2, P['rost'])
-    g.r(350, 190, 4, 30, P['messing']); g.r(350, 190, 1, 30, P['messingGlanz'])
-    g.circle(352, 182, 9, P['messingHell'], ring=1.2)
-    g.circle(352, 182, 8, P['anzeige']); g.circle(352, 182, 8, P['messing'], ring=1)
+            g.r(x0 + 8 + k * 14, 198, 8, 1, P['metallHell'])
+        g.r(x0 + 4, 204, 70, 2, P['rostMitte'])
+        g.dither(x0 + 4, 206, 70, 2, P['rost'])
+    g.r(326, 190, 4, 30, P['messing']); g.r(326, 190, 1, 30, P['messingGlanz'])
+    g.circle(328, 182, 8, P['messingHell'], ring=1.2)
+    g.circle(328, 182, 7, P['anzeige']); g.circle(328, 182, 7, P['messing'], ring=1)
     for k in range(5):
         w = math.pi + k * math.pi / 4
-        g.px(round(352 + math.cos(w) * 6), round(182 + math.sin(w) * 6), '#4a4436')
-    g.r(351, 176, 2, 6, P['rotHell'])
+        g.px(round(328 + math.cos(w) * 5), round(182 + math.sin(w) * 5), '#4a4436')
+    g.r(327, 177, 2, 5, P['rotHell'])
 
-    # ---- Unteroffiziersraum & Kombuese (448–594): Kombuese achtern, Kojen, Spind ----
-    g.r(456, 190, 34, 30, '#4e5356'); g.r(456, 190, 34, 2, P['metallGlanz'])
-    g.r(460, 196, 26, 10, '#1f2224'); g.r(462, 198, 22, 6, '#33373a')
-    g.r(463, 203, 20, 1, P['rotHell'])
+    # ---- Kombüse (422–478): zwei Kochplatten, kleiner Backofen, Kombüsenluk ----
+    g.r(428, 190, 36, 30, '#4e5356'); g.r(428, 190, 36, 2, P['metallGlanz'])
+    g.r(432, 196, 28, 10, '#1f2224'); g.r(434, 198, 24, 6, '#33373a')
+    g.r(435, 203, 22, 1, P['rotHell'])
     for k in range(3):
-        g.r(462 + k * 8, 210, 5, 4, '#262a2c'); g.px(463 + k * 8, 211, P['messing'])
-    g.r(460, 180, 10, 10, '#8a8f96'); g.r(460, 180, 10, 1, '#b4bac0')
-    g.r(472, 184, 11, 6, '#6a6f74'); g.r(472, 184, 11, 1, '#9aa0a6')
-    for k in range(4):
-        g.r(458 + k * 8, 158, 1, 12, '#3a3a3a'); g.r(456 + k * 8, 170, 5, 3, P['metallHell'])
-    schrank(g, 580, 158, 12, 62, '#4a3f30')  # Spind
-    g.r(582, 186, 8, 1, P['messing'])
+        g.r(434 + k * 8, 210, 5, 4, '#262a2c'); g.px(435 + k * 8, 211, P['messing'])
+    g.r(432, 180, 10, 10, '#8a8f96'); g.r(432, 180, 10, 1, '#b4bac0')
+    g.r(446, 184, 11, 6, '#6a6f74'); g.r(446, 184, 11, 1, '#9aa0a6')
+    for k in range(3):
+        g.r(430 + k * 9, 158, 1, 12, '#3a3a3a'); g.r(428 + k * 9, 170, 5, 3, P['metallHell'])
+    g.r(468, DECKE - 8, 2, 88, P['metall']); g.r(474, DECKE - 8, 2, 88, P['metall'])   # Leiter zum Kombüsenluk
+    for y in range(DECKE - 8, BODEN, 8):
+        g.r(468, y, 8, 2, P['metallHell'])
 
-    # ---- Zentrale (594–752): Tiefensteuerstand, Rechner, Ventile, Sehrohr, Ruder, Kartentisch, Leiter ----
+    # ---- Unteroffiziersraum (478–590): Kojen der Maate, Spind ----
+    schrank(g, 572, 158, 12, 62, '#4a3f30')
+    g.r(574, 186, 8, 1, P['messing'])
+
+    # ---- Zentrale (590–746): Tiefenruderstand, Flutventile, Luftzielsehrohr, Vorhaltrechner-Anzeige, Turmluk, Rudergeber, Kartentisch ----
     g.r(sehrohr, DECKE - 2, 8, 50, P['metall']); g.r(sehrohr, DECKE - 2, 2, 50, P['metallGlanz']); g.r(sehrohr + 6, DECKE - 2, 2, 50, P['metallDunkel'])
     g.r(sehrohr - 8, 188, 24, 6, P['metallHell']); g.r(sehrohr - 8, 188, 24, 1, P['metallGlanz'])
     g.r(sehrohr - 11, 189, 4, 4, P['kontur']); g.r(sehrohr + 15, 189, 4, 4, P['kontur'])
     g.r(sehrohr - 2, 180, 12, 8, P['metallDunkel']); g.r(sehrohr, 182, 8, 3, P['sonar0'])
     g.r(sehrohr - 4, 194, 16, 3, P['metallDunkel']); g.r(sehrohr + 2, 197, 4, 23, P['metallDunkel'])
-    # Tiefensteuerstand (Zeiger bei 614/164 zeichnet das Spiel)
-    g.r(600, 150, 52, 38, '#262c2a'); g.r(600, 150, 52, 1, '#4a5450'); g.r(600, 187, 52, 1, P['kontur'])
-    rundanzeige(g, 614, 164, 9)
-    rundanzeige(g, 634, 162, 6)
-    for i in range(4):
-        g.r(604 + i * 11, 180, 6, 3, '#2f6b42' if i < 2 else '#6b2f2f')
-        g.px(604 + i * 11, 180, P['sonar4'] if i < 2 else P['rotGlanz'])
-    handrad(g, 610, 202, 7, P['messingHell'], P['messingGlanz'])
-    handrad(g, 600, 208, 5, P['messingHell'], P['messingGlanz'])
-    # Torpedo-Vorhalterechner (Schirm 628/190)
-    g.r(624, 186, 22, 18, '#262c2a'); g.r(624, 186, 22, 1, '#4a5450')
-    g.r(628, 190, 14, 7, P['sonar1']); g.r(628, 190, 14, 1, P['sonar2'])
-    for k in range(3):
-        g.r(629 + k * 5, 199, 3, 2, P['messing'])
-    g.r(632, 204, 6, 16, '#343a3a')
-    # Flutventile (Tauchzellen)
-    g.r(652, 178, 20, 42, '#343a3a'); g.r(652, 178, 20, 1, '#56605c')
-    for k in range(8):
-        cx = 655 + (k % 4) * 4; cy = 186 + (k // 4) * 10
+    # Tiefenruderstand mit Tiefenmanometer (Zeiger bei 610/164 zeichnet das Spiel) und Neigungsanzeiger
+    g.r(596, 150, 32, 38, '#262c2a'); g.r(596, 150, 32, 1, '#4a5450'); g.r(596, 187, 32, 1, P['kontur'])
+    rundanzeige(g, 610, 164, 9)
+    g.r(600, 178, 22, 3, P['anzeige']); g.px(611, 178, P['rotHell'])        # Trimm-Libelle
+    handrad(g, 604, 202, 6, P['messingHell'], P['messingGlanz'])
+    handrad(g, 618, 208, 5, P['messingHell'], P['messingGlanz'])
+    # Flut-, Entlüftungs- und Anblaseventile
+    g.r(630, 176, 22, 44, '#343a3a'); g.r(630, 176, 22, 1, '#56605c')
+    for k in range(10):
+        cx = 634 + (k % 4) * 5; cy = 184 + (k // 4) * 9
         g.circle(cx, cy, 1, P['rotHell'] if k % 3 == 0 else '#2f8a4c')
-    g.r(654, 206, 16, 1, P['messing'])
-    # Leiter zum Turm, Turmluke
+    g.r(632, 210, 18, 1, P['messing'])
+    # Anzeige des Vorhaltrechners (Rechner steht im Turm; Schirm bei 674/190)
+    g.r(670, 186, 22, 18, '#262c2a'); g.r(670, 186, 22, 1, '#4a5450')
+    g.r(674, 190, 14, 7, P['sonar1']); g.r(674, 190, 14, 1, P['sonar2'])
+    for k in range(3):
+        g.r(675 + k * 5, 199, 3, 2, P['messing'])
+    g.r(678, 204, 6, 16, '#343a3a')
+    # Leiter durch das Turmluk in den Turm
     g.r(696, DECKE - 40, 2, 120, P['metall']); g.r(704, DECKE - 40, 2, 120, P['metall'])
     for y in range(DECKE - 40, BODEN, 8):
         g.r(696, y, 10, 2, P['metallHell'])
@@ -196,58 +214,58 @@ def innenraum(g, ABT, KOJEN, WAND, sehrohr):
     g.r(696, DECKE - 40, 2, 40, P['metall']); g.r(704, DECKE - 40, 2, 40, P['metall'])
     for y in range(DECKE - 40, DECKE, 8):
         g.r(696, y, 10, 2, P['metallHell'])
-    # Seitenruder
-    g.r(709, 200, 6, 20, P['metall']); handrad(g, 712, 192, 8, P['messingHell'], P['messingGlanz'])
-    g.r(702, 166, 20, 12, '#1a1f1d'); g.r(704, 168, 16, 8, P['anzeige']); g.r(711, 168, 2, 8, P['rotHell'])
-    # Kartentisch
-    g.r(724, 200, 26, 3, P['holz']); g.r(724, 200, 26, 1, P['holzHell'])
-    g.r(726, 198, 22, 2, P['anzeige']); g.px(732, 198, '#3f6f8a'); g.px(738, 199, P['rotHell'])
-    g.r(728, 203, 2, 17, P['holzDunkel']); g.r(744, 203, 2, 17, P['holzDunkel'])
-    g.r(742, 176, 2, 22, P['metallDunkel']); g.r(738, 174, 10, 3, '#2f6b5a'); g.r(739, 177, 8, 1, P['lampe'])
-    g.r(660, DECKE + 11, 5, 3, P['rotHell']); g.px(661, DECKE + 11, P['rotGlanz'])
+    # Rudergeber / Tochterkompass
+    g.r(717, 200, 6, 20, P['metall']); handrad(g, 720, 192, 7, P['messingHell'], P['messingGlanz'])
+    g.r(710, 166, 20, 12, '#1a1f1d'); g.r(712, 168, 16, 8, P['anzeige']); g.r(719, 168, 2, 8, P['rotHell'])
+    # Kartentisch mit Kreiselkompass
+    g.r(726, 200, 18, 3, P['holz']); g.r(726, 200, 18, 1, P['holzHell'])
+    g.r(727, 198, 16, 2, P['anzeige']); g.px(731, 198, '#3f6f8a'); g.px(736, 199, P['rotHell'])
+    g.r(728, 203, 2, 17, P['holzDunkel']); g.r(740, 203, 2, 17, P['holzDunkel'])
+    g.r(738, 176, 2, 22, P['metallDunkel']); g.r(734, 174, 10, 3, '#2f6b5a'); g.r(735, 177, 8, 1, P['lampe'])
+    g.r(660 + 20, DECKE + 11, 5, 3, P['rotHell']); g.px(661 + 20, DECKE + 11, P['rotGlanz'])
 
-    # ---- Funk- und Horchraum (752–820) ----
-    g.r(756, 200, 30, 3, P['holz']); g.r(756, 200, 30, 1, P['holzHell'])
-    g.r(758, 162, 30, 38, '#2b3235'); g.r(758, 162, 30, 1, '#4c5558')
-    g.r(760, 164, 26, 4, '#1c2123')
+    # ---- Kommandant, Funk- und Horchraum (746–812) ----
+    g.r(750, 200, 30, 3, P['holz']); g.r(750, 200, 30, 1, P['holzHell'])
+    g.r(752, 162, 30, 38, '#2b3235'); g.r(752, 162, 30, 1, '#4c5558')
+    g.r(754, 164, 26, 4, '#1c2123')
     for k in range(6):
-        g.r(763 + k * 4, 170, 2, 2, '#3a2a22')  # Funk-Laempchen (Spiel faerbt sie)
+        g.r(757 + k * 4, 170, 2, 2, '#3a2a22')  # Funk-Lämpchen (Spiel färbt sie)
     for k in range(3):
-        g.circle(765 + k * 8, 180, 2, P['metallHell'], ring=1); g.px(765 + k * 8, 180, P['kontur'])
-    g.r(761, 186, 24, 4, P['sonar0']); g.r(762, 187, 10, 1, P['sonar3'])
-    g.r(760, 192, 26, 1, P['messing'])
-    g.r(770, 194, 8, 5, '#1d1d1d'); g.r(772, 193, 4, 1, P['metall'])
-    # Horchgeraet (Schirm 802/184)
-    g.r(790, 200, 28, 3, P['holz']); g.r(790, 200, 28, 1, P['holzHell'])
-    g.r(790, 168, 28, 32, '#2b3235'); g.r(790, 168, 28, 1, '#4c5558')
-    g.circle(802, 184, 10, P['metallDunkel'])
-    g.circle(802, 184, 9, P['sonar1'])
-    g.circle(802, 184, 9, P['sonar2'], ring=1)
-    g.circle(802, 184, 5, P['sonar2'], ring=1)
-    g.px(802, 184, P['sonar4']); g.px(808, 179, P['sonar5'])
-    handrad(g, 813, 196, 3, P['messingHell'], P['messingGlanz'])
-    for x in (792, 814):
-        g.r(x, 203, 2, 17, P['holzDunkel'])
+        g.circle(759 + k * 8, 180, 2, P['metallHell'], ring=1); g.px(759 + k * 8, 180, P['kontur'])
+    g.r(755, 186, 24, 4, P['sonar0']); g.r(756, 187, 10, 1, P['sonar3'])
+    g.r(754, 192, 26, 1, P['messing'])
+    g.r(762, 194, 8, 5, '#1d1d1d'); g.r(764, 193, 4, 1, P['metall'])
+    # Gruppenhorchgerät (Schirm 796/200) unter der Kommandantenkoje
+    g.r(783, 188, 27, 26, '#2b3235'); g.r(783, 188, 27, 1, '#4c5558')
+    g.circle(796, 200, 9, P['metallDunkel'])
+    g.circle(796, 200, 8, P['sonar1'])
+    g.circle(796, 200, 8, P['sonar2'], ring=1)
+    g.circle(796, 200, 4, P['sonar2'], ring=1)
+    g.px(796, 200, P['sonar4'])
+    handrad(g, 806, 212, 3, P['messingHell'], P['messingGlanz'])
+    g.r(784, 214, 2, 6, P['holzDunkel']); g.r(808, 214, 2, 6, P['holzDunkel'])
 
-    # ---- Offiziersraum (820–910): Tisch zwischen den Kojen, Waschbecken ----
-    g.r(858, 202, 14, 3, P['holz']); g.r(858, 202, 14, 1, P['holzHell']); g.r(864, 205, 2, 15, P['holzDunkel'])
-    g.r(860, 198, 3, 4, P['weiss'])
+    # ---- Offiziersraum (812–968): Klapptisch als Messe, Spind ----
+    g.r(896, 202, 20, 3, P['holz']); g.r(896, 202, 20, 1, P['holzHell']); g.r(905, 205, 2, 15, P['holzDunkel'])
+    g.r(900, 198, 3, 4, P['weiss']); g.r(908, 199, 4, 3, P['metallHell'])
+    schrank(g, 960, 150, 6, 30, '#4a3f30')
 
-    # ---- Oberfeldwebelraum (910–988): Spinde ----
-    schrank(g, 912, 150, 6, 30, '#4a3f30')
-    schrank(g, 982, 150, 6, 30, '#4a3f30')
-
-    # ---- Bugtorpedoraum (988–1212): 4 Rohrverschluesse, Ladegeschirr, Kojen ----
-    g.r(988, DECKE + 14, 204, 2, P['metallDunkel'])  # Laufschiene fuer das Ladegeschirr
-    for hx in (1060, 1140):
-        g.r(hx, DECKE + 16, 8, 4, P['metall']); g.r(hx + 3, DECKE + 20, 1, 10, '#777777'); g.r(hx + 1, DECKE + 30, 5, 2, '#777777')
+    # ---- Bugtorpedoraum (968–1212): vier Rohrverschlüsse, Ladegeschirr, Kojen und Hängematten ----
+    g.r(970, DECKE + 14, 222, 2, P['metallDunkel'])
+    for hx_ in (1080, 1160):
+        g.r(hx_, DECKE + 16, 8, 4, P['metall']); g.r(hx_ + 3, DECKE + 20, 1, 10, '#777777'); g.r(hx_ + 1, DECKE + 30, 5, 2, '#777777')
     g.r(1192, 150, 20, 70, '#323937'); g.r(1192, 150, 1, 70, '#56605c')
     for i in range(4):
         torpedorohr_innen(g, 1194 + (i % 2) * 8, 152 + (i // 2) * 28)
+    # Laderinne
+    g.r(1158, 214, 34, 3, P['metall']); g.r(1158, 214, 34, 1, P['metallHell'])
 
     # ---- Schotten mit Rundtuer-Rahmen (Tuerblaetter zeichnet das Spiel) ----
     for i in range(1, len(ABT)):
         x = ABT[i][1] * 2
+        if ABT[i][0] in ('zentrale', 'funk'):   # Kugelschotten vor und hinter der Zentrale
+            g.r(x - 6, DECKE, 12, BODEN - DECKE, '#262c29')
+            g.circle(x, 186, 9, P['metall'], ring=2); g.r(x - 6, DECKE, 1, BODEN - DECKE, '#46504b')
         g.r(x - 4, DECKE, 8, BODEN - DECKE, '#2a312e')
         g.r(x - 4, DECKE, 1, BODEN - DECKE, '#46504b'); g.r(x + 3, DECKE, 1, BODEN - DECKE, P['kontur'])
         g.r(x - 5, 180, 10, 2, P['messing']); g.r(x - 5, 180, 10, 1, P['messingHell'])

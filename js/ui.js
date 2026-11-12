@@ -108,7 +108,7 @@
     setze($('tiefe'), h);
     const k = D.TIEFEN.map((t, i) => '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + '</button>').join('');
     setze($('tiefenKnoepfe'), k);
-    const an = document.querySelector('[data-aktion="anblasen"]');
+    const an = document.querySelector('#rechts [data-aktion="anblasen"]');
     an.textContent = b.anblasen > 0 ? 'Blase an …' : 'Notanblasen (Druckluft ' + Math.round(b.druckluft) + ' %)';
     an.classList.toggle('aktiv', b.anblasen > 0);
   }
@@ -279,7 +279,7 @@
     const grad = Math.round(((b.kurs * 180 / Math.PI) + 90 + 360) % 360);
     let h = '<h2>Maschine · ' + (uw ? 'E-Maschinen' : 'Diesel') + '</h2><div class="telegraf"><div class="hebel">';
     for (let i = D.FAHRT.length - 1; i >= 0; i--) {
-      h += '<button data-aktion="fahrt" data-arg="' + i + '" class="' + (b.fahrt === i ? 'aktiv' : '') + '">' + D.FAHRT[i].name.replace(' Fahrt', '') + '</button>';
+      h += '<button data-aktion="fahrt" data-arg="' + i + '" class="' + (b.fahrt === i ? 'aktiv' : '') + '">' + D.FAHRT[i].kurz + '</button>';
     }
     h += '</div><div class="fahrtwert"><b>' + (S.sim.knoten || 0).toFixed(1) + '</b><span>Knoten</span><span>Kurs ' + String(grad).padStart(3, '0') + '°</span>' +
       (b.wegpunkt ? '<span>→ ' + S.sim.planquadrat(b.wegpunkt) + ' · ' + S.sim.dist(b, b.wegpunkt).toFixed(0) + ' km</span>' : '<span>kein Kurs</span>') + '</div></div>';
@@ -295,6 +295,9 @@
     const bogen = (a, z, r) => 'M ' + p(a, r) + ' A ' + r + ' ' + r + ' 0 ' + ((z - a) / zt * 270 > 180 ? 1 : 0) + ' 1 ' + p(z, r);
     let s = '<svg viewBox="0 0 100 100" role="img" aria-label="Tiefenmesser ' + Math.round(b.tiefe) + ' Meter">';
     s += '<circle cx="50" cy="50" r="48" fill="#86662a"/><circle cx="50" cy="50" r="45" fill="#d9cfae"/>';
+    // gelb: unter Konstruktionstiefe (nur im Notfall), rot: unter Prüfungstiefe
+    const kt = S.sim.konstruktionstiefe(st);
+    if (kt < sicher) s += '<path d="' + bogen(kt, sicher, 40) + '" stroke="#c29a45" stroke-width="5" fill="none"/>';
     s += '<path d="' + bogen(sicher, zt, 40) + '" stroke="#c8392b" stroke-width="5" fill="none"/>';
     for (let m = 0; m <= zt; m += 20) {
       const lang = m % 100 === 0;
@@ -328,21 +331,23 @@
         '<div class="tiefeneingabe"><button data-aktion="zielPlus" data-arg="-10" aria-label="10 m flacher">−10</button>' +
         '<label class="unsichtbar" for="zielEingabe">Gewünschte Tiefe in Metern</label><input id="zielEingabe" type="number" inputmode="numeric" min="0" step="5">' +
         '<button data-aktion="zielPlus" data-arg="10" aria-label="10 m tiefer">+10</button></div>' +
-        '<button data-aktion="anblasen" class="warn" id="hudAnblasen"></button></div></div><div id="hudTiefeWarn"></div>';
+        '<div class="tiefeneingabe"><button data-aktion="alarmtauchen" class="warn" title="Alarmtauchen (T)">Alarm!</button><button data-aktion="anblasen" class="warn" id="hudAnblasen"></button></div></div></div><div id="hudTiefeWarn"></div>';
     }
     const b = st.boot, sicher = S.sim.sichereTiefe(st);
     const wt = S.sim.wassertiefe(b.x, b.y);
-    setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + Math.round(wt) + ' m · sicher ' + Math.round(sicher) + ' m');
+    setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + Math.round(wt) + ' m · Konstr. ' + S.sim.konstruktionstiefe(st) + ' / Prüf. ' + Math.round(sicher) + ' m');
     setze($('tiefenUhr'), tiefenSVG(st));
     setze($('hudTiefenKnoepfe'), D.TIEFEN.map((t, i) => '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>').join(''));
     const ein = $('zielEingabe');
     if (document.activeElement !== ein && String(ein.value) !== String(b.zielM)) ein.value = b.zielM;
     ein.max = S.sim.zerstoerungstiefe(st) - 5;
-    setze($('hudAnblasen'), 'Anblasen ' + Math.round(b.druckluft) + ' %');
+    setze($('hudAnblasen'), 'Anblasen');
     const luecke = S.sim.grundTiefe(st) - b.tiefe;
     let h = '';
     if (b.asdic != null && st.zeit - b.asdic < 2) h += '<div class="warnung blink">ASDIC-Ortung – Schleichfahrt!</div>';
-    if (b.tiefe > sicher) h += '<div class="warnung">⚠ Zu tief – Implosionsgefahr!</div>';
+    if (b.tiefe > sicher) h += '<div class="warnung">⚠ Unter Prüfungstiefe – Implosionsgefahr!</div>';
+    else if (b.tiefe > S.sim.konstruktionstiefe(st)) h += '<div class="warnung">Unter Konstruktionstiefe – nur im Notfall</div>';
+    else if (b.alarmtauchen) h += '<div class="warnung blink">Alarmtauchen!</div>';
     else if (b.aufGrund) h += '<div class="' + (b.schrammt ? 'warnung' : 'gut') + '">' + (b.schrammt ? 'Schrammt über den Grund!' : 'Liegt auf Grund') + '</div>';
     else if (b.tiefe > 4 && luecke < 25) h += '<div class="warnung">Grund ' + Math.round(luecke) + ' m unter dem Kiel</div>';
     else if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot zu schwer – es sinkt!</div>';
@@ -377,6 +382,9 @@
     h += zaehler('inventar', '', 'diesel', 'Diesel', pz(dp), Math.round(l.diesel / 1000) + 'k L', dp < 10 ? 'alarm' : dp < 25 ? 'warn' : '');
     h += zaehler('panel', 'rechts', 'batterie', 'Batterie', pz(b.batterie), S.sim.unterWasser(st) ? 'getaucht' : 'lädt', b.batterie < 10 ? 'alarm' : b.batterie < 30 ? 'warn' : '');
     h += zaehler('panel', 'rechts', 'druckluft', 'Druckluft', pz(b.druckluft), 'Anblasen ab 40 %', b.druckluft < 40 ? 'warn' : '');
+    const luft = b.luft == null ? 100 : b.luft;
+    const stunden = luft / (100 / (72 * 37 / Math.max(1, leb.length)));
+    h += zaehler('panel', 'rechts', 'schlaf', 'Atemluft', pz(luft), S.sim.unterWasser(st) ? 'noch ~' + Math.floor(stunden) + ' h' : 'wird gelüftet', luft < 20 ? 'alarm' : luft < 40 ? 'warn' : '');
     h += zaehler('panel', 'links', 'moral', 'Moral', pz(moral), leb.length + ' Mann', moral < 30 ? 'alarm' : moral < 50 ? 'warn' : '');
     h += fl > 0.005 ? zaehler('panel', 'rechts', 'rumpf', 'Wasser', pz(fl * 100), 'Rumpf ' + pz(rumpf), 'alarm')
       : zaehler('panel', 'rechts', 'rumpf', 'Rumpf', pz(rumpf), 'schwächstes Abteil', rumpf < 50 ? 'alarm' : rumpf < 80 ? 'warn' : '');
@@ -474,7 +482,7 @@
   function handel(st, ort) {
     const S2 = S.sim;
     let h = '<h1>' + esc(ort.name) + '</h1><p>Geld: <b>' + geld(st.geld) + '</b> · Verpflegung: ' + S2.bestand(st, 'verpflegung').toLocaleString('de-DE') + ' / ' + S2.kapazitaet(st, 'verpflegung').toLocaleString('de-DE') + ' Rationen' +
-      (S2.lebende(st).some((c) => c.rolle === 'logistik') ? ' · <span class="gut">Logistik-Maat: 10 % Rabatt</span>' : '') + '</p>';
+'</p>';
     h += '<h3>Waren</h3><table><tr><th>Ware</th><th>An Bord</th><th>Kaufen</th><th>Verkaufen</th></tr>';
     for (const [id, w] of Object.entries(D.WAREN)) {
       const k = S2.kaufpreis(st, ort, id), v = S2.verkaufspreis(st, ort, id);

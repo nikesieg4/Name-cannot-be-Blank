@@ -5,98 +5,105 @@
   /* Bootsgeometrie in Pixeln (Bootsgrafik ist 660 × 150 Pixel groß). Heck links, Bug rechts. */
   const BOOT = { B: 660, H: 150, DECKE_Y: 70, BODEN_Y: 110, WASSERLINIE_Y: 60 };
 
-  /* Typ VIIC, Heck links, Bug rechts. 1 Bootseinheit ≈ 10 cm (67,1 m Länge ≈ 660 Einheiten). */
+  /* Typ VII C nach dem Handbuch: acht Abteilungen im Druckkörper von 50,5 m (Heck links, Bug rechts).
+     Bootseinheiten: 562 Einheiten Innenraum ≈ 50,5 m Druckkörper (≈ 11 Einheiten pro Meter). */
   const ABTEILE = [
-    { id: 'heck', name: 'Heck- & E-Maschinenraum', kurz: 'E-Maschinen', ort: 'im Heckraum', x0: 44, x1: 128 },
-    { id: 'diesel', name: 'Dieselraum', kurz: 'Diesel', ort: 'im Dieselraum', x0: 128, x1: 224 },
-    { id: 'uraum', name: 'Unteroffiziersraum & Kombüse', kurz: 'U-Raum', ort: 'im Unteroffiziersraum', x0: 224, x1: 297 },
-    { id: 'zentrale', name: 'Zentrale', kurz: 'Zentrale', ort: 'in der Zentrale', x0: 297, x1: 376 },
-    { id: 'funk', name: 'Funk- & Horchraum', kurz: 'Funk', ort: 'im Funkraum', x0: 376, x1: 410 },
-    { id: 'offiziere', name: 'Offiziersraum', kurz: 'Offiziere', ort: 'im Offiziersraum', x0: 410, x1: 455 },
-    { id: 'feldwebel', name: 'Oberfeldwebelraum', kurz: 'O-Feldwebel', ort: 'im Oberfeldwebelraum', x0: 455, x1: 494 },
-    { id: 'bug', name: 'Bugtorpedoraum', kurz: 'Bugraum', ort: 'im Bugraum', x0: 494, x1: 606 },
+    { id: 'heck', name: 'E-Maschinenraum', kurz: 'E-Raum', ort: 'im E-Maschinenraum', x0: 44, x1: 116 },
+    { id: 'diesel', name: 'Dieselraum', kurz: 'Diesel', ort: 'im Dieselraum', x0: 116, x1: 211 },
+    { id: 'kombuese', name: 'Kombüse', kurz: 'Kombüse', ort: 'in der Kombüse', x0: 211, x1: 239 },
+    { id: 'uraum', name: 'Unteroffiziersraum', kurz: 'U-Raum', ort: 'im Unteroffiziersraum', x0: 239, x1: 295 },
+    { id: 'zentrale', name: 'Zentrale', kurz: 'Zentrale', ort: 'in der Zentrale', x0: 295, x1: 373 },
+    { id: 'funk', name: 'Kommandant, Funk & Horch', kurz: 'Funk', ort: 'im Funkraum', x0: 373, x1: 406 },
+    { id: 'offiziere', name: 'Offiziersraum', kurz: 'Offiziere', ort: 'im Offiziersraum', x0: 406, x1: 484 },
+    { id: 'bug', name: 'Bugtorpedoraum', kurz: 'Bugraum', ort: 'im Bugraum', x0: 484, x1: 606 },
   ];
+  /* Batterie I liegt unter dem Offiziersraum, Batterie II unter dem Unteroffiziersraum (Chlorgas bei Seewasser). */
+  const BATTERIERAEUME = ['offiziere', 'uraum'];
 
   /* Feste Punkte der Bootsgrafik in Grafikpixeln (doppelte Auflösung), passend zu grafik/boot_querschnitt.png */
   const ANKER = {
-    sehrohrX: 682, turmX0: 616, turmX1: 744,
-    tiefenmesser: [614, 164], rechnerSchirm: [628, 190], funkLampen: [763, 170], horchSchirm: [802, 184], kombuese: [474, 180],
-    bugRohre: [1197, 156], heckRohr: [96, 172], torpedoBug: [1000, 213], torpedoHeck: [96, 213],
-    proviantBug: [1004, 154], proviantURaum: [500, 154],
+    sehrohrX: 660, turmX0: 610, turmX1: 740, kielY: 276,
+    tiefenmesser: [610, 164], rechnerSchirm: [674, 190], funkLampen: [757, 170], horchSchirm: [796, 200], kombuese: [450, 180],
+    bugRohre: [1197, 156], heckRohr: [96, 172], torpedoBug: [980, 213], torpedoHeck: [100, 213],
+    proviantBug: [990, 154], proviantURaum: [484, 154], heckSchraube: 24,
   };
 
   /* Posten = Arbeitsplätze im Boot. "system" ist das, was der Posten bedient,
      "spezial" sind die Rollen, die ihn voll beherrschen (alle anderen arbeiten mit 50 %). */
   const POSTEN = {
-    tiefenruder: { name: 'Tiefenruder', abteil: 'zentrale', x: 305, system: 'tauchen', spezial: ['li', 'tauch'] },
-    torpedo: { name: 'Torpedo-Vorhalterechner', abteil: 'zentrale', x: 318, system: 'torpedo', spezial: ['wo1', 'kaleu', 'wo2'] },
-    tauchzellen: { name: 'Tauchzellen-Ventile', abteil: 'zentrale', x: 331, system: 'tauchen', spezial: ['tauch', 'li'] },
-    sehrohr: { name: 'Sehrohr', abteil: 'zentrale', x: 343, system: 'sehrohr', spezial: ['kaleu', 'wo1', 'wo2'] },
-    ruder: { name: 'Seitenruder', abteil: 'zentrale', x: 356, system: 'ruder', spezial: ['ruder', 'nav'] },
-    karte: { name: 'Kartentisch', abteil: 'zentrale', x: 368, system: 'navigation', spezial: ['nav', 'kaleu'] },
-    funk: { name: 'Funkgerät', abteil: 'funk', x: 384, system: 'funk', spezial: ['funker'] },
-    horch: { name: 'Horchgerät', abteil: 'funk', x: 401, system: 'sonar', spezial: ['soni'] },
-    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'diesel', x: 176, system: 'antrieb', spezial: ['maschinist', 'li'] },
-    emaschine: { name: 'E-Maschine', abteil: 'heck', x: 100, system: 'antrieb', spezial: ['maschinist'] },
+    tiefenruder: { name: 'Tiefenruderstand', abteil: 'zentrale', x: 303, system: 'tauchen', spezial: ['li', 'tauch', 'seemann'] },
+    tauchzellen: { name: 'Flut- und Entlüftungsventile', abteil: 'zentrale', x: 318, system: 'tauchen', spezial: ['tauch', 'li'] },
+    sehrohr: { name: 'Sehrohr / Brückenwache', abteil: 'zentrale', x: 330, system: 'sehrohr', spezial: ['kaleu', 'wo1', 'wo2', 'nav'] },
+    torpedo: { name: 'Torpedovorhaltrechner (Turm)', abteil: 'zentrale', x: 342, system: 'torpedo', spezial: ['wo1', 'kaleu'] },
+    ruder: { name: 'Rudergeber (Turm)', abteil: 'zentrale', x: 360, system: 'ruder', spezial: ['ruder', 'seemann', 'nav'] },
+    karte: { name: 'Kartentisch', abteil: 'zentrale', x: 369, system: 'navigation', spezial: ['nav', 'kaleu'] },
+    funk: { name: 'Funkgerät', abteil: 'funk', x: 380, system: 'funk', spezial: ['funker'] },
+    horch: { name: 'Horchgerät (GHG)', abteil: 'funk', x: 396, system: 'sonar', spezial: ['soni', 'funker'] },
+    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'diesel', x: 164, system: 'antrieb', spezial: ['diesel', 'li'] },
+    emaschine: { name: 'Fahrschalter E-Maschinen', abteil: 'heck', x: 92, system: 'antrieb', spezial: ['emasch', 'li'] },
     heckrohr: { name: 'Heckrohr nachladen', abteil: 'heck', x: 56, system: 'heckladen', spezial: ['torpedo'] },
-    lager: { name: 'Vorräte', abteil: 'uraum', x: 266, system: 'lager', spezial: ['logistik'] },
-    kombuese: { name: 'Kombüse', abteil: 'uraum', x: 236, system: 'kombuese', spezial: ['smutje'] },
-    bugraum: { name: 'Bugrohre nachladen', abteil: 'bug', x: 556, system: 'nachladen', spezial: ['torpedo'] },
-    leckabwehr: { name: 'Leckabwehr (wandert zum Schaden)', abteil: null, x: null, system: 'reparatur', spezial: ['brand', 'vertau'] },
+    kombuese: { name: 'Kombüse', abteil: 'kombuese', x: 225, system: 'kombuese', spezial: ['smut'] },
+    bugraum: { name: 'Bugrohre nachladen', abteil: 'bug', x: 586, system: 'nachladen', spezial: ['torpedo'] },
+    leckabwehr: { name: 'Leckabwehr (wandert zum Schaden)', abteil: null, x: null, system: 'reparatur', spezial: ['bootsmann', 'seemann', 'diesel', 'emasch'] },
   };
 
   const SYSTEME = {
     tauchen: 'Tiefensteuerung', torpedo: 'Torpedo-Rechner', sehrohr: 'Sehrohr', ruder: 'Ruder',
     navigation: 'Navigation', funk: 'Funk', sonar: 'Horchgerät', antrieb: 'Antrieb',
-    lager: 'Vorräte', kombuese: 'Kombüse', nachladen: 'Bugrohre laden', heckladen: 'Heckrohr laden', reparatur: 'Leckabwehr',
+    kombuese: 'Kombüse', nachladen: 'Bugrohre laden', heckladen: 'Heckrohr laden', reparatur: 'Leckabwehr',
   };
 
-  /* Kojen: o = 0 unten, 1 oben. off = Offizierskoje. 23 Kojen für 44 Mann – es wird geteilt (Hot Bunking). */
+  /* Kojen: o = 0 unten, 1 oben, 2 = Hängematte. off = Offizierskoje, vorhang = Kommandantenkoje.
+     Bugraum: Kojen und Hängematten für die Mannschaft, Offiziersraum: LI, I. und II. WO (und Obersteuermann),
+     Kommandant hinter dem Vorhang neben Funk und Horcher, Unteroffiziersraum: Maate. Geteilt wird „warm“. */
   const KOJEN = [
-    { abteil: 'heck', x: 74, o: 0 }, { abteil: 'heck', x: 74, o: 1 },
-    { abteil: 'uraum', x: 258, o: 0 }, { abteil: 'uraum', x: 258, o: 1 }, { abteil: 'uraum', x: 280, o: 0 }, { abteil: 'uraum', x: 280, o: 1 },
-    { abteil: 'offiziere', x: 422, o: 0, off: true, vorhang: true }, { abteil: 'offiziere', x: 422, o: 1, off: true },
-    { abteil: 'offiziere', x: 443, o: 0, off: true }, { abteil: 'offiziere', x: 443, o: 1, off: true },
-    { abteil: 'feldwebel', x: 466, o: 0 }, { abteil: 'feldwebel', x: 466, o: 1 }, { abteil: 'feldwebel', x: 484, o: 0 }, { abteil: 'feldwebel', x: 484, o: 1 },
-    { abteil: 'bug', x: 512, o: 0 }, { abteil: 'bug', x: 512, o: 1 }, { abteil: 'bug', x: 532, o: 0 }, { abteil: 'bug', x: 532, o: 1 },
-    { abteil: 'bug', x: 552, o: 0 }, { abteil: 'bug', x: 552, o: 1 }, { abteil: 'bug', x: 572, o: 0 }, { abteil: 'bug', x: 572, o: 1 },
+    { abteil: 'uraum', x: 252, o: 0 }, { abteil: 'uraum', x: 252, o: 1 }, { abteil: 'uraum', x: 274, o: 0 }, { abteil: 'uraum', x: 274, o: 1 },
+    { abteil: 'funk', x: 396, o: 1, off: true, vorhang: true, kdt: true },
+    { abteil: 'offiziere', x: 418, o: 0, off: true }, { abteil: 'offiziere', x: 418, o: 1, off: true },
+    { abteil: 'offiziere', x: 437, o: 0, off: true }, { abteil: 'offiziere', x: 437, o: 1, off: true },
+    { abteil: 'offiziere', x: 470, o: 0 }, { abteil: 'offiziere', x: 470, o: 1 },
+    { abteil: 'bug', x: 498, o: 0 }, { abteil: 'bug', x: 498, o: 1 }, { abteil: 'bug', x: 516, o: 0 }, { abteil: 'bug', x: 516, o: 1 },
+    { abteil: 'bug', x: 534, o: 0 }, { abteil: 'bug', x: 534, o: 1 }, { abteil: 'bug', x: 552, o: 0 }, { abteil: 'bug', x: 552, o: 1 },
+    { abteil: 'bug', x: 570, o: 0 }, { abteil: 'bug', x: 570, o: 1 },
+    { abteil: 'bug', x: 507, o: 2 }, { abteil: 'bug', x: 561, o: 2 },
   ];
 
-  /* Rollen (nach ubootworkshop.de, ohne Reporter und Schiffsjunge/-mädel) mit realistischer Stärke
-     wie auf einem Typ-VIIC-Boot der Kriegsmarine: 44 Mann, davon 5 Offiziere.
-     anzahl = Leute dieser Rolle an Bord, wache = Wache des ersten (weitere reihum über A–C; 3 = Tagesdienst),
-     posten = Standard-Posten (eine Liste wird reihum verteilt), gefecht = Posten bei Gefechtsstationen. Reihenfolge = Reihen in grafik/crew_sheet.png. */
+  /* Besatzung nach dem Handbuch (Kap. 9): rund 50 Mann – 4 Offiziere, Portepee-Unteroffiziere, Maate und Mannschaften.
+     Der Kommandant geht keine feste Wache (Tagesdienst), ist aber bei jedem Alarm da.
+     anzahl = Leute dieser Rolle, wache = Wache des ersten (weitere reihum über A–C; 3 = Tagesdienst),
+     posten = Standard-Posten (eine Liste wird reihum verteilt), gefecht = Posten bei Gefechtsstationen.
+     Reihenfolge = Reihen in grafik/crew_sheet.png. */
   const ROLLEN = {
-    kaleu: { name: 'Kapitänleutnant', kurz: 'Kaleu', posten: 'sehrohr', anzahl: 1, wache: 0, farbe: '#f1ede2', offizier: true,
-      text: 'Kommandant. Verantwortlich für Auftrag und Sicherheit aller an Bord.' },
-    wo1: { name: '1. Wachoffizier', kurz: '1WO', posten: 'sehrohr', gefecht: 'torpedo', anzahl: 1, wache: 1, farbe: '#d8d2bf', offizier: true,
-      text: 'Vertritt den Kaleu, führt eine Wache und leitet den Torpedoangriff.' },
-    li: { name: 'Leitender Ingenieur', kurz: 'LI', posten: 'tiefenruder', anzahl: 1, wache: 0, farbe: '#c9b27a', offizier: true,
-      text: 'Leitet Maschinenraum und Tauchstation. Hält das Boot auf Tiefe.' },
-    nav: { name: 'Obersteuermann', kurz: 'NAV', posten: 'karte', anzahl: 1, wache: 1, farbe: '#9fb7c9', offizier: true,
-      text: 'Führt Karte und Kurs, kann das Ruder übernehmen.' },
-    brand: { name: 'Brandmeister', kurz: 'BM', posten: 'leckabwehr', anzahl: 2, wache: 0, farbe: '#c96a4a',
-      text: 'Führt die Leckabwehr. Repariert schneller als alle anderen.' },
-    funker: { name: 'Funker', kurz: 'Funker', posten: 'funk', anzahl: 3, wache: 0, farbe: '#7fae8a',
-      text: 'Sendet, empfängt und entschlüsselt Funksprüche. Ein Funker pro Wache.' },
-    logistik: { name: 'Logistik-Maat', kurz: 'Maat', posten: 'lager', anzahl: 1, wache: 3, farbe: '#b59a6a',
-      text: 'Verwaltet Ersatzteile, Material und Proviant. Bringt beim Handeln Rabatt.' },
-    maschinist: { name: 'Maschinist', kurz: 'Masch.', posten: ['diesel', 'emaschine'], anzahl: 14, wache: 0, farbe: '#8a8f96',
-      text: 'Diesel- und E-Maschinen-Personal. Fast ein Drittel der Besatzung.' },
-    tauch: { name: 'Tauchzellen-Gast', kurz: 'Tauch', posten: 'tauchzellen', anzahl: 3, wache: 0, farbe: '#6f9bb5',
-      text: 'Regelt an der Tauchstation Tiefe und Tauchgeschwindigkeit.' },
-    vertau: { name: 'Seemann', kurz: 'Seem.', posten: 'leckabwehr', anzahl: 4, wache: 1, farbe: '#8c7a5e',
-      text: 'Im Hafen an den Leinen, auf See Ausguck, Leckabwehr und überall, wo Hände fehlen.' },
+    kaleu: { name: 'Kommandant', kurz: 'Kdt.', posten: 'sehrohr', anzahl: 1, wache: 3, farbe: '#f1ede2', offizier: true,
+      text: 'Kapitänleutnant oder Oberleutnant zur See („der Alte“). Gesamtverantwortung, keine feste Wache, führt jeden getauchten Angriff selbst am Sehrohr.' },
+    wo1: { name: 'I. Wachoffizier', kurz: 'I. WO', posten: 'sehrohr', gefecht: 'torpedo', anzahl: 1, wache: 0, farbe: '#d8d2bf', offizier: true,
+      text: 'Stellvertreter des Kommandanten. 1. Brückenwache, Torpedowaffe und Vorhaltrechner, Schlüsselunterlagen.' },
+    wo2: { name: 'II. Wachoffizier', kurz: 'II. WO', posten: 'sehrohr', anzahl: 1, wache: 1, farbe: '#c8c2ae', offizier: true,
+      text: '2. Brückenwache, Geschützführer und Flak, Funkpersonal, entschlüsselt Offizierssprüche.' },
+    li: { name: 'Leitender Ingenieur', kurz: 'LI', posten: 'tiefenruder', anzahl: 1, wache: 3, farbe: '#c9b27a', offizier: true,
+      text: 'Tauchen, Einsteuern und Trimmen, gesamte Maschinenanlage, Leckabwehr. Station hinter den Tiefenrudergängern.' },
+    nav: { name: 'Obersteuermann', kurz: 'Ostm.', posten: 'sehrohr', gefecht: 'karte', anzahl: 1, wache: 2, farbe: '#9fb7c9',
+      text: 'Portepee-Unteroffizier, erfahrenster Seemann an Bord. Navigation, 3. Brückenwache, Proviant und Frischwasser.' },
+    bootsmann: { name: 'Bootsmann', kurz: 'Bootsm.', posten: 'leckabwehr', anzahl: 1, wache: 0, farbe: '#c96a4a',
+      text: '„Nummer Eins“. Seemännischer Dienst, Disziplin, Stauen von Proviant, leitet die Arbeit an Deck und die Leckabwehr.' },
+    diesel: { name: 'Dieselpersonal', kurz: 'Diesel', posten: 'diesel', anzahl: 10, wache: 0, farbe: '#8a8f96',
+      text: 'Diesel-Obermaschinist, Dieselmaate und Heizer. Betrieb und Pflege der beiden Diesel, Kompressoren und Kupplungen.' },
+    emasch: { name: 'E-Personal', kurz: 'E-Masch.', posten: 'emaschine', anzahl: 6, wache: 0, farbe: '#6f8fae',
+      text: 'E-Obermaschinist, E-Maate und E-Heizer. E-Maschinen, Fahrschalter, Batterien und Bordnetz.' },
+    tauch: { name: 'Zentralegast', kurz: 'Zentr.', posten: 'tauchzellen', anzahl: 3, wache: 0, farbe: '#6f9bb5',
+      text: 'Zentralemaat und Zentralegasten: Flut-, Entlüftungs- und Anblaseventile, Lenz- und Trimmpumpe, Regelzellen.' },
     ruder: { name: 'Rudergänger', kurz: 'Ruder', posten: 'ruder', anzahl: 3, wache: 0, farbe: '#a3b86c',
-      text: 'Steuert das Boot und hält den Kurs. Einer pro Wache.' },
-    soni: { name: 'Horchfunker', kurz: 'Soni', posten: 'horch', anzahl: 3, wache: 0, farbe: '#c2a0d0',
-      text: 'Hört Schiffe am Horchgerät und erkennt sie an ihren Geräuschen.' },
-    smutje: { name: 'Smutje', kurz: 'Smutje', posten: 'kombuese', anzahl: 1, wache: 3, farbe: '#e6e0d0',
-      text: 'Kocht. Ohne Smutje schmeckt das Essen schlechter und die Moral sinkt.' },
-    wo2: { name: '2. Wachoffizier', kurz: '2WO', posten: 'sehrohr', anzahl: 1, wache: 2, farbe: '#c8c2ae', offizier: true,
-      text: 'Führt die dritte Wache und vertritt den 1WO.' },
-    torpedo: { name: 'Torpedomechaniker', kurz: 'Torp.', posten: ['bugraum', 'heckrohr', 'bugraum', 'bugraum', 'bugraum'], anzahl: 5, wache: 0, farbe: '#b8833f',
-      text: 'Wartet die Torpedos und lädt im Bugraum nach.' },
+      text: 'Seitenruder am Rudergeber im Turm. Kursbefehle wiederholen und ausführen.' },
+    torpedo: { name: 'Torpedomixer', kurz: 'Mixer', posten: ['bugraum', 'heckrohr', 'bugraum', 'bugraum', 'bugraum'], anzahl: 5, wache: 0, farbe: '#b8833f',
+      text: 'Torpedomechaniker und Torpedogasten: Pflege, Einstellung und Laden der Aale, Rohre klarmachen.' },
+    funker: { name: 'Funker', kurz: 'Funker', posten: 'funk', anzahl: 3, wache: 0, farbe: '#7fae8a',
+      text: 'Funkmaat und Funkgefreiter: Funkempfang, Enigma, Sanitätsdienst. Getaucht auch Horcher.' },
+    soni: { name: 'Horcher', kurz: 'Horcher', posten: 'horch', anzahl: 3, wache: 0, farbe: '#c2a0d0',
+      text: 'Funker mit Horchausbildung am Gruppenhorchgerät (GHG). Getaucht die einzigen „Augen“ des Bootes.' },
+    seemann: { name: 'Seemann', kurz: 'Seem.', posten: ['tiefenruder', 'leckabwehr', 'tiefenruder', 'leckabwehr', 'tiefenruder', 'leckabwehr', 'ruder', 'leckabwehr', 'tiefenruder', 'leckabwehr'], anzahl: 10, wache: 0, farbe: '#8c7a5e',
+      text: 'Bootsmaate, Matrosengefreite, Matrosen: Ausguck, Tiefenruder, Rudergang, Geschütz und Flak, Leckabwehr.' },
+    smut: { name: 'Smut', kurz: 'Smut', posten: 'kombuese', anzahl: 1, wache: 3, farbe: '#e6e0d0',
+      text: 'Kocht für rund 50 Mann auf zwei Kochplatten, drei Mahlzeiten am Tag nach Wachen. Frischware zuerst, dann Konserven.' },
   };
   /* Der Admiral kommt erst mit Beobachter-Missionen an Bord (siehe README). */
 
@@ -112,24 +119,31 @@
     plan('SSSSSS FDDDDD FDDDDD DFFFSS'),
   ];
 
-  /* Typ VIIC: Prüftiefe 220 m, Zerstörungstiefe je nach Quelle 250–295 m. */
+  /* Tauchtiefen nach dem Handbuch (Kap. 4.1): Konstruktionstauchtiefe 100 m (dauerhaft zulässig),
+     Prüfungstauchtiefe 165 m (nur im Notfall), rechnerische Zerstörungstiefe 250 m (real oft etwas mehr). */
   const TIEFEN = [
     { id: 'oberflaeche', name: 'Oberfläche', m: 0 },
     { id: 'sehrohr', name: 'Sehrohrtiefe', m: 13 },
-    { id: 'schleich', name: 'Schleichtiefe', m: 80 },
-    { id: 'max', name: 'Prüftiefe', m: 220 },
+    { id: 'konstruktion', name: 'Konstruktionstiefe', m: 100 },
+    { id: 'pruef', name: 'Prüfungstiefe', m: 165 },
   ];
-  const ZERSTOERUNGSTIEFE = 260;
-  const MAX_SICHER = 220;
+  const KONSTRUKTIONSTIEFE = 100;
+  const MAX_SICHER = 165;
+  const ZERSTOERUNGSTIEFE = 250;
 
-  /* Typ VIIC: 17,7 kn aufgetaucht (2 × MAN-Diesel), 7,6 kn getaucht (2 × E-Maschine).
-     diesel = Liter pro Minute, strom = Batterie-% pro Minute (Volle Fahrt getaucht leert sie in gut einer Stunde). */
+  /* Maschinenkommandos (Kap. 5): Stopp – Schleichfahrt – Langsame – Halbe – Große Fahrt – Äußerste Kraft.
+     Leistung ~ v³: Treiböl so, dass 6.500 sm bei 12 kn reichen (≈ 4,2 L/min), Batterie so, dass 80 sm bei 4 kn reichen (20 h).
+     diesel = Liter pro Minute aufgetaucht, strom = Batterie-% pro Minute getaucht. */
+  function dieselVerbrauch(kn) { return 0.25 + 3.9 * Math.pow(kn / 12, 3); }
+  function stromVerbrauch(kn) { return 0.004 + 0.079 * Math.pow(kn / 4, 3) * (kn > 6 ? 1.4 : 1); }
   const FAHRT = [
-    { name: 'Stopp', ueber: 0, unter: 0, diesel: 0.3, strom: 0.004 },
-    { name: 'Kleine Fahrt', ueber: 5, unter: 2, diesel: 1, strom: 0.026 },
-    { name: 'Halbe Fahrt', ueber: 10, unter: 4, diesel: 2.7, strom: 0.083 },
-    { name: 'Volle Fahrt', ueber: 17.7, unter: 7.6, diesel: 12, strom: 1.4 },
-  ];
+    { name: 'Stopp', kurz: 'Stopp', ueber: 0, unter: 0 },
+    { name: 'Schleichfahrt', kurz: 'Schleich', ueber: 3, unter: 2, leise: true },
+    { name: 'Langsame Fahrt', kurz: 'Langsam', ueber: 6, unter: 3 },
+    { name: 'Halbe Fahrt', kurz: 'Halbe', ueber: 10, unter: 4 },
+    { name: 'Große Fahrt', kurz: 'Große', ueber: 14, unter: 6 },
+    { name: 'Äußerste Kraft', kurz: 'AK', ueber: 17.6, unter: 7.6 },
+  ].map((f) => ({ ...f, diesel: dieselVerbrauch(f.ueber), strom: stromVerbrauch(f.unter) }));
 
   /* Karte: 300 × 200 km, 1 Pixel = 1 km. */
   const WELT = { B: 300, H: 200, PLAN: 30 };
@@ -165,7 +179,7 @@
     torpedos: { max: 6, wo: 'Bugraum (unter den Bodenplatten)' },
     torpedosHeck: { max: 1, wo: 'Heckraum' },
     torpedosDeck: { max: 2, wo: 'Oberdeckbehälter' },
-    verpflegung: { max: 5000, wo: 'überall im Boot verstaut', waren: ['proviant', 'konserven'] },
+    verpflegung: { max: 9000, wo: 'in jedem freien Winkel verstaut', waren: ['proviant', 'konserven'] },
     ersatzteile: { max: 60, wo: 'Werkzeugkisten' },
     batteriezelle: { max: 4, wo: 'Batterieraum' },
     druckflasche: { max: 6, wo: 'Zentrale' },
@@ -178,7 +192,7 @@
     torpedosHeck: { name: 'Torpedo Heckraum', kat: 'waffen', bild: [0, 48], text: 'Reserve für das Heckrohr. Wird im Heckraum nachgeladen.' },
     torpedosDeck: { name: 'Oberdeckbehälter', kat: 'waffen', bild: [0, 48], text: 'Zwei Torpedos in druckfesten Behältern unter dem Oberdeck. Nur aufgetaucht bei ruhiger Fahrt ins Boot zu holen – das dauert zwei Stunden.', aktion: 'Ins Boot übernehmen' },
     diesel: { kat: 'treibstoff', bild: [48, 24], text: 'Treibstoff für die Fahrt an der Oberfläche. Die Diesel laden dabei auch die Batterie.' },
-    proviant: { kat: 'proviant', bild: [72, 24], text: 'Frisches Essen. Der Smutje kocht dreimal am Tag davon, so viele Rationen wie eingestellt.' },
+    proviant: { kat: 'proviant', bild: [72, 24], text: 'Frisches Essen. Der Smut kocht dreimal am Tag davon, so viele Rationen wie eingestellt.' },
     konserven: { kat: 'proviant', bild: [96, 24], text: 'Haltbar und verdirbt nicht im Wasser. Wird gegessen, wenn der frische Proviant aufgebraucht ist – macht etwas weniger satt und froh.' },
     ersatzteile: { kat: 'material', bild: [120, 24], text: 'Verbraucht die Leckabwehr beim Reparieren von Lecks und Rumpfschäden.' },
     batteriezelle: { kat: 'material', bild: [144, 24], text: 'Geladene Reservezelle. Einsetzen bringt sofort +30 % Batterie – auch getaucht.', aktion: 'Zelle einsetzen' },
@@ -207,7 +221,7 @@
     { id: 'rumpf', name: 'Rumpf', farbe: '#86a3a0', knoten: [
       { id: 'rumpf1', name: 'Rumpf I', bild: 0, preis: 2000, text: '−15 % Schaden und Lecks bei Treffern.', upgrade: ['rumpf', 1] },
       { id: 'rumpf2', name: 'Rumpf II', bild: 0, preis: 4000, text: 'Nochmals −15 % Schaden und Lecks.', upgrade: ['rumpf', 2] },
-      { id: 'tieftauchen', name: 'Tieftauchen', bild: 1, preis: 6000, text: 'Sichere Tiefe 150 → 170 m, Zerstörungstiefe 220 → 240 m.' }] },
+      { id: 'tieftauchen', name: 'Druckkörper C/41', bild: 1, preis: 6000, text: 'Verstärkter Druckkörper wie VII C/41: Konstruktionstiefe 120 m, Prüfungstiefe 200 m, Zerstörung 300 m.' }] },
     { id: 'leck', name: 'Leckabwehr', farbe: '#6aa8c8', knoten: [
       { id: 'pumpen1', name: 'Lenzpumpen I', bild: 2, preis: 1500, text: '+50 % Pumpleistung.', upgrade: ['pumpen', 1] },
       { id: 'pumpen2', name: 'Lenzpumpen II', bild: 2, preis: 3000, text: 'Nochmals +50 % Pumpleistung.', upgrade: ['pumpen', 2] },
@@ -262,7 +276,7 @@
 
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
-    ZERSTOERUNGSTIEFE, MAX_SICHER, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM,
+    ZERSTOERUNGSTIEFE, MAX_SICHER, KONSTRUKTIONSTIEFE, BATTERIERAEUME, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM,
     UPGRADES, SKILLTREE, INVENTAR, KATEGORIEN, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

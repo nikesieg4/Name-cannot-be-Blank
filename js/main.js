@@ -291,6 +291,7 @@
     if (k === '2') aktion('tempo', '2');
     if (k === '3') aktion('tempo', '4');
     if (k === 'i' || k === 'I') aktion('inventar');
+    if (k === 't' || k === 'T') aktion('alarmtauchen');
     if (k === 'u' || k === 'U') aktion('werftBaum');
     if (k === '+') zoomen(1);
     if (k === '-') zoomen(-1);
@@ -331,6 +332,7 @@
       case 'panel': document.body.classList.toggle('zeige-' + arg); break;
       case 'auswahlZu': auswahl.crew = null; auswahl.abteil = null; break;
       case 'zielWeg': st.ziel = null; break;
+      case 'alarmtauchen': fehler(S.sim.alarmtauchen(st)); break;
       case 'zielPlus': S.sim.setzeZielTiefe(st, st.boot.zielM + Number(arg)); break;
       case 'feuern': fehler(S.sim.feuern(st)); break;
       case 'anfunken': fehler(S.sim.anfunken(st)); break;

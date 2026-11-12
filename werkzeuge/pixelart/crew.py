@@ -3,22 +3,22 @@ plus Schlaf-Sprite je Rolle (28 x 12). Blickrichtung rechts, das Spiel spiegelt 
 from px import Can, dark
 from pal import P
 
-ROLLEN = [  # id, Name, Rollenfarbe, Kopf, Koerper, Haut, Haar
-    ('kaleu', 'Kapitänleutnant', '#f1ede2', 'kaleu', 'offizier', '#e2b08a', '#3a2a1c'),
-    ('wo1', '1. Wachoffizier', '#d8d2bf', 'schirm', 'offizier', '#c98f66', '#1e1a18'),
+ROLLEN = [  # id, Name, Rollenfarbe, Kopf, Koerper, Haut, Haar – Reihenfolge wie ROLLEN in js/daten.js
+    ('kaleu', 'Kommandant', '#f1ede2', 'kaleu', 'offizier', '#e2b08a', '#3a2a1c'),
+    ('wo1', 'I. Wachoffizier', '#d8d2bf', 'schirm', 'offizier', '#c98f66', '#1e1a18'),
+    ('wo2', 'II. Wachoffizier', '#c8c2ae', 'schirm', 'offizier', '#e2b08a', '#c9a35a'),
     ('li', 'Leitender Ingenieur', '#c9b27a', 'schirm', 'offizier', '#f0c8a8', '#7a5530'),
-    ('nav', 'Navigationsoffizier', '#9fb7c9', 'schirm', 'offizier', '#9b6a46', '#1e1a18'),
-    ('brand', 'Brandmeister', '#c96a4a', 'muetze', 'overall', '#e2b08a', '#8a3a22'),
-    ('funker', 'Funker-Obermaat', '#7fae8a', 'kopfhoerer', 'pullover', '#c98f66', '#3a2a1c'),
-    ('logistik', 'Logistik-Maat', '#b59a6a', 'muetze', 'pullover', '#f0c8a8', '#c9a35a'),
-    ('maschinist', 'Maschinist', '#8a8f96', 'muetze', 'overall', '#9b6a46', '#1e1a18'),
-    ('tauch', 'Tauchzellen-Gast', '#6f9bb5', 'muetze', 'pullover', '#e2b08a', '#7a5530'),
-    ('vertau', 'Vertäuungs-Gast', '#8c7a5e', 'muetze', 'pullover', '#c98f66', '#c9a35a'),
-    ('ruder', 'Rudergänger', '#a3b86c', 'muetze', 'pullover', '#f0c8a8', '#3a2a1c'),
-    ('soni', 'Horchfunker', '#c2a0d0', 'kopfhoerer', 'pullover', '#e2b08a', '#8a3a22'),
-    ('smutje', 'Smutje', '#e6e0d0', 'koch', 'schuerze', '#c98f66', '#7a5530'),
-    ('wo2', '2. Wachoffizier', '#c8c2ae', 'schirm', 'offizier', '#e2b08a', '#c9a35a'),
-    ('torpedo', 'Torpedomechaniker', '#b8833f', 'muetze', 'overall', '#c98f66', '#3a2a1c'),
+    ('nav', 'Obersteuermann', '#9fb7c9', 'schirm', 'pullover', '#9b6a46', '#1e1a18'),
+    ('bootsmann', 'Bootsmann', '#c96a4a', 'muetze', 'pullover', '#e2b08a', '#8a3a22'),
+    ('diesel', 'Dieselpersonal', '#8a8f96', 'muetze', 'overall', '#9b6a46', '#1e1a18'),
+    ('emasch', 'E-Personal', '#6f8fae', 'muetze', 'overall', '#f0c8a8', '#c9a35a'),
+    ('tauch', 'Zentralegast', '#6f9bb5', 'muetze', 'pullover', '#e2b08a', '#7a5530'),
+    ('ruder', 'Rudergaenger', '#a3b86c', 'muetze', 'pullover', '#f0c8a8', '#3a2a1c'),
+    ('torpedo', 'Torpedomixer', '#b8833f', 'muetze', 'overall', '#c98f66', '#3a2a1c'),
+    ('funker', 'Funker', '#7fae8a', 'kopfhoerer', 'pullover', '#c98f66', '#3a2a1c'),
+    ('soni', 'Horcher', '#c2a0d0', 'kopfhoerer', 'pullover', '#e2b08a', '#8a3a22'),
+    ('seemann', 'Seemann', '#8c7a5e', 'muetze', 'pullover', '#c98f66', '#c9a35a'),
+    ('smut', 'Smut', '#e6e0d0', 'koch', 'schuerze', '#c98f66', '#7a5530'),
 ]
 
 KOEPFE = {

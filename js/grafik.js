@@ -64,6 +64,7 @@
   }
 
   function koje(g, xf, o, vorhang) {
+    if (o === 2) { for (let k = -17; k < 18; k++) r(g, xf + k, 166 + Math.round(4 * (1 - (k / 17) * (k / 17))), 1, 2, FARBE.decken); return; }
     const y = o ? 184 : 208;
     r(g, xf - 18, y, 36, 3, FARBE.holzDunkel);
     r(g, xf - 18, y, 36, 1, FARBE.holz);
@@ -228,7 +229,7 @@
   /* Schlafplatz in Grafikpixeln: Koje (oben y 184, unten y 208) oder – bei Hot Bunking ohne freie Koje – der Boden. */
   function schlafPlatz(c) {
     const k = c.koje != null ? D.KOJEN[c.koje] : null;
-    return k ? { x: k.x, y: k.o ? 184 : 208 } : { x: c.x, y: 222 };
+    return k ? { x: k.x, y: k.o === 2 ? 170 : k.o ? 184 : 208 } : { x: c.x, y: 222 };
   }
 
   function figur(g, c, zeit) {
@@ -354,7 +355,7 @@
     const luecke = S.sim.grundTiefe(st) - b.tiefe;           // Meter zwischen Kiel und Grund
     const sichtGrund = Math.max(0, Math.min(1, (70 - luecke) / 50));
     if (sichtGrund > 0) {
-      const grundY = Math.round(t.ty + (MITTE_Y + 82 + luecke * PX_PRO_M) * t.z);
+      const grundY = Math.round(t.ty + (D.ANKER.kielY + luecke * PX_PRO_M) * t.z);
       if (grundY < H) {
         ctx.globalAlpha = sichtGrund;
         const boden = S.bilder.bild('umwelt_meeresboden');

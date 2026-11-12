@@ -130,8 +130,10 @@
     }
     return false;
   }
-  function maxSicher(st) { return D.MAX_SICHER + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
-  function zerstoerungstiefe(st) { return D.ZERSTOERUNGSTIEFE + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
+  /* Tauchtiefen VII C: 100 / 165 / 250 m – mit verstärktem Druckkörper wie VII C/41: 120 / 200 / 300 m */
+  function konstruktionstiefe(st) { return D.KONSTRUKTIONSTIEFE + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
+  function maxSicher(st) { return D.MAX_SICHER + (hatAusbau(st, 'tieftauchen') ? 35 : 0); }
+  function zerstoerungstiefe(st) { return D.ZERSTOERUNGSTIEFE + (hatAusbau(st, 'tieftauchen') ? 50 : 0); }
   function horchweite(st, eff) {
     if (eff.sonar <= 0) return 0;
     return (unterWasser(st) ? 18 : 6) * Math.min(1, eff.sonar) * (hatAusbau(st, 'horchweite') ? 1.25 : 1);
@@ -228,7 +230,8 @@
     D.KOJEN.forEach((k, i) => {
       if (belegt.has(i) || !erreichbar(st, c.x, k.x)) return;
       if (k.off && !off) return;
-      const d = Math.abs(k.x - c.x) + (off && k.off ? -1000 : 0) + (c.rolle === 'kaleu' && k.vorhang ? -500 : 0);
+      if (k.kdt && c.rolle !== 'kaleu') return;   // Kommandantenkoje hinter dem Vorhang
+      const d = Math.abs(k.x - c.x) + (off && k.off ? -1000 : 0) + (c.rolle === 'kaleu' && k.kdt ? -2000 : 0);
       if (d < bd) { bd = d; best = i; }
     });
     return best;
@@ -247,7 +250,7 @@
   function trockenesZiel(st, c) {
     let best = null, bd = 1e9;
     st.boot.abteile.forEach((a, i) => {
-      if (a.wasser < 0.35 && erreichbar(st, c.x, mitte(i))) {
+      if (a.wasser < 0.35 && !a.chlor && erreichbar(st, c.x, mitte(i))) {
         const d = Math.abs(mitte(i) - c.x);
         if (d < bd) { bd = d; best = mitte(i); }
       }
@@ -271,11 +274,11 @@
       const schwer = gesamt > 25;
       const groesse = gesamt > 70 ? 4 : schwer ? 3 : 1;
       // Wer Leckabwehr-Dienst hat, ist immer dabei. Dazu kommen Helfer bis zur nötigen Truppgröße:
-      // erst Wache, die frei hat (Leckabwehr-Leute, Brandmeister und Seeleute zuerst), bei schweren Schäden auch Schlafende.
+      // erst Wache, die frei hat (Leckabwehr-Leute, Bootsmann und Seeleute zuerst), bei schweren Schäden auch Schlafende.
       const imDienst = (c) => st.alarm || st.schichten[c.schicht][h] === 'D';
       const trupp = st.crew.filter((c) => !c.tot && c.posten === 'leckabwehr' && imDienst(c) && c.taetigkeit !== 'schlaf' && c.befehl == null && st.gesteuert !== c.id);
       const z0 = mitte(schaeden[0].i);
-      const rang = (c) => (c.taetigkeit === 'schlaf' ? 2 : 0) + (c.posten === 'leckabwehr' || c.rolle === 'brand' || c.rolle === 'vertau' ? 0 : 1);
+      const rang = (c) => (c.taetigkeit === 'schlaf' ? 2 : 0) + (c.posten === 'leckabwehr' || c.rolle === 'bootsmann' || c.rolle === 'seemann' ? 0 : 1);
       const kandidaten = st.crew.filter((c) => !trupp.includes(c) && frei(c, schwer))
         .sort((a, c) => (c.taetigkeit === 'reparatur') - (a.taetigkeit === 'reparatur') || rang(a) - rang(c) || Math.abs(a.x - z0) - Math.abs(c.x - z0));
       while (trupp.length < groesse && kandidaten.length) trupp.push(kandidaten.shift());
@@ -348,7 +351,7 @@
     // Selbstschutz: nicht in geflutete Abteile, aus vollaufenden Abteilen fliehen.
     const hier = st.boot.abteile[abteilIndex(c.x)];
     const dort = st.boot.abteile[abteilIndex(z.x)];
-    if (hier.wasser > 0.55 || dort.wasser > 0.6) {
+    if (hier.wasser > 0.55 || dort.wasser > 0.6 || hier.chlor || dort.chlor) {
       const t = trockenesZiel(st, c);
       if (t != null) z = { x: t, art: 'flucht' };
     }
@@ -426,7 +429,8 @@
       let dm = 0;
       if (st.ladung.proviant <= 0 && st.ladung.konserven <= 0) dm -= 3;
       else dm += ({ 1: -1.2, 2: -0.4, 3: 0.15, 4: 0.5 })[st.ration] - (st.ladung.proviant <= 0 ? 0.3 : 0);
-      if (!lebtRolle(st, 'smutje')) dm -= 0.4;
+      if (!lebtRolle(st, 'smut')) dm -= 0.4;
+      if (st.boot.luft != null && st.boot.luft < 40) dm -= st.boot.luft < 20 ? 4 : 1;
       if (c.wach > 26) dm -= 4; else if (c.wach > 19) dm -= 1.5;
       if (st.boot.tiefe > sichereTiefe(st)) dm -= 2;
       if (flutung(st) > 0.05) dm -= 1;
@@ -490,7 +494,7 @@
       const i = abteilIndex(c.x);
       const a = b.abteile[i];
       if (a.rumpf >= 100 || a.wasser > 0.6) continue;
-      let rate = 0.8 * crewFaktor(c) * (c.rolle === 'brand' ? 1.5 : c.rolle === 'vertau' ? 1.2 : 1);
+      let rate = 0.8 * crewFaktor(c) * (c.rolle === 'bootsmann' ? 1.5 : c.rolle === 'diesel' || c.rolle === 'emasch' ? 1.3 : c.rolle === 'seemann' ? 1.2 : 1);
       if (st.ladung.ersatzteile <= 0) { if (a.rumpf >= 60) continue; rate *= 0.2; }
       a.rumpf = Math.min(100, a.rumpf + rate * dt);
       if (st.ladung.ersatzteile > 0) {
@@ -507,12 +511,20 @@
     const ziel = b.zielM;
     let rate = 0;
     if (eff.tauchen > 0) {
-      const max = 5 * eff.tauchen;
+      // normal etwa 10 m pro Minute; beim Alarmtauchen schneidet der Turm in rund 30 s unter (≈ 30 m/min)
+      const max = (b.alarmtauchen ? 30 : 10) * Math.min(1.2, eff.tauchen);
       rate = klemme((ziel - b.tiefe) / Math.max(dt, 0.001), -max, max);
     }
+    if (b.alarmtauchen && b.tiefe >= Math.min(ziel, 20) - 0.5) {
+      b.alarmtauchen = false;
+      log(st, 'LI: „Boot ist eingesteuert.“', 'info');
+    }
+    // Gewicht durch Wasser im Boot. Ein gefluteter Endraum ist noch tragbar, Fahrt hilft mit den Tiefenrudern.
     const fl = flutung(st);
-    let sinken = fl > 0.12 ? (fl - 0.12) * 45 : 0;
-    if (b.anblasen > 0) { rate = -14; sinken *= 0.3; b.anblasen = Math.max(0, b.anblasen - dt); }
+    const dynamisch = (sim.knoten || 0) * 0.04;
+    let sinken = fl > 0.12 + dynamisch ? (fl - 0.12 - dynamisch) * 45 : 0;
+    if (b.tiefe < 1 && fl < 0.26) sinken = 0;   // aufgetaucht trägt der Reserveauftrieb einen Endraum
+    if (b.anblasen > 0) { rate = -20; sinken *= 0.3; b.anblasen = Math.max(0, b.anblasen - dt); }
     const vorher = b.tiefe;
     b.tiefe = Math.max(0, b.tiefe + (rate + sinken) * dt);
     // Meeresgrund: tiefer geht es nicht – das Boot setzt auf
@@ -524,7 +536,7 @@
         const bug = b.abteile[abteilNachId('bug')];
         bug.rumpf = Math.max(0, bug.rumpf - Math.min(25, 3 + (sim.knoten || 0) * 2));
         log(st, 'Das Boot rammt den ansteigenden Grund! Bugraum beschädigt.', 'alarm');
-      } else if (!b.aufGrund && aufprall > 6) {
+      } else if (!b.aufGrund && aufprall > 12) {
         b.abteile[0].rumpf = Math.max(0, b.abteile[0].rumpf - aufprall);
         log(st, 'Hart auf Grund gesetzt! Heckraum beschädigt.', 'alarm');
       }
@@ -540,16 +552,39 @@
     if (vorher <= 4 && b.tiefe > 4) log(st, 'Boot ist getaucht.', 'info');
     if (vorher > 4 && b.tiefe <= 4) log(st, 'Boot ist aufgetaucht.', 'info');
 
-    // Druck
-    const sicher = sichereTiefe(st);
+    // Druck (Kap. 4): bis zur Konstruktionstiefe dauerhaft zulässig, bis zur Prüfungstiefe nur im Notfall,
+    // darüber hinaus beult der Druckkörper; rechnerische Zerstörungstiefe, real hielten Boote oft etwas mehr.
+    const sicher = sichereTiefe(st), zt = zerstoerungstiefe(st);
+    if (b.tiefe > konstruktionstiefe(st) && b.tiefe <= sicher) {
+      if (!sim._knarren) { log(st, 'LI: „Wir sind unter Konstruktionstiefe. Der Druckkörper knackt.“', 'warn'); sim._knarren = true; }
+      for (const c of lebende(st)) c.moral = Math.max(0, c.moral - 0.5 * dt / 60);
+    } else if (b.tiefe <= konstruktionstiefe(st)) sim._knarren = false;
     if (b.tiefe > sicher) {
-      const x = (b.tiefe - sicher) / Math.max(1, zerstoerungstiefe(st) - sicher);
+      const x = (b.tiefe - sicher) / Math.max(1, zt - sicher);
       b.abteile.forEach((a) => { a.rumpf = Math.max(0, a.rumpf - 0.6 * x * dt); });
-      if (!sim._druckWarnung) { log(st, 'Der Rumpf ächzt unter dem Druck! Sofort höher gehen!', 'alarm'); sim._druckWarnung = true; }
-      if (Math.random() < 0.25 * x * x * x * dt) return verlieren(st, 'Der Rumpf hat dem Druck nicht standgehalten. Das Boot ist in ' + Math.round(b.tiefe) + ' m implodiert.');
+      if (!sim._druckWarnung) { log(st, 'Unter Prüfungstiefe! Der Rumpf ächzt, Nieten springen. Sofort höher gehen!', 'alarm'); sim._druckWarnung = true; }
+      if (Math.random() < 0.25 * x * x * x * dt) return verlieren(st, 'Der Druckkörper hat nicht standgehalten. Das Boot ist in ' + Math.round(b.tiefe) + ' m implodiert.');
     } else sim._druckWarnung = false;
-    if (b.tiefe >= zerstoerungstiefe(st)) return verlieren(st, 'Das Boot hat die Zerstörungstiefe erreicht und ist implodiert.');
-    if (fl >= 0.7) return verlieren(st, 'Das Boot ist vollgelaufen und gesunken.');
+    if (b.tiefe >= zt + 30) return verlieren(st, 'Das Boot ist weit unter der Zerstörungstiefe implodiert.');
+    // Zwei geflutete Räume trägt das Boot nicht mehr (Lehrsatz Kap. 2)
+    if (fl >= 0.3) return verlieren(st, 'Das Boot ist vollgelaufen und gesunken.');
+
+    // Atemluft (Kap. 4.7): 72 h für 37 Mann mit Sauerstoff und Kalipatronen, aufgetaucht wird gelüftet
+    if (b.luft == null) b.luft = 100;
+    const mann = Math.max(1, lebende(st).length);
+    if (unterWasser(st)) b.luft = Math.max(0, b.luft - 100 / (72 * 60 * 37 / mann) * dt);
+    else b.luft = Math.min(100, b.luft + 6 * dt);
+    if (b.luft < 40 && !sim._luftWarnung) { sim._luftWarnung = true; log(st, 'Die Luft wird schlecht: Kopfschmerzen und Atemnot. Bald auftauchen und lüften!', 'warn'); }
+    if (b.luft >= 50) sim._luftWarnung = false;
+    if (b.luft <= 0) return verlieren(st, 'Die Luft im Boot ist verbraucht. Die Besatzung ist erstickt.');
+
+    // Chlorgas (Kap. 5): Seewasser in den Batteriezellen unter Offiziers- und Unteroffiziersraum
+    for (const id of D.BATTERIERAEUME) {
+      const i = abteilNachId(id), a = b.abteile[i];
+      if (a.wasser > 0.2 && !a.chlor) { a.chlor = true; log(st, 'Chlorgas ' + D.ABTEILE[i].ort + '! Seewasser in der Batterie – Abteilung räumen!', 'alarm'); }
+      if (a.chlor && a.wasser < 0.05) { a.chlor = false; log(st, 'Das Chlorgas ' + D.ABTEILE[i].ort + ' hat sich verzogen.', 'info'); }
+      if (a.chlor) b.batterie = Math.max(0, b.batterie - 0.3 * dt);
+    }
     return null;
   }
 
@@ -562,7 +597,8 @@
       if (st.ladung.diesel > 0 && eff.antrieb > 0) {
         kn = f.ueber * (0.6 + 0.4 * Math.min(1, eff.antrieb));
         st.ladung.diesel = Math.max(0, st.ladung.diesel - f.diesel * dt * (hatAusbau(st, 'diesel') ? 0.8 : 1));
-        b.batterie = Math.min(100, b.batterie + 0.15 * dt);
+        // Laden mit Fahrt bzw. im Stand (Diesel treibt nur den Generator)
+        b.batterie = Math.min(100, b.batterie + (b.fahrt === 0 ? 0.3 : 0.15) * dt);
       } else if (b.batterie > 0 && eff.antrieb > 0) {
         kn = f.unter * (0.6 + 0.4 * Math.min(1, eff.antrieb));
         b.batterie = Math.max(0, b.batterie - f.strom * dt / (1 + 0.33 * b.upgrades.batterie));
@@ -881,7 +917,7 @@
     // Torpedo aus dem Oberdeckbehälter übernehmen: nur aufgetaucht und höchstens Kleine Fahrt
     const u = b.deckUebernahme;
     if (u) {
-      if (b.tiefe > 0.5 || b.fahrt > 1) { if (!u.pause) log(st, 'Übernahme aus dem Oberdeckbehälter unterbrochen – nur aufgetaucht bei Kleiner Fahrt möglich.', 'warn'); u.pause = true; }
+      if (b.tiefe > 0.5 || b.fahrt > 2) { if (!u.pause) log(st, 'Übernahme aus dem Oberdeckbehälter unterbrochen – nur aufgetaucht bei Langsamer Fahrt möglich.', 'warn'); u.pause = true; }
       else {
         u.pause = false; u.rest -= dt;
         if (u.rest <= 0) {
@@ -1065,7 +1101,7 @@
         const frisch = Math.min(bedarf, st.ladung.proviant);
         st.ladung.proviant -= frisch;
         if (bedarf > frisch) {
-          if (st.ladung.konserven > 0 && st.ladung.proviant <= 0 && frisch === 0) log(st, 'Frischer Proviant ist alle – der Smutje öffnet Konserven.', 'warn');
+          if (st.ladung.konserven > 0 && st.ladung.proviant <= 0 && frisch === 0) log(st, 'Frischer Proviant ist alle – der Smut öffnet Konserven.', 'warn');
           st.ladung.konserven = Math.max(0, st.ladung.konserven - (bedarf - frisch));
         }
         if (st.ladung.proviant + st.ladung.konserven < n * 3) log(st, 'Der Proviant geht zur Neige.', 'warn');
@@ -1074,6 +1110,12 @@
     if (st.boot.abteile[abteilNachId('uraum')].wasser > 0.5 && st.ladung.proviant > 0) {
       st.ladung.proviant = Math.floor(st.ladung.proviant * 0.97);
       log(st, 'Wasser im Laderaum verdirbt Proviant.', 'warn');
+    }
+    // Frischware (Brot, Obst, Fleisch) verdirbt mit der Zeit, Konserven halten
+    if (h === 0 && st.ladung.proviant > 0) {
+      const weg = Math.ceil(st.ladung.proviant * 0.02);
+      st.ladung.proviant -= weg;
+      if (weg >= 20) log(st, 'Smut: ' + weg + ' Rationen Frischware sind verdorben.', 'info');
     }
     if (h === 8 && hatAusbau(st, 'kaffee')) for (const c of lebende(st)) c.moral = Math.min(100, c.moral + 2);
     if (st.ladung.diesel <= 0 && !unterWasser(st)) log(st, 'Kein Diesel mehr! Nur noch Batteriebetrieb.', 'warn');
@@ -1117,6 +1159,18 @@
 
   /* ---------------- Befehle ---------------- */
   sim.setzeTiefe = function (st, i) { st.boot.zielTiefe = i; st.boot.zielM = D.TIEFEN[i].m; log(st, 'Befehl: ' + D.TIEFEN[i].name + ' (' + D.TIEFEN[i].m + ' m).', 'info'); };
+  /* Alarmtauchen (Kap. 3): Diesel aus, E-Maschinen Große Fahrt, Fluten – Turm schneidet in rund 30 s unter. */
+  sim.alarmtauchen = function (st) {
+    const b = st.boot;
+    if (sim.eff.tauchen <= 0) return 'Niemand an Tiefenruder und Flutventilen!';
+    b.alarmtauchen = true;
+    b.zielM = Math.max(b.zielM, 40); b.zielTiefe = D.TIEFEN.findIndex((t) => t.m === b.zielM);
+    if (b.fahrt < 4) b.fahrt = 4;
+    st.alarm = true;
+    log(st, 'Alaaarm! Fluten! – Diesel aus, E-Maschinen große Fahrt voraus, Turmluk ist dicht.', 'alarm');
+    return null;
+  };
+
   /* Zieltiefe in Metern frei wählen (Zeiger am Tiefenmesser oder Eingabe), bis kurz vor die Zerstörungstiefe */
   sim.setzeZielTiefe = function (st, m, still) {
     const b = st.boot;
@@ -1160,7 +1214,7 @@
     return null;
   };
 
-  function rabatt(st) { return lebtRolle(st, 'logistik') ? 0.9 : 1; }
+  function rabatt() { return 1; }
   sim.kaufpreis = function (st, ort, ware) {
     const p = ort.preise[ware];
     return p == null ? null : Math.ceil(p * D.WAREN[ware].paket * rabatt(st));
@@ -1237,7 +1291,7 @@
     if (ware === 'torpedosDeck') {
       if (b.deckUebernahme) return 'Die Übernahme läuft schon.';
       if (b.tiefe > 0.5) return 'Nur aufgetaucht möglich.';
-      if (b.fahrt > 1) return 'Erst auf Kleine Fahrt oder Stopp gehen.';
+      if (b.fahrt > 2) return 'Erst auf Langsame Fahrt oder Stopp gehen.';
       if (st.ladung.torpedos >= kapazitaet(st, 'torpedos') && st.ladung.torpedosHeck >= 1) return 'Im Boot ist kein Platz für einen weiteren Torpedo.';
       b.deckUebernahme = { rest: 120, pause: false };
       log(st, 'Die Seeleute öffnen den Oberdeckbehälter und holen einen Torpedo ins Boot (2 Stunden).', 'info');
@@ -1300,7 +1354,7 @@
 
   Object.assign(sim, {
     abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
-    hatAusbau, maxSicher, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
+    hatAusbau, maxSicher, konstruktionstiefe, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
     lagerVon, kapazitaet, bestand, platz, torpedosGesamt, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });
   S.sim = sim;
