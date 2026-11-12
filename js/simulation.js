@@ -784,14 +784,45 @@
     return null;
   };
 
+  /* Der Stützpunkt ruft von selbst: neuer Auftrag oder Feindmeldung. Der Spruch läuft 40 Minuten und muss
+     am Funkgerät auf der richtigen Frequenz aufgefangen werden – getaucht nur bis Sehrohrtiefe. */
+  function funkRuf(st) {
+    const f = st.funk;
+    let m;
+    if (st.missionen.filter((x) => x.status === 'aktiv').length < 3 && Math.random() < 0.6) m = neueMission(st);
+    else {
+      const fr = neuesSchiff(st, 'frachter');
+      m = { id: st.naechsteId++, typ: 'meldung', status: 'info', schiff: fr.id, belohnung: 0, titel: 'Feindmeldung',
+        text: 'Feindlicher Frachter in Planquadrat ' + planquadrat(fr) + ' gesichtet, Kurs ' + planquadrat(fr.ziel) + '. Angriff freigegeben.' };
+    }
+    const n = { id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false, ruf: true, empfangen: false };
+    funkFelder(st, n);
+    f.nachrichten.unshift(n);
+    if (f.nachrichten.length > 8) f.nachrichten.length = 8;
+    f.ruf = { id: n.id, bis: st.zeit + 40 };
+    log(st, 'Funkruf vom Stützpunkt! Der Spruch läuft 40 Minuten.' + (antenneFrei(st) ? '' : ' Auf Sehrohrtiefe gehen, sonst geht er verloren!'), 'warn');
+  }
+
   function funkSchritt(st, dt, eff) {
     const f = st.funk;
+    if (f.naechsterRuf == null) f.naechsterRuf = st.zeit + 120 + Math.random() * 240;
+    if (!f.ruf && st.zeit >= f.naechsterRuf) funkRuf(st);
+    if (f.ruf) {
+      const n = f.nachrichten.find((x) => x.id === f.ruf.id);
+      if (!n || n.empfangen) f.ruf = null;
+      else if (st.zeit > f.ruf.bis) {
+        f.nachrichten.splice(f.nachrichten.indexOf(n), 1);
+        f.ruf = null;
+        f.naechsterRuf = st.zeit + 120 + Math.random() * 120;
+        log(st, 'Funkspruch des Stützpunkts verpasst. Er wird in einigen Stunden wiederholt.', 'alarm');
+      }
+    }
     if (f.anfrage && antenneFrei(st) && eff.funk > 0) {
       f.anfrage.rest -= dt * eff.funk;
       if (f.anfrage.rest <= 0) {
         f.anfrage = null;
         const m = neueMission(st);
-        f.nachrichten.unshift({ id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false });
+        f.nachrichten.unshift({ id: st.naechsteId++, zeit: st.zeit, mission: m, fortschritt: 0, fertig: false, empfangen: false });
         funkFelder(st, f.nachrichten[0]);
         if (f.nachrichten.length > 8) f.nachrichten.length = 8;
         log(st, 'Verschlüsselter Funkspruch vom Stützpunkt empfangen. Am Funkgerät entschlüsseln.', 'info');
@@ -800,7 +831,7 @@
     for (const n of f.nachrichten) {
       funkFelder(st, n);
       // Ohne Minispiel: der Funker entschlüsselt selbst, aber dreimal langsamer.
-      if (n.fertig || !n.auto || eff.funk <= 0) continue;
+      if (n.fertig || !n.auto || !n.empfangen || eff.funk <= 0) continue;
       n.fortschritt = Math.min(1, n.fortschritt + eff.funk * dt / 45);
       if (n.fortschritt >= 1) nachrichtFertig(st, n);
     }
@@ -809,6 +840,13 @@
   function nachrichtFertig(st, n) {
     if (n.fertig) return;
     n.fertig = true; n.fortschritt = 1;
+    if (n.mission.typ === 'meldung') {
+      const s = st.schiffe.find((x) => x.id === n.mission.schiff && !x.versenkt);
+      if (s) s.gemeldet = { x: s.x, y: s.y };
+      log(st, 'Feindmeldung entschlüsselt: ' + n.mission.text + ' Auf der Karte markiert.', 'gut');
+      for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
+      return;
+    }
     st.missionen.push(n.mission);
     for (const c of st.crew) if (!c.tot && c.aktPosten === 'funk') c.xp += 2;
     log(st, 'Neuer Auftrag: ' + n.mission.titel + '. ' + n.mission.text, 'gut');
@@ -819,14 +857,17 @@
     if (n.spruch) return;
     const m = n.mission;
     const fr = m.typ === 'versenken' ? st.schiffe.find((x) => x.id === m.schiff) : null;
-    n.spruch = m.typ === 'versenken' ? 'FRACHTER ' + (fr ? planquadrat(fr) : 'X') : 'PATROUILLE ' + planquadrat(m.ziel);
+    const sch = m.typ === 'meldung' ? st.schiffe.find((x) => x.id === m.schiff) : null;
+    n.spruch = m.typ === 'versenken' ? 'FRACHTER ' + (fr ? planquadrat(fr) : 'X') : m.typ === 'meldung' ? 'FEIND ' + (sch ? planquadrat(sch) : 'X') : 'PATROUILLE ' + planquadrat(m.ziel);
+    if (n.empfangen === undefined) n.empfangen = false;
     const F = D.FUNK;
     n.freq = F.basisVon + 10 * Math.round(Math.random() * (F.basisBis - F.basisVon) / 10);
     do { n.f = F.min + 10 * Math.round(Math.random() * (F.max - F.min) / 10); } while (Math.abs(n.f - n.freq) < 400);
     n.eingabe = '';
   }
 
-  sim.funkSignal = function (n) {
+  sim.funkSignal = function (n, st) {
+    if (st && !n.empfangen && !antenneFrei(st)) return 'rauschen';
     const d = Math.abs(n.f - n.freq);
     return d === 0 ? 'klar' : d <= D.FUNK.schwach ? 'schwach' : 'rauschen';
   };
@@ -836,6 +877,11 @@
     if (!n || n.fertig) return null;
     if (sim.eff.funk <= 0) return 'Niemand sitzt am Funkgerät.';
     n.f = klemme(n.f + delta, D.FUNK.min, D.FUNK.max);
+    if (!n.empfangen && sim.funkSignal(n, st) === 'klar') {
+      n.empfangen = true;
+      if (st.funk.ruf && st.funk.ruf.id === n.id) { st.funk.ruf = null; st.funk.naechsterRuf = st.zeit + 300 + Math.random() * 360; }
+      log(st, 'Funkspruch aufgefangen. Jetzt entschlüsseln.', 'gut');
+    }
     return null;
   };
   sim.funkTaste = function (st, id, z) {
@@ -849,7 +895,11 @@
   };
   sim.funkAuto = function (st, id) {
     const n = sim.funkNachricht(st, id);
-    if (n && !n.fertig) { n.auto = true; log(st, 'Der Funker entschlüsselt den Spruch selbst. Das dauert.', 'info'); }
+    if (n && !n.fertig) {
+      if (!n.empfangen) return 'Erst den Spruch auf der richtigen Frequenz auffangen.';
+      n.auto = true; log(st, 'Der Funker entschlüsselt den Spruch selbst. Das dauert.', 'info');
+    }
+    return null;
   };
 
   function missionErfuellt(st, m) {

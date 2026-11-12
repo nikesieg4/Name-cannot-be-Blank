@@ -169,6 +169,15 @@
       if (st.ziel === s.id) kreis(ctx, p.x, p.y, 9 * dpr, '#ff6a4a');
     }
 
+    // Feindmeldungen vom Stützpunkt: letzte gemeldete Position
+    for (const s of st.schiffe) {
+      if (!s.gemeldet || s.versenkt || s.entdeckt !== 'nein') continue;
+      const p = P(s.gemeldet);
+      if (symbole) symbol(7, p); else kreis(ctx, p.x, p.y, 5 * dpr, '#efd086');
+      ctx.fillStyle = '#efd086'; ctx.textAlign = 'center';
+      ctx.fillText('Feindmeldung', p.x, p.y - (symbole ? sg / 2 + 3 * dpr : 7 * dpr));
+    }
+
     // Torpedos
     ctx.fillStyle = '#ffffff';
     for (const t of st.torpedos) { const p = P(t); ctx.fillRect(Math.round(p.x - dpr), Math.round(p.y - dpr), Math.round(2 * dpr), Math.round(2 * dpr)); }

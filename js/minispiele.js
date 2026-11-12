@@ -25,7 +25,12 @@
     const n = S.sim.funkNachricht(st, id);
     if (!n) { offen = null; S.ui.schliesse(); return; }
     offen = { art: 'funk', id };
-    const sig = S.sim.funkSignal(n);
+    if (!n.empfangen && S.sim.funkSignal(n, st) === 'klar') S.sim.funkStellen(st, id, 0);
+    const echt = S.sim.funkSignal(n, st);
+    // Ein aufgefangener Spruch steht auf dem Block – er bleibt lesbar, auch wenn man weiterdreht.
+    const sig = n.empfangen ? 'klar' : echt;
+    const antenne = S.sim.antenneFrei(st);
+    const ruf = st.funk.ruf && st.funk.ruf.id === n.id ? st.funk.ruf : null;
     // Morse-Lehrgang: Der Funker schreibt die ersten 3 Zeichen mit, sobald das Signal klar ist.
     if (sig === 'klar' && !n.fertig && S.sim.hatAusbau(st, 'morse') && n.eingabe.length < 3) {
       const kt = n.spruch.replace(/ /g, '');
@@ -41,8 +46,8 @@
     h += '<div class="funk">';
     // Empfänger
     h += '<div class="empfaenger">';
-    h += '<div class="zeile"><span class="etikett">KURZWELLE · EMPFÄNGER E-52</span><span class="lampe ' + sig + '">' +
-      (sig === 'klar' ? 'Signal klar' : sig === 'schwach' ? 'Signal schwach' : 'Rauschen') + '</span></div>';
+    h += '<div class="zeile"><span class="etikett">KURZWELLE · EMPFÄNGER E-52</span><span class="lampe ' + echt + '">' +
+      (echt === 'klar' ? 'Signal klar' : echt === 'schwach' ? 'Signal schwach' : 'Rauschen') + '</span></div>';
     h += '<div class="anzeige">' + String(n.f).replace(/^(\d)/, '$1 ') + ' <small>kHz</small></div>';
     h += '<div class="skala">';
     for (let i = 0; i <= 50; i++) h += '<i style="left:' + (i * 2) + '%;height:' + (i % 10 === 0 ? 12 : i % 5 === 0 ? 8 : 4) + 'px"></i>';
@@ -55,10 +60,13 @@
     for (let i = 0; i < 16; i++) h += '<i class="' + (i < stufe ? (i > 12 ? 'h3' : i > 8 ? 'h2' : 'h1') : '') + '" style="height:' + (20 + i * 5) + '%"></i>';
     h += '</div>';
     const text = !besetzt ? 'Niemand sitzt am Funkgerät. Schick jemanden hin, sonst lässt sich nichts einstellen.'
-      : sig === 'klar' ? 'Funker: „Ich hab ihn, Herr Kaleu. Der Stützpunkt sendet.“'
-        : sig === 'schwach' ? 'Funker: „Da ist was. Noch ein Stück weiter drehen.“'
-          : 'Funker: „Nur Rauschen. Der Stützpunkt sendet zwischen 6 und 7 MHz.“';
+      : !n.empfangen && !antenne ? 'Funker: „Antenne unter Wasser, Herr Kaleu. Wir müssen auf Sehrohrtiefe.“'
+        : n.empfangen ? 'Funker: „Spruch ist auf dem Block. Jetzt entschlüsseln.“'
+          : echt === 'klar' ? 'Funker: „Ich hab ihn, Herr Kaleu. Der Stützpunkt sendet.“'
+            : echt === 'schwach' ? 'Funker: „Da ist was. Noch ein Stück weiter drehen.“'
+              : 'Funker: „Nur Rauschen. Der Stützpunkt sendet zwischen 6 und 7 MHz.“';
     h += '<p class="funker">' + text + '</p>';
+    if (ruf) h += '<p class="warnung">Der Stützpunkt sendet noch ' + Math.max(0, Math.ceil(ruf.bis - st.zeit)) + ' Minuten.</p>';
     h += '</div>';
 
     // Morse
@@ -120,6 +128,19 @@
       }
       osc.start(t0); osc.stop(t + 0.1);
     } catch (err) { /* ohne Ton weiterspielen */ }
+  }
+
+  /* Kurzes „Dit-dit-dit“, wenn der Stützpunkt ruft */
+  function piep() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audio.createOscillator(), gain = audio.createGain();
+      osc.frequency.value = 700; gain.gain.value = 0;
+      osc.connect(gain); gain.connect(audio.destination);
+      let t = audio.currentTime + 0.05;
+      for (let i = 0; i < 3; i++) { gain.gain.setValueAtTime(0.12, t); gain.gain.setValueAtTime(0, t + 0.08); t += 0.16; }
+      osc.start(); osc.stop(t + 0.05);
+    } catch (err) { /* ohne Ton */ }
   }
 
   /* ---------------- Horchraum ---------------- */
@@ -254,7 +275,7 @@
         return true;
       }
       case 'funkAuto':
-        if (offen) { S.sim.funkAuto(st, offen.id); funkgeraet(st, offen.id); }
+        if (offen) { const f = S.sim.funkAuto(st, offen.id); if (f) S.sim.log(st, f, 'warn'); funkgeraet(st, offen.id); }
         return true;
       case 'horch': horchraum(st, Number(arg)); return true;
       case 'horchWahl':
@@ -278,5 +299,5 @@
 
   function geschlossen() { offen = null; }
 
-  S.minispiele = { aktion, taste, liste, geschlossen, funkgeraet, horchraum };
+  S.minispiele = { piep, aktion, taste, liste, geschlossen, funkgeraet, horchraum };
 })(window.Spiel = window.Spiel || {});

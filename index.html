@@ -23,19 +23,26 @@
       <button data-aktion="tempo" data-arg="4" title="Vierfach (4)">4×</button>
     </div>
     <button id="btnAlarm" data-aktion="alarm" title="Alle auf Gefechtsstation – niemand schläft">Gefechtsstationen</button>
-    <div class="gruppe rechts">
-      <button data-aktion="inventar" title="Laderaum und Inventar (I)">Laderaum</button>
+    <div class="gruppe rechts" id="panelKnoepfe">
+      <button data-aktion="panel" data-arg="karte" title="Seekarte (M)">Karte</button>
+      <button data-aktion="panel" data-arg="links" title="Besatzung und Status (C)">Besatzung</button>
+      <button data-aktion="panel" data-arg="rechts" title="Kommando: Tiefe, Fahrt, Torpedos, Funk, Aufträge (K)">Kommando</button>
+      <button data-aktion="inventar" title="Vorräte und Stauraum (I)">Vorräte</button>
       <button data-aktion="werftBaum" title="Ausbau des Bootes (U)">Ausbau</button>
-      <button data-aktion="schichtplan">Schichtplan</button>
-      <button data-aktion="speichern">Speichern</button>
-      <button data-aktion="laden">Laden</button>
-      <button data-aktion="neu">Neues Spiel</button>
+      <button data-aktion="schichtplan">Wachen</button>
+      <button data-aktion="panel" data-arg="log" title="Meldungen (L)">Meldungen</button>
+    </div>
+    <div class="gruppe">
+      <button data-aktion="speichern" title="Spielstand als Datei speichern">Speichern</button>
+      <button data-aktion="laden" title="Spielstand laden">Laden</button>
+      <button data-aktion="neu" title="Neues Spiel">Neu</button>
       <button data-aktion="hilfe" title="Hilfe">?</button>
     </div>
   </header>
 
   <main>
-    <aside id="links" class="spalte">
+    <aside id="links" class="spalte schublade">
+      <button class="zu" data-aktion="panel" data-arg="links" aria-label="Besatzung schließen">✕</button>
       <section>
         <h2>Status</h2>
         <div id="status"></div>
@@ -62,6 +69,23 @@
           <button data-aktion="zoom" data-arg="0" title="Ganzes Boot">▣</button>
         </div>
         <div id="bootHinweis"></div>
+        <!-- HUD: im normalen Blick nur das Nötigste -->
+        <div id="hud">
+          <div id="hudLinks">
+            <div id="hudFahrt" class="instrument"></div>
+            <div id="hudTiefe" class="instrument"></div>
+          </div>
+          <div id="hudRechts">
+            <div id="hudZiel"></div>
+            <div id="hudZaehler"></div>
+          </div>
+        </div>
+        <div id="meldungen" aria-live="polite"></div>
+        <div id="auswahlKarte" hidden>
+          <button class="zu" data-aktion="auswahlZu" aria-label="Auswahl aufheben">✕</button>
+          <h2>Auswahl</h2>
+          <div id="auswahl"></div>
+        </div>
         <div id="steuer" hidden>
           <button data-lauf="-1" aria-label="Nach links laufen">◀</button>
           <button data-lauf="1" aria-label="Nach rechts laufen">▶</button>
@@ -69,11 +93,13 @@
         </div>
       </div>
       <div id="karteWrap">
+        <button class="zu" data-aktion="panel" data-arg="karte" aria-label="Karte schließen">✕</button>
         <canvas id="karte" aria-label="Seekarte"></canvas>
       </div>
     </div>
 
-    <aside id="rechts" class="spalte">
+    <aside id="rechts" class="spalte schublade">
+      <button class="zu" data-aktion="panel" data-arg="rechts" aria-label="Kommando schließen">✕</button>
       <section>
         <h2>Tiefe</h2>
         <div id="tiefe"></div>
@@ -101,14 +127,13 @@
         <h2>Aufträge</h2>
         <div id="auftraege"></div>
       </section>
-      <section>
-        <h2>Auswahl</h2>
-        <div id="auswahl"></div>
-      </section>
     </aside>
   </main>
 
-  <footer id="logLeiste"><div id="log"></div></footer>
+  <footer id="logLeiste">
+    <button class="zu" data-aktion="panel" data-arg="log" aria-label="Meldungen schließen">✕</button>
+    <div id="log"></div>
+  </footer>
 
   <div id="modal" hidden>
     <div class="fenster" role="dialog" aria-modal="true">

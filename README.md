@@ -37,13 +37,16 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 
 ## Ansicht und Steuerung
 
-- In der Mitte ist das Boot in der **Seitenansicht**. Man kann **hineinzoomen** (Mausrad oder +/−) und die Ansicht **ziehen**.
-- Unter dem Boot liegt die **Seekarte**. Ein Klick setzt den Kurs, ein Klick auf einen Kontakt wählt ihn als Torpedoziel.
-- **Crewmitglieder anklicken** wählt sie aus. Ein Klick ins Boot schickt sie dorthin, sie bleiben dort, bis man den Befehl aufhebt.
+- Das Boot füllt den **ganzen Bildschirm** (Seitenansicht im Querschnitt). Man kann **hineinzoomen** (Mausrad oder +/−) und die Ansicht **ziehen**.
+- Im normalen Blick ist nur das **HUD** sichtbar:
+  - **unten links:** Maschinentelegraf (Stopp, Kleine, Halbe, Volle) mit Knoten und Kurs, daneben der runde **Tiefenmesser** mit Prüftiefe, rotem Bereich, Zieltiefe und Tiefenknöpfen (Oberfläche, Sehrohrtiefe, Schleichtiefe, Prüftiefe, Anblasen)
+  - **unten rechts:** Zähler für Torpedos (Rohre und Reserve), Rationen (Tage), Diesel, Batterie, Druckluft, Moral, Rumpf bzw. Wasser im Boot und die Kasse; ein Klick öffnet das passende Fenster
+  - **darüber:** das gewählte Ziel mit „Torpedo los!“
+  - **oben:** kurze Meldungen und der **Funkruf** des Stützpunkts mit Knopf zum Funkgerät
+- Alles andere klappt bei Bedarf auf: **Karte** (`M`), **Besatzung** mit Status, Verpflegung und Crewliste (`C`), **Kommando** mit Tiefe, Fahrt, Torpedos, Horchgerät, Funk und Aufträgen (`K`), **Vorräte** (`I`), **Ausbau** (`U`), **Wachen** (Schichtplan) und **Meldungen** (`L`).
+- Auf der Karte setzt ein Klick den Kurs, ein Klick auf einen Kontakt wählt ihn als Torpedoziel.
+- **Crewmitglieder anklicken** wählt sie aus (Karte oben links). Ein Klick ins Boot schickt sie dorthin, sie bleiben dort, bis man den Befehl aufhebt.
 - Man spielt als Kaleu, kann aber **jedes Crewmitglied übernehmen** (Doppelklick oder Knopf „Übernehmen“) und es dann selbst mit `A`/`D` bzw. den Pfeiltasten steuern.
-- An den Seiten ist die UI:
-  - **links:** Statistiken (Geld, Moral, Proviant, Diesel, Batterie, Druckluft …), Rationen und die Crewliste
-  - **rechts:** Tiefensteuerung, Fahrt, Torpedos, Funk, Aufträge und Details zur Auswahl
 - **Zeit:** Das Spiel läuft in einer eigenen Bordzeit (UTC). Man kann **pausieren** und zwischen **1×, 2× und 4×** wechseln. Bei 1× entspricht 1 Sekunde einer Spielminute.
 
 | Taste | Wirkung |
@@ -52,7 +55,9 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 | `1` / `2` / `3` | Tempo 1× / 2× / 4× |
 | `+` / `−` | Zoom |
 | `A` / `D`, `←` / `→` | Übernommenes Crewmitglied laufen lassen |
-| `Esc` | Auswahl bzw. Übernahme aufheben, Fenster schließen |
+| `M` / `C` / `K` / `L` | Karte, Besatzung, Kommando, Meldungen auf- und zuklappen |
+| `I` / `U` | Vorräte, Ausbau |
+| `Esc` | Aufgeklapptes schließen, sonst Auswahl bzw. Übernahme aufheben |
 
 **Tablet und Touch (z. B. iPad):** Tippen wählt aus und gibt Befehle, **Doppeltipp** auf eine Figur übernimmt sie, mit zwei Fingern **zoomen**, mit einem Finger **ziehen**. Beim Übernehmen erscheinen Laufknöpfe **◀ ▶**. Im Hochformat liegen Boot und Karte oben, darunter die beiden Seitenleisten.
 
@@ -127,7 +132,8 @@ Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil bes
 ## Welt, Aufträge und Kampf
 
 - **Seekarte** mit Planquadraten (A1–J7), dem Marinehauptstützpunkt, dem Freihafen Kalvik und den Hoheitsgewässern des Feindes (Arbeitsname „Vardanien“).
-- **Aufträge** bekommt man, indem man den Stützpunkt über den **Funker** anfunkt. Das geht nur bis Sehrohrtiefe. Die Antwort kommt **verschlüsselt** und muss vom Funker am Funkgerät entschlüsselt werden.
+- **Funkrufe:** Der Stützpunkt ruft alle paar Stunden von selbst – mit neuen Aufträgen oder Feindmeldungen. Eine Meldung oben mit Knopf „Zum Funkgerät“ und ein kurzes Morsezeichen kündigen das an. Der Spruch läuft **40 Minuten** und muss in dieser Zeit am Funkgerät auf der richtigen Frequenz aufgefangen werden – nur an der Oberfläche oder auf Sehrohrtiefe. Wer ihn verpasst, bekommt ihn erst Stunden später wieder. Feindmeldungen markieren die gemeldete Position auf der Karte.
+- **Aufträge** bekommt man außerdem, indem man den Stützpunkt über den **Funker** anfunkt. Das geht nur bis Sehrohrtiefe. Die Antwort kommt **verschlüsselt** und muss vom Funker am Funkgerät entschlüsselt werden.
   - **Patrouille:** ein Planquadrat aufsuchen
   - **Frachter versenken:** einen gemeldeten Frachter abfangen, bevor er seinen Zielhafen erreicht
   - geplant: **Admiral als Beobachter** an Bord nehmen und mit ihm einen Auftrag fahren

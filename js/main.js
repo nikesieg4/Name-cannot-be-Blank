@@ -27,6 +27,7 @@
   function neuesSpiel() {
     S.speicher.autosaveLoeschen();
     st = S.zustand.neuesSpiel();
+    S.ui.meldungenZuruecksetzen();
     auswahl.crew = auswahl.abteil = null;
     tempoVorModal = null;
     S.ui.schliesse();
@@ -260,7 +261,16 @@
     if (k === 'u' || k === 'U') aktion('werftBaum');
     if (k === '+') zoomen(1);
     if (k === '-') zoomen(-1);
-    if (k === 'Escape') { if (st.gesteuert != null) st.gesteuert = null; else { auswahl.crew = null; auswahl.abteil = null; } }
+    if (k === 'm' || k === 'M') aktion('panel', 'karte');
+    if (k === 'c' || k === 'C') aktion('panel', 'links');
+    if (k === 'k' || k === 'K') aktion('panel', 'rechts');
+    if (k === 'l' || k === 'L') aktion('panel', 'log');
+    if (k === 'Escape') {
+      const offenePanels = ['karte', 'links', 'rechts', 'log'].filter((p) => document.body.classList.contains('zeige-' + p));
+      if (offenePanels.length) offenePanels.forEach((p) => document.body.classList.remove('zeige-' + p));
+      else if (st.gesteuert != null) st.gesteuert = null;
+      else { auswahl.crew = null; auswahl.abteil = null; }
+    }
   });
   window.addEventListener('keyup', (e) => {
     const k = e.key;
@@ -285,6 +295,9 @@
       case 'fahrt': S.sim.setzeFahrt(st, Number(arg)); break;
       case 'anblasen': fehler(S.sim.anblasen(st)); break;
       case 'kursWeg': st.boot.wegpunkt = null; break;
+      case 'panel': document.body.classList.toggle('zeige-' + arg); break;
+      case 'auswahlZu': auswahl.crew = null; auswahl.abteil = null; break;
+      case 'zielWeg': st.ziel = null; break;
       case 'feuern': fehler(S.sim.feuern(st)); break;
       case 'anfunken': fehler(S.sim.anfunken(st)); break;
       case 'crew': auswahl.crew = auswahl.crew === Number(arg) ? null : Number(arg); auswahl.abteil = null; break;
@@ -386,6 +399,7 @@
       const r = S.speicher.importieren(leser.result);
       if (!r.ok) { pausieren(); S.ui.meldung('Laden fehlgeschlagen', r.grund); return; }
       st = r.stand;
+      S.ui.meldungenZuruecksetzen();
       auswahl.crew = auswahl.abteil = null;
       tempoVorModal = null;
       st.tempo = 0;

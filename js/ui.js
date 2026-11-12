@@ -164,7 +164,7 @@
     for (const n of f.nachrichten.slice(0, 3)) {
       if (n.fertig) h += '<div class="nachricht"><b>' + esc(n.mission.titel) + ':</b> ' + esc(n.mission.text) + '</div>';
       else {
-        h += '<div class="nachricht verschluesselt">' + esc(verschleiert(n.mission.text, n.fortschritt, n.id)) + '</div>';
+        h += '<div class="nachricht verschluesselt">' + (n.empfangen ? esc(verschleiert(n.mission.text, n.fortschritt, n.id)) : (n.ruf ? 'Funkruf läuft – noch nicht aufgefangen' : 'Spruch liegt an – Frequenz suchen')) + '</div>';
         if (n.auto) {
           h += balken(n.fortschritt * 100, 'gelb');
           if (S.sim.eff.funk <= 0) h += '<div class="klein">Entschlüsselung ruht – niemand am Funkgerät.</div>';
@@ -272,8 +272,134 @@
     setze($('bootHinweis'), esc(t));
   }
 
+  /* ------------ HUD: Maschinentelegraf, Tiefenmesser, Zähler ------------ */
+  function hudFahrt(st) {
+    const b = st.boot, uw = S.sim.unterWasser(st);
+    const grad = Math.round(((b.kurs * 180 / Math.PI) + 90 + 360) % 360);
+    let h = '<h2>Maschine · ' + (uw ? 'E-Maschinen' : 'Diesel') + '</h2><div class="telegraf"><div class="hebel">';
+    for (let i = D.FAHRT.length - 1; i >= 0; i--) {
+      h += '<button data-aktion="fahrt" data-arg="' + i + '" class="' + (b.fahrt === i ? 'aktiv' : '') + '">' + D.FAHRT[i].name.replace(' Fahrt', '') + '</button>';
+    }
+    h += '</div><div class="fahrtwert"><b>' + (S.sim.knoten || 0).toFixed(1) + '</b><span>Knoten</span><span>Kurs ' + String(grad).padStart(3, '0') + '°</span>' +
+      (b.wegpunkt ? '<span>→ ' + S.sim.planquadrat(b.wegpunkt) + ' · ' + S.sim.dist(b, b.wegpunkt).toFixed(0) + ' km</span>' : '<span>kein Kurs</span>') + '</div></div>';
+    if (S.sim.eff.antrieb <= 0) h += '<div class="warnung">Niemand an der Maschine!</div>';
+    else if (uw && b.batterie <= 0) h += '<div class="warnung">Batterie leer!</div>';
+    setze($('hudFahrt'), h);
+  }
+
+  function tiefenSVG(st) {
+    const b = st.boot, zt = S.sim.zerstoerungstiefe(st), sicher = S.sim.sichereTiefe(st);
+    const w = (m) => (135 + Math.min(1, Math.max(0, m / zt)) * 270) * Math.PI / 180;
+    const p = (m, r) => (50 + Math.cos(w(m)) * r).toFixed(1) + ' ' + (50 + Math.sin(w(m)) * r).toFixed(1);
+    const bogen = (a, z, r) => 'M ' + p(a, r) + ' A ' + r + ' ' + r + ' 0 ' + ((z - a) / zt * 270 > 180 ? 1 : 0) + ' 1 ' + p(z, r);
+    let s = '<svg viewBox="0 0 100 100" role="img" aria-label="Tiefenmesser ' + Math.round(b.tiefe) + ' Meter">';
+    s += '<circle cx="50" cy="50" r="48" fill="#86662a"/><circle cx="50" cy="50" r="45" fill="#d9cfae"/>';
+    s += '<path d="' + bogen(sicher, zt, 40) + '" stroke="#c8392b" stroke-width="5" fill="none"/>';
+    for (let m = 0; m <= zt; m += 20) {
+      const lang = m % 100 === 0;
+      s += '<path d="M ' + p(m, 44) + ' L ' + p(m, lang ? 36 : 40) + '" stroke="#2a261c" stroke-width="' + (lang ? 1.6 : 0.8) + '"/>';
+    }
+    for (const m of [0, 50, 100, 150, 200, 250]) if (m <= zt) {
+      const xy = p(m, 29).split(' ');
+      s += '<text x="' + xy[0] + '" y="' + (Number(xy[1]) + 3) + '" font-size="8" text-anchor="middle" fill="#2a261c" font-family="VT323, monospace">' + m + '</text>';
+    }
+    // Zieltiefe (grün) und Zeiger
+    const ziel = D.TIEFEN[b.zielTiefe].m;
+    s += '<path d="M ' + p(ziel, 45) + ' L ' + p(ziel, 37) + '" stroke="#2f8a4c" stroke-width="3"/>';
+    s += '<path d="M ' + p(b.tiefe, -6) + ' L ' + p(b.tiefe, 40) + '" stroke="#8e1e14" stroke-width="2.4" stroke-linecap="round"/>';
+    s += '<circle cx="50" cy="50" r="4" fill="#86662a"/>';
+    s += '<text x="50" y="76" font-size="13" text-anchor="middle" fill="#1d1912" font-family="VT323, monospace">' + Math.round(b.tiefe) + ' m</text>';
+    return s + '</svg>';
+  }
+
+  function hudTiefe(st) {
+    const b = st.boot, sicher = S.sim.sichereTiefe(st);
+    let h = '<h2>Tiefe · sicher bis ' + Math.round(sicher) + ' m</h2><div class="tiefe">' + tiefenSVG(st) + '<div class="tiefenwahl">';
+    D.TIEFEN.forEach((t, i) => { h += '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>'; });
+    h += '<button data-aktion="anblasen" class="warn">Anblasen ' + Math.round(b.druckluft) + ' %</button></div></div>';
+    if (b.tiefe > sicher) h += '<div class="warnung">⚠ Zu tief – Implosionsgefahr!</div>';
+    else if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot zu schwer – es sinkt!</div>';
+    else if (S.sim.eff.tauchen <= 0) h += '<div class="warnung">Niemand an der Tiefensteuerung!</div>';
+    setze($('hudTiefe'), h);
+  }
+
+  function zaehler(aktion, arg, sym_, name, wert, klein, klasse) {
+    return '<button class="zaehler ' + (klasse || '') + '" data-aktion="' + aktion + '"' + (arg ? ' data-arg="' + arg + '"' : '') + '><span class="k">' + sym(sym_) + name + '</span><b>' + wert + '</b>' + (klein ? '<small>' + klein + '</small>' : '') + '</button>';
+  }
+
+  function hudZaehler(st) {
+    const b = st.boot, l = st.ladung, leb = S.sim.lebende(st);
+    const moral = leb.length ? leb.reduce((a, c) => a + c.moral, 0) / leb.length : 0;
+    const rationen = l.proviant + l.konserven, tage = rationen / Math.max(1, leb.length * st.ration);
+    const reserve = l.torpedos + l.torpedosHeck + l.torpedosDeck;
+    const fl = S.sim.flutung(st), rumpf = S.sim.minRumpf(st);
+    const rohre = '<span class="rohrreihe">' + b.rohre.map((v, i) => '<i class="' + (v ? 'voll' : '') + (i === 4 ? ' heck' : '') + '"></i>').join('') + '</span>';
+    let h = '<button class="zaehler" data-aktion="inventar"><span class="k">' + sym('torpedo') + 'Torpedos</span>' + rohre + '<small>Reserve ' + reserve + '</small></button>';
+    h += zaehler('inventar', '', 'proviant', 'Rationen', tage.toFixed(1) + ' T', rationen.toLocaleString('de-DE') + ' · ' + Math.ceil(leb.length * st.ration) + '/Tag', tage < 3 ? 'alarm' : tage < 7 ? 'warn' : '');
+    const dp = l.diesel / D.STAURAUM.diesel.max * 100;
+    h += zaehler('inventar', '', 'diesel', 'Diesel', pz(dp), Math.round(l.diesel / 1000) + 'k L', dp < 10 ? 'alarm' : dp < 25 ? 'warn' : '');
+    h += zaehler('panel', 'rechts', 'batterie', 'Batterie', pz(b.batterie), S.sim.unterWasser(st) ? 'getaucht' : 'lädt', b.batterie < 10 ? 'alarm' : b.batterie < 30 ? 'warn' : '');
+    h += zaehler('panel', 'rechts', 'druckluft', 'Druckluft', pz(b.druckluft), 'Anblasen ab 40 %', b.druckluft < 40 ? 'warn' : '');
+    h += zaehler('panel', 'links', 'moral', 'Moral', pz(moral), leb.length + ' Mann', moral < 30 ? 'alarm' : moral < 50 ? 'warn' : '');
+    h += fl > 0.005 ? zaehler('panel', 'rechts', 'rumpf', 'Wasser', pz(fl * 100), 'Rumpf ' + pz(rumpf), 'alarm')
+      : zaehler('panel', 'rechts', 'rumpf', 'Rumpf', pz(rumpf), 'schwächstes Abteil', rumpf < 50 ? 'alarm' : rumpf < 80 ? 'warn' : '');
+    h += zaehler('werftBaum', '', 'geld', 'Kasse', Math.round(st.geld).toLocaleString('de-DE'), 'Kr');
+    setze($('hudZaehler'), h);
+
+    const ziel = st.schiffe.find((x) => x.id === st.ziel && !x.versenkt);
+    let z = '';
+    if (ziel) {
+      const bek = S.sim.bekannt(ziel);
+      z = '<div class="zielkarte"><span>Ziel: <b>' + (bek ? D.SCHIFFSTYPEN[ziel.typ].name : 'Kontakt') + '</b> · ' + S.sim.dist(ziel, b).toFixed(1) + ' km</span>' +
+        '<button class="warn" data-aktion="feuern">Torpedo los!</button><button data-aktion="zielWeg" aria-label="Ziel aufheben">✕</button></div>';
+    }
+    setze($('hudZiel'), z);
+  }
+
+  /* ------------ Meldungen als kurze Einblendungen ------------ */
+  let gesehen = null;
+  function meldungen(st) {
+    const box = $('meldungen');
+    if (!box) return;
+    const log = st.log;
+    let ab = gesehen ? log.indexOf(gesehen) + 1 : log.length;
+    if (gesehen && ab === 0) ab = Math.max(0, log.length - 3);
+    for (let i = ab; i < log.length; i++) {
+      const l = log[i];
+      const el = document.createElement('div');
+      el.className = 'toast ' + l.art;
+      el.textContent = l.text;
+      box.appendChild(el);
+      const dauer = l.art === 'alarm' ? 9000 : l.art === 'info' ? 4500 : 6500;
+      setTimeout(() => { el.classList.add('weg'); setTimeout(() => el.remove(), 700); }, dauer);
+    }
+    gesehen = log[log.length - 1] || null;
+    // Funkruf vom Stützpunkt: bleibt stehen, bis der Spruch aufgefangen oder verpasst ist
+    const ruf = st.funk.ruf;
+    let el = box.querySelector('.funkruf');
+    if (ruf) {
+      const rest = Math.max(0, Math.ceil(ruf.bis - st.zeit));
+      const text = 'FUNKRUF: Der Stützpunkt ruft! Noch ' + rest + ' min' + (S.sim.antenneFrei(st) ? '' : ' – auf Sehrohrtiefe gehen!');
+      if (!el || el.dataset.id !== String(ruf.id)) {
+        if (el) el.remove();
+        el = document.createElement('div');
+        el.className = 'toast funkruf'; el.dataset.id = ruf.id;
+        el.innerHTML = '<span></span><button data-aktion="funkgeraet" data-arg="' + ruf.id + '">Zum Funkgerät</button>';
+        box.prepend(el);
+        S.minispiele.piep();
+      }
+      el.firstChild.textContent = text;
+    } else if (el) el.remove();
+    const toasts = box.querySelectorAll('.toast:not(.funkruf)');
+    for (let i = 0; i < toasts.length - 4; i++) toasts[i].remove();
+  }
+  function meldungenZuruecksetzen() { gesehen = null; const box = $('meldungen'); if (box) box.querySelectorAll('.toast:not(.funkruf)').forEach((t) => t.remove()); }
+
   function aktualisiere(st, aus) {
     kopf(st); status(st); crewListe(st, aus); tiefe(st); fahrt(st); waffen(st); horch(st); funk(st); auftraege(st); auswahl(st, aus); logListe(st); hinweis(st, aus);
+    hudFahrt(st); hudTiefe(st); hudZaehler(st); meldungen(st);
+    $('auswahlKarte').hidden = aus.crew == null && aus.abteil == null;
+    for (const k of document.querySelectorAll('#panelKnoepfe [data-aktion="panel"]')) k.classList.toggle('aktiv', document.body.classList.contains('zeige-' + k.dataset.arg));
   }
 
   /* ------------ Fenster ------------ */
@@ -344,14 +470,15 @@
       '<h3>Boot</h3><p><b>Klick auf Crew:</b> auswählen. <b>Danach Klick ins Boot:</b> dorthin schicken (bleibt dort, bis du den Befehl aufhebst). ' +
       '<b>Übernehmen</b> (Knopf oder Doppelklick auf die Figur): selbst steuern mit <kbd>A</kbd>/<kbd>D</kbd> oder Pfeiltasten. <b>Klick auf ein Abteil:</b> Pumpe und Schotten. <b>Klick auf ein Schott:</b> öffnen/schließen. ' +
       '<b>Mausrad</b> zoomt, <b>Ziehen</b> verschiebt die Ansicht.</p>' +
-      '<h3>Funk und Horchgerät</h3><p>Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
+      '<h3>Ansicht</h3><p>Im normalen Blick siehst du nur Maschinentelegraf, Tiefenmesser und die wichtigsten Zähler. Karte, Besatzung, Kommando, Vorräte, Ausbau, Wachen und Meldungen klappst du oben oder per Taste auf.</p>' +
+      '<h3>Funk und Horchgerät</h3><p>Der Stützpunkt ruft auch von selbst – dann erscheint oben eine Meldung. Fang den Spruch innerhalb von 40 Minuten an der Oberfläche oder auf Sehrohrtiefe auf, sonst ist er verloren. Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
       '<h3>Laderaum und Ausbau</h3><p>Im <b>Laderaum</b> siehst du, was an Bord ist, und kannst Reservezellen einsetzen, Druckluftflaschen anschließen oder Ladung über Bord werfen. Konserven isst die Crew, wenn der frische Proviant alle ist; Sanitätskästen retten automatisch vor dem Ertrinken. In der <b>Werft</b> am Stützpunkt baust du das Boot über den Skilltree aus – jede Stufe schaltet die nächste frei.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +
       '<h3>Tauchen und Lecks</h3><p>Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
       '<h3>Energie</h3><p>An der Oberfläche laufen die Diesel und laden die Batterie. Getaucht fährt das Boot mit der E-Maschine und verbraucht Batterie. Funk und Sehrohr gehen nur bis Sehrohrtiefe.</p>' +
       '<h3>Kampf</h3><p>Klicke auf der Karte auf einen Kontakt, um ihn als Ziel zu wählen. Torpedos gehen nur bis Sehrohrtiefe und bis 7 km Entfernung. Zerstörer beschießen dich an der Oberfläche – tauch ab!</p>' +
       '<h3>Crew</h3><p>Moral hängt von Essen und Schlaf ab und bestimmt, wie schnell die Crew arbeitet. Im <b>Schichtplan</b> legst du Dienst, Schlaf und Freizeit fest. Erfahrung steigt mit der Arbeit.</p>' +
-      '<h3>Tasten</h3><p><kbd>Leertaste</kbd> Pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×/2×/4× · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>I</kbd> Laderaum · <kbd>U</kbd> Ausbau · <kbd>Esc</kbd> Auswahl aufheben</p>' +
+      '<h3>Tasten</h3><p><kbd>Leertaste</kbd> Pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×/2×/4× · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>M</kbd> Karte · <kbd>C</kbd> Besatzung · <kbd>K</kbd> Kommando · <kbd>L</kbd> Meldungen · <kbd>I</kbd> Vorräte · <kbd>U</kbd> Ausbau · <kbd>Esc</kbd> Auswahl aufheben</p>' +
       '<h3>Speichern</h3><p>„Speichern“ lädt eine .srt-Datei herunter. Die Datei ist verschlüsselt und signiert – wird sie verändert, lässt sie sich nicht mehr laden. Zusätzlich wird jede Spielstunde automatisch im Browser gesichert.</p>' +
       '<p><button data-aktion="modalZu">Los geht\'s</button></p>');
   }
@@ -367,5 +494,5 @@
     oeffne('<h1>Neues Spiel?</h1><p>Der aktuelle Fortschritt geht verloren, wenn du ihn nicht gespeichert hast.</p><p><button data-aktion="neuJa" class="warn">Neues Spiel starten</button> <button data-aktion="modalZu">Abbrechen</button></p>');
   }
 
-  S.ui = { aktualisiere, oeffne, schliesse, offen, meldung, schichtplan, handel, hilfe, ende, neuFragen };
+  S.ui = { aktualisiere, meldungenZuruecksetzen, oeffne, schliesse, offen, meldung, schichtplan, handel, hilfe, ende, neuFragen };
 })(window.Spiel = window.Spiel || {});
