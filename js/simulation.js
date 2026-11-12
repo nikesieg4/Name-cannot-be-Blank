@@ -503,7 +503,8 @@
 
   function tiefenSchritt(st, dt, eff, strom) {
     const b = st.boot;
-    const ziel = D.TIEFEN[b.zielTiefe].m;
+    if (b.zielM == null) b.zielM = D.TIEFEN[b.zielTiefe || 0].m;
+    const ziel = b.zielM;
     let rate = 0;
     if (eff.tauchen > 0) {
       const max = 5 * eff.tauchen;
@@ -633,6 +634,90 @@
     for (const c of lebende(st)) c.moral = Math.max(0, c.moral - 2);
   }
 
+  /* ---------- U-Jagd ----------
+     Getaucht findet der Zerstörer das Boot mit dem Horchgerät (je lauter, desto weiter) und mit ASDIC
+     (aktiv, bis 2,5 km, nur wenn er schon sucht). Ein Boot auf Grund ist für ASDIC kaum vom Meeresboden
+     zu unterscheiden, gestoppte Maschinen hört kaum jemand. Wasserbomben reichen bis 180 m. */
+  const WABO_MAX = 180;
+  function zerstoererSchritt(st, s, t, d, dt) {
+    const b = st.boot;
+    if (s.wabos == null) { s.wabos = 15; s.waboPause = 0; }
+    const uw = b.tiefe >= 4;
+    let ortung = null;
+    if (b.tiefe < 4 && d < 12) ortung = 'sicht';
+    else if (b.tiefe <= 15 && d < 2.5 && Math.random() < 0.3 * dt) ortung = 'sicht';
+    else if (uw) {
+      const laerm = b.aufGrund && (sim.knoten || 0) < 0.5 ? 0.03 : 0.08 + Math.min(1, (sim.knoten || 0) / 7.6) * 0.9;
+      // Horchgerät: bei eigener Jagdfahrt ist der Zerstörer taub
+      const horchR = 2 + 8 * laerm;
+      if (d < horchR && s.kn <= 15 && Math.random() < 0.25 * laerm * dt) ortung = 'horch';
+      // ASDIC: nur wenn er schon sucht, innen ab 150 m tote Zone
+      if (s.alarmiert && d < 2.5) {
+        b.asdic = st.zeit;
+        if (d > 0.15) {
+          let p = 0.6 * (1 - d / 2.5);
+          if (b.aufGrund) p *= wassertiefe(b.x, b.y) < 80 ? 0.08 : 0.2;
+          if (b.tiefe > 100) p *= 0.7;
+          if (Math.random() < p * dt) ortung = 'asdic';
+        }
+      }
+    }
+    if (ortung) {
+      const fehler = ortung === 'asdic' ? 0.08 : ortung === 'horch' ? 0.6 : 0.02;
+      s.letzteSicht = { x: b.x + (Math.random() * 2 - 1) * fehler, y: b.y + (Math.random() * 2 - 1) * fehler };
+      s.kontaktTiefe = uw ? b.tiefe + (Math.random() * 2 - 1) * (ortung === 'asdic' ? 15 : 45) : 0;
+      if (!s.alarmiert) log(st, ortung === 'sicht' ? 'Ein Zerstörer hat uns entdeckt!' : ortung === 'asdic' ? 'ASDIC-Ortung! Ein Zerstörer hat uns erfasst.' : 'Ein Zerstörer hat uns gehört und dreht auf uns zu!', 'alarm');
+      else if (ortung === 'asdic' && (s.letzteOrtung || 0) < st.zeit - 10) log(st, 'ASDIC hat uns wieder erfasst!', 'alarm');
+      s.letzteOrtung = st.zeit;
+      s.alarmiert = true; s.suche = uw ? 60 : 30;
+    } else if (s.alarmiert) {
+      s.suche -= dt;
+      // Kontakt verloren: rund um die letzte Position absuchen
+      if (s.letzteSicht && dist(s, s.letzteSicht) < 0.3 && (s.letzteOrtung || 0) < st.zeit - 8) {
+        s.letzteSicht = { x: s.letzteSicht.x + (Math.random() * 2 - 1) * 1.5, y: s.letzteSicht.y + (Math.random() * 2 - 1) * 1.5 };
+      }
+      if (s.suche <= 0 || s.wabos <= 0) {
+        s.alarmiert = false; s.ziel = zufallsPunkt(170, 250, 30, 180, s);
+        log(st, s.wabos <= 0 ? 'Der Zerstörer hat keine Wasserbomben mehr und dreht ab.' : 'Der Zerstörer hat die Suche abgebrochen.', 'gut');
+      }
+    }
+    if (s.alarmiert && s.letzteSicht) s.ziel = s.letzteSicht;
+    // langsame Suchfahrt, wenn er horcht; volle Jagdfahrt, wenn er das Boot gesehen oder frisch geortet hat
+    s.kn = !s.alarmiert ? t.kn : (st.zeit - (s.letzteOrtung || 0) < 6 ? t.jagdKn : 10);
+    s.nachladen = Math.max(0, s.nachladen - dt);
+    s.waboPause = Math.max(0, s.waboPause - dt);
+    if (s.alarmiert && b.tiefe < 4 && d < 6 && s.nachladen <= 0) {
+      s.nachladen = 2;
+      if (Math.random() < 0.35) trefferAufBoot(st, 12 + Math.random() * 13);
+      else log(st, 'Granateinschlag neben dem Boot.', 'warn');
+    }
+    // Wasserbomben: über der vermuteten Position, Tiefe nach Ortung eingestellt
+    if (s.alarmiert && uw && s.letzteSicht && dist(s, s.letzteSicht) < 0.25 && s.waboPause <= 0 && s.wabos > 0 && st.zeit - (s.letzteOrtung || -99) < 25) {
+      s.waboPause = 8; s.wabos--;
+      wasserbomben(st, s);
+    }
+  }
+
+  function wasserbomben(st, s) {
+    const b = st.boot;
+    const einstellung = klemme(s.kontaktTiefe || 60, 20, WABO_MAX);
+    let wirkung = 0;
+    for (let k = 0; k < 6; k++) {
+      const wx = s.x + (Math.random() * 2 - 1) * 0.12, wy = s.y + (Math.random() * 2 - 1) * 0.12;
+      const h = Math.hypot(wx - b.x, wy - b.y);
+      const v = Math.abs(einstellung + (Math.random() * 2 - 1) * 10 - b.tiefe);
+      // wirksam bis etwa 60 m zur Seite und 30 m in der Tiefe
+      wirkung += Math.max(0, 1 - h / 0.06) * Math.max(0, 1 - v / 30);
+    }
+    b.erschuetterung = Math.min(1, 0.25 + wirkung);
+    for (const c of lebende(st)) c.moral = Math.max(0, c.moral - (wirkung > 0.3 ? 3 : 1));
+    if (wirkung > 0.05) {
+      const treffer = wirkung > 0.8 ? 3 : wirkung > 0.35 ? 2 : 1;
+      for (let k = 0; k < treffer; k++) trefferAufBoot(st, Math.min(30, 8 + wirkung * 14));
+      log(st, wirkung > 0.8 ? 'Wasserbomben direkt am Boot! Schwere Schäden!' : 'Wasserbomben liegen dicht am Boot!', 'alarm');
+    } else log(st, 'Wasserbomben! Sie detonieren ' + (b.tiefe > WABO_MAX + 20 ? 'weit über uns.' : 'in einiger Entfernung.'), 'warn');
+  }
+
   function schiffeSchritt(st, dt, eff) {
     const b = st.boot;
     const uw = unterWasser(st);
@@ -644,25 +729,8 @@
       const t = D.SCHIFFSTYPEN[s.typ];
       const d = dist(s, b);
 
-      // KI des Zerstörers
-      if (s.typ === 'zerstoerer') {
-        const siehtBoot = (b.tiefe < 4 && d < 12) || (b.tiefe <= 15 && d < 2.5 && Math.random() < 0.3 * dt);
-        if (siehtBoot) {
-          if (!s.alarmiert) log(st, 'Ein Zerstörer hat uns entdeckt!', 'alarm');
-          s.alarmiert = true; s.letzteSicht = { x: b.x, y: b.y }; s.suche = 30;
-        } else if (s.alarmiert) {
-          s.suche -= dt;
-          if (s.suche <= 0) { s.alarmiert = false; s.ziel = zufallsPunkt(170, 250, 30, 180, s); log(st, 'Der Zerstörer hat die Suche abgebrochen.', 'gut'); }
-        }
-        if (s.alarmiert && s.letzteSicht) s.ziel = s.letzteSicht;
-        s.kn = s.alarmiert ? t.jagdKn : t.kn;
-        s.nachladen = Math.max(0, s.nachladen - dt);
-        if (s.alarmiert && b.tiefe < 4 && d < 6 && s.nachladen <= 0) {
-          s.nachladen = 2;
-          if (Math.random() < 0.35) trefferAufBoot(st, 12 + Math.random() * 13);
-          else log(st, 'Granateinschlag neben dem Boot.', 'warn');
-        }
-      }
+      // KI des Zerstörers: Sicht, Horchgerät, ASDIC und Wasserbomben
+      if (s.typ === 'zerstoerer') zerstoererSchritt(st, s, t, d, dt);
 
       // Bewegung
       const zd = dist(s, s.ziel);
@@ -1048,13 +1116,23 @@
   };
 
   /* ---------------- Befehle ---------------- */
-  sim.setzeTiefe = function (st, i) { st.boot.zielTiefe = i; log(st, 'Befehl: ' + D.TIEFEN[i].name + ' (' + D.TIEFEN[i].m + ' m).', 'info'); };
+  sim.setzeTiefe = function (st, i) { st.boot.zielTiefe = i; st.boot.zielM = D.TIEFEN[i].m; log(st, 'Befehl: ' + D.TIEFEN[i].name + ' (' + D.TIEFEN[i].m + ' m).', 'info'); };
+  /* Zieltiefe in Metern frei wählen (Zeiger am Tiefenmesser oder Eingabe), bis kurz vor die Zerstörungstiefe */
+  sim.setzeZielTiefe = function (st, m, still) {
+    const b = st.boot;
+    const neu = Math.round(klemme(Number(m) || 0, 0, zerstoerungstiefe(st) - 5));
+    b.zielM = neu;
+    const i = D.TIEFEN.findIndex((t) => t.m === neu);
+    b.zielTiefe = i;
+    if (!still) log(st, 'Befehl: Auf ' + neu + ' m gehen.' + (neu > sichereTiefe(st) ? ' Das ist tiefer als sicher!' : ''), neu > sichereTiefe(st) ? 'warn' : 'info');
+    return neu;
+  };
   sim.setzeFahrt = function (st, i) { st.boot.fahrt = i; };
   sim.anblasen = function (st) {
     const b = st.boot;
     if (b.anblasen > 0) return 'Es wird bereits angeblasen.';
     if (b.druckluft < 40) return 'Zu wenig Druckluft (mind. 40 %).';
-    b.druckluft -= 40; b.anblasen = 4; b.zielTiefe = 0;
+    b.druckluft -= 40; b.anblasen = 4; b.zielTiefe = 0; b.zielM = 0;
     log(st, 'Notanblasen! Alle Tauchzellen werden ausgeblasen.', 'warn');
     return null;
   };

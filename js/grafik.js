@@ -399,6 +399,12 @@
     if (!statisch) baueStatisch();
     const W = ctx.canvas.width, H = ctx.canvas.height;
     const t = transform(ans, W, H);
+    // Erschütterung durch Wasserbomben: Bild wackelt kurz
+    const ersch = st.boot.erschuetterung || 0;
+    if (ersch > 0) {
+      t.tx += Math.round((Math.random() * 2 - 1) * 10 * ersch); t.ty += Math.round((Math.random() * 2 - 1) * 10 * ersch);
+      st.boot.erschuetterung = Math.max(0, ersch - dtReal * 0.9);
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     hintergrund(ctx, st, W, H, t, dtReal);
     ctx.imageSmoothingEnabled = t.z < 1;
@@ -551,6 +557,7 @@
 
     // Beschriftungen im Bildschirmraum
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (ersch > 0.05) { ctx.fillStyle = 'rgba(255,240,220,' + (ersch * 0.18).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
     ctx.imageSmoothingEnabled = false;
     const zf = t.z * F;
     const schrift = Math.max(11, Math.round(zf * 3.4));

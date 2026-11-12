@@ -61,7 +61,7 @@
       naechsteId: id,
       boot: {
         x: basis.x + 4, y: basis.y - 2, kurs: 0, wegpunkt: null,
-        tiefe: 0, zielTiefe: 0, fahrt: 0,
+        tiefe: 0, zielTiefe: 0, zielM: 0, fahrt: 0,
         batterie: 100, druckluft: 100, anblasen: 0,
         abteile: D.ABTEILE.map(() => ({ wasser: 0, rumpf: 100, pumpe: true })),
         schotten: D.ABTEILE.slice(0, -1).map(() => false), // true = geschlossen
@@ -88,6 +88,7 @@
   function ergaenze(st) {
     for (const k of Object.keys(D.INVENTAR)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
     if (!st.boot.ausbau) st.boot.ausbau = {};
+    if (st.boot.zielM == null) st.boot.zielM = D.TIEFEN[st.boot.zielTiefe || 0].m;
     while (st.schichten.length < D.STANDARD_SCHICHTEN.length) st.schichten.push(D.STANDARD_SCHICHTEN[st.schichten.length].slice());
     return st;
   }

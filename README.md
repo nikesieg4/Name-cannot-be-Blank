@@ -144,6 +144,8 @@ Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil bes
   - geplant: **Admiral als Beobachter** an Bord nehmen und mit ihm einen Auftrag fahren
 - **Entdecken:** An der Oberfläche sieht man weit, auf Sehrohrtiefe nur mit jemandem am Sehrohr. Getaucht hilft nur das Horchgerät, und der Soni muss Kontakte erst identifizieren.
 - **Kampf:** Torpedos (4 Bugrohre plus Reserve im Laderaum) gehen bis 7 km Entfernung und bis Sehrohrtiefe. Nachgeladen wird im Bugraum. **Zerstörer** jagen das Boot und beschießen es an der Oberfläche. **Wasserbomben** kommen erst nach Version 1.0.
+- **U-Jagd:** Zerstörer suchen auch getauchte Boote. Mit dem **Horchgerät** hören sie das Boot – je schneller es fährt, desto weiter (bei eigener Jagdfahrt sind sie taub). Haben sie Verdacht, orten sie mit **ASDIC** bis 2,5 km (direkt über dem Boot gibt es eine tote Zone). Über der vermuteten Position werfen sie **Wasserbomben** (6 pro Wurf, wirksam bis etwa 60 m zur Seite und 30 m in der Tiefe, einstellbar bis 180 m; 15 Würfe, dann dreht der Zerstörer ab). Das HUD warnt bei ASDIC-Ortung, Wasserbomben erschüttern das Bild.
+- **Taktik:** Ein Boot **auf Grund mit gestoppten Maschinen** ist für ASDIC kaum vom Meeresboden zu unterscheiden (in flachem Wasser noch weniger) und für das Horchgerät fast lautlos – im Test wurde es rund zehnmal seltener geortet und kaum getroffen. Tiefer als 180 m reichen die Wasserbomben nicht mehr ganz heran.
 
 ## Hafen und Handel
 
@@ -237,7 +239,7 @@ werkzeuge/pixelart/  Python-Skripte, die die PNGs erzeugen
 - [ ] Bessere Bedienung am Handy und Tablet
 
 **Nach 1.0**
-- [ ] Wasserbomben und Ausweichmanöver
+- [ ] Ausweichmanöver und Täuschkörper (Bold)
 - [ ] Feuer an Bord (Brandmeister), Krankheiten
 - [ ] Meuterei bei sehr niedriger Moral
 - [ ] Anbindung an Maiskolbistan (Login, Spielstände auf dem Server)

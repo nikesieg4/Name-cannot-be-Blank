@@ -93,7 +93,7 @@
   function tiefe(st) {
     const b = st.boot;
     const sicher = S.sim.sichereTiefe(st);
-    const ziel = D.TIEFEN[b.zielTiefe];
+    const ziel = { name: b.zielTiefe >= 0 && D.TIEFEN[b.zielTiefe] ? D.TIEFEN[b.zielTiefe].name : 'Befohlen', m: b.zielM };
     const zt = S.sim.zerstoerungstiefe(st);
     const pos = (m) => Math.min(100, m / zt * 100);
     let h = '<div class="zeile"><span>Tiefe</span><b style="font-size:24px">' + Math.round(b.tiefe) + ' m</b></div>';
@@ -308,27 +308,56 @@
     const grund = S.sim.grundTiefe(st);
     if (grund <= zt) s += '<path d="M ' + p(grund, 48) + ' L ' + p(grund, 36) + '" stroke="#6b4a2a" stroke-width="4"/>';
     // Zieltiefe (grün) und Zeiger
-    const ziel = D.TIEFEN[b.zielTiefe].m;
-    s += '<path d="M ' + p(ziel, 45) + ' L ' + p(ziel, 37) + '" stroke="#2f8a4c" stroke-width="3"/>';
+    // Soll-Zeiger (grün, gewünschte Tiefe) und Ist-Zeiger (rot)
+    const ziel = b.zielM;
+    s += '<path d="M ' + p(ziel, -4) + ' L ' + p(ziel, 44) + '" stroke="#2f8a4c" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>';
+    s += '<circle cx="' + p(ziel, 44).split(' ')[0] + '" cy="' + p(ziel, 44).split(' ')[1] + '" r="2.6" fill="#2f8a4c"/>';
     s += '<path d="M ' + p(b.tiefe, -6) + ' L ' + p(b.tiefe, 40) + '" stroke="#8e1e14" stroke-width="2.4" stroke-linecap="round"/>';
     s += '<circle cx="50" cy="50" r="4" fill="#86662a"/>';
     s += '<text x="50" y="76" font-size="13" text-anchor="middle" fill="#1d1912" font-family="VT323, monospace">' + Math.round(b.tiefe) + ' m</text>';
     return s + '</svg>';
   }
 
+  /* Tiefenmesser im HUD. Das Gerüst wird einmal gebaut, damit das Eingabefeld beim Tippen nicht neu entsteht. */
   function hudTiefe(st) {
+    const box = $('hudTiefe');
+    if (!box.dataset.gebaut) {
+      box.dataset.gebaut = '1';
+      box.innerHTML = '<h2 id="hudTiefeKopf"></h2><div class="tiefe"><div id="tiefenUhr" title="Ziehen oder tippen: gewünschte Tiefe setzen"></div>' +
+        '<div class="tiefenwahl"><div id="hudTiefenKnoepfe" class="tiefenwahl"></div>' +
+        '<div class="tiefeneingabe"><button data-aktion="zielPlus" data-arg="-10" aria-label="10 m flacher">−10</button>' +
+        '<label class="unsichtbar" for="zielEingabe">Gewünschte Tiefe in Metern</label><input id="zielEingabe" type="number" inputmode="numeric" min="0" step="5">' +
+        '<button data-aktion="zielPlus" data-arg="10" aria-label="10 m tiefer">+10</button></div>' +
+        '<button data-aktion="anblasen" class="warn" id="hudAnblasen"></button></div></div><div id="hudTiefeWarn"></div>';
+    }
     const b = st.boot, sicher = S.sim.sichereTiefe(st);
     const wt = S.sim.wassertiefe(b.x, b.y);
-    let h = '<h2>Tiefe · Grund ' + Math.round(wt) + ' m · sicher ' + Math.round(sicher) + ' m</h2><div class="tiefe">' + tiefenSVG(st) + '<div class="tiefenwahl">';
-    D.TIEFEN.forEach((t, i) => { h += '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>'; });
-    h += '<button data-aktion="anblasen" class="warn">Anblasen ' + Math.round(b.druckluft) + ' %</button></div></div>';
+    setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + Math.round(wt) + ' m · sicher ' + Math.round(sicher) + ' m');
+    setze($('tiefenUhr'), tiefenSVG(st));
+    setze($('hudTiefenKnoepfe'), D.TIEFEN.map((t, i) => '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>').join(''));
+    const ein = $('zielEingabe');
+    if (document.activeElement !== ein && String(ein.value) !== String(b.zielM)) ein.value = b.zielM;
+    ein.max = S.sim.zerstoerungstiefe(st) - 5;
+    setze($('hudAnblasen'), 'Anblasen ' + Math.round(b.druckluft) + ' %');
     const luecke = S.sim.grundTiefe(st) - b.tiefe;
+    let h = '';
+    if (b.asdic != null && st.zeit - b.asdic < 2) h += '<div class="warnung blink">ASDIC-Ortung – Schleichfahrt!</div>';
     if (b.tiefe > sicher) h += '<div class="warnung">⚠ Zu tief – Implosionsgefahr!</div>';
     else if (b.aufGrund) h += '<div class="' + (b.schrammt ? 'warnung' : 'gut') + '">' + (b.schrammt ? 'Schrammt über den Grund!' : 'Liegt auf Grund') + '</div>';
     else if (b.tiefe > 4 && luecke < 25) h += '<div class="warnung">Grund ' + Math.round(luecke) + ' m unter dem Kiel</div>';
     else if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot zu schwer – es sinkt!</div>';
     else if (S.sim.eff.tauchen <= 0) h += '<div class="warnung">Niemand an der Tiefensteuerung!</div>';
-    setze($('hudTiefe'), h);
+    if (b.zielM > sicher && !(b.tiefe > sicher)) h += '<div class="warnung">Soll-Tiefe liegt unter der sicheren Tiefe!</div>';
+    setze($('hudTiefeWarn'), h);
+  }
+
+  /* Winkel am Tiefenmesser → Meter (0 m unten links, Zerstörungstiefe unten rechts, 270°) */
+  function tiefeAusZeiger(st, el, clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const dx = clientX - (r.left + r.width / 2), dy = clientY - (r.top + r.height / 2);
+    let a = ((Math.atan2(dy, dx) * 180 / Math.PI) - 135 + 720) % 360;
+    if (a > 270) a = a > 315 ? 0 : 270;
+    return a / 270 * S.sim.zerstoerungstiefe(st);
   }
 
   function zaehler(aktion, arg, sym_, name, wert, klein, klasse) {
@@ -482,9 +511,9 @@
       '<h3>Funk und Horchgerät</h3><p>Der Stützpunkt ruft auch von selbst – dann erscheint oben eine Meldung. Fang den Spruch innerhalb von 40 Minuten an der Oberfläche oder auf Sehrohrtiefe auf, sonst ist er verloren. Funksprüche vom Stützpunkt kommen verschlüsselt. Am <b>Funkgerät</b> drehst du die Frequenz (6–7 MHz), bis das Signal klar ist, und übersetzt die Morsezeichen mit der Tabelle. Oder du lässt den Funker machen – das dauert dreimal so lang. Getauchte Kontakte erkennst du im <b>Horchraum</b>: Wähle die Vorlage aus der Geräuschkartei, deren Klangprofil und Schraubentakt passen, und melde den Kontakt. Erst dann kannst du ihn torpedieren.</p>' +
       '<h3>Laderaum und Ausbau</h3><p>Im <b>Laderaum</b> siehst du, was an Bord ist, und kannst Reservezellen einsetzen, Druckluftflaschen anschließen oder Ladung über Bord werfen. Konserven isst die Crew, wenn der frische Proviant alle ist; Sanitätskästen retten automatisch vor dem Ertrinken. In der <b>Werft</b> am Stützpunkt baust du das Boot über den Skilltree aus – jede Stufe schaltet die nächste frei.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +
-      '<h3>Tauchen und Lecks</h3><p>Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
+      '<h3>Tauchen und Lecks</h3><p>Die gewünschte Tiefe stellst du mit den Knöpfen ein, mit −10/+10, als Zahl im Feld oder indem du den grünen Soll-Zeiger am Tiefenmesser ziehst. Getroffene Abteile laufen unter Wasser voll – je tiefer, desto schneller. Pumpen lenzen, die Leckabwehr repariert mit Ersatzteilen. Mit <b>Abschotten</b> hältst du Wasser in einem Abteil – aber wer drin ist, kann ertrinken. Zu viel Wasser macht das Boot schwer: es sinkt. Ein beschädigter Rumpf hält weniger Druck aus, die sichere Tiefe sinkt (orange Marke). Notfalls: <b>Notanblasen</b>.</p>' +
       '<h3>Energie</h3><p>An der Oberfläche laufen die Diesel und laden die Batterie. Getaucht fährt das Boot mit der E-Maschine und verbraucht Batterie. Funk und Sehrohr gehen nur bis Sehrohrtiefe.</p>' +
-      '<h3>Kampf</h3><p>Klicke auf der Karte auf einen Kontakt, um ihn als Ziel zu wählen. Torpedos gehen nur bis Sehrohrtiefe und bis 7 km Entfernung. Zerstörer beschießen dich an der Oberfläche – tauch ab!</p>' +
+      '<h3>Kampf</h3><p>Klicke auf der Karte auf einen Kontakt, um ihn als Ziel zu wählen. Torpedos gehen nur bis Sehrohrtiefe und bis 7 km Entfernung. Zerstörer beschießen dich an der Oberfläche und jagen dich getaucht mit Horchgerät, ASDIC und Wasserbomben. Leg dich auf Grund und stopp die Maschinen – dann finden sie dich kaum.</p>' +
       '<h3>Crew</h3><p>Moral hängt von Essen und Schlaf ab und bestimmt, wie schnell die Crew arbeitet. Im <b>Schichtplan</b> legst du Dienst, Schlaf und Freizeit fest. Erfahrung steigt mit der Arbeit.</p>' +
       '<h3>Tasten</h3><p><kbd>Leertaste</kbd> Pause · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×/2×/4× · <kbd>+</kbd>/<kbd>−</kbd> Zoom · <kbd>M</kbd> Karte · <kbd>C</kbd> Besatzung · <kbd>K</kbd> Kommando · <kbd>L</kbd> Meldungen · <kbd>I</kbd> Vorräte · <kbd>U</kbd> Ausbau · <kbd>Esc</kbd> Auswahl aufheben</p>' +
       '<h3>Speichern</h3><p>„Speichern“ lädt eine .srt-Datei herunter. Die Datei ist verschlüsselt und signiert – wird sie verändert, lässt sie sich nicht mehr laden. Zusätzlich wird jede Spielstunde automatisch im Browser gesichert.</p>' +
@@ -502,5 +531,5 @@
     oeffne('<h1>Neues Spiel?</h1><p>Der aktuelle Fortschritt geht verloren, wenn du ihn nicht gespeichert hast.</p><p><button data-aktion="neuJa" class="warn">Neues Spiel starten</button> <button data-aktion="modalZu">Abbrechen</button></p>');
   }
 
-  S.ui = { aktualisiere, meldungenZuruecksetzen, oeffne, schliesse, offen, meldung, schichtplan, handel, hilfe, ende, neuFragen };
+  S.ui = { tiefeAusZeiger, aktualisiere, meldungenZuruecksetzen, oeffne, schliesse, offen, meldung, schichtplan, handel, hilfe, ende, neuFragen };
 })(window.Spiel = window.Spiel || {});

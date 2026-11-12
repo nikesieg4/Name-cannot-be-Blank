@@ -229,6 +229,31 @@
     }
   }
 
+  /* ---------- Tiefenmesser: Soll-Zeiger ziehen oder antippen ---------- */
+  let zeigerZiehen = false;
+  $('hudTiefe').addEventListener('pointerdown', (e) => {
+    const uhr = e.target.closest('#tiefenUhr');
+    if (!uhr) return;
+    zeigerZiehen = true;
+    uhr.setPointerCapture(e.pointerId);
+    S.sim.setzeZielTiefe(st, S.ui.tiefeAusZeiger(st, uhr, e.clientX, e.clientY), true);
+    S.ui.aktualisiere(st, auswahl);
+    e.preventDefault();
+  });
+  $('hudTiefe').addEventListener('pointermove', (e) => {
+    if (!zeigerZiehen) return;
+    S.sim.setzeZielTiefe(st, S.ui.tiefeAusZeiger(st, $('tiefenUhr'), e.clientX, e.clientY), true);
+    S.ui.aktualisiere(st, auswahl);
+  });
+  const zeigerLos = () => {
+    if (!zeigerZiehen) return;
+    zeigerZiehen = false;
+    S.sim.setzeZielTiefe(st, st.boot.zielM);
+    S.ui.aktualisiere(st, auswahl);
+  };
+  $('hudTiefe').addEventListener('pointerup', zeigerLos);
+  $('hudTiefe').addEventListener('pointercancel', zeigerLos);
+
   /* ---------- Karte ---------- */
   // Zeiger über der Karte: Wassertiefe an dieser Stelle in der Legende
   karteCv.addEventListener('mousemove', (e) => {
@@ -306,6 +331,7 @@
       case 'panel': document.body.classList.toggle('zeige-' + arg); break;
       case 'auswahlZu': auswahl.crew = null; auswahl.abteil = null; break;
       case 'zielWeg': st.ziel = null; break;
+      case 'zielPlus': S.sim.setzeZielTiefe(st, st.boot.zielM + Number(arg)); break;
       case 'feuern': fehler(S.sim.feuern(st)); break;
       case 'anfunken': fehler(S.sim.anfunken(st)); break;
       case 'crew': auswahl.crew = auswahl.crew === Number(arg) ? null : Number(arg); auswahl.abteil = null; break;
@@ -388,6 +414,7 @@
   document.addEventListener('change', (e) => {
     const el = e.target;
     if (el.id === 'ration') { st.ration = Number(el.value); return; }
+    if (el.id === 'zielEingabe') { el.value = S.sim.setzeZielTiefe(st, el.value); el.blur(); S.ui.aktualisiere(st, auswahl); return; }
     if (!el.dataset || !el.dataset.feld) return;
     const c = S.sim.crewNachId(st, Number(el.dataset.id));
     if (!c) return;
