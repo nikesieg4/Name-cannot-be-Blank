@@ -355,3 +355,14 @@ th { color: var(--leise); font-weight: normal; }
 .crewGruppe { font-family: 'Silkscreen', monospace; font-size: 10px; letter-spacing: 1px; color: var(--leise); text-transform: uppercase; margin: 8px 0 2px; }
 .crewGruppe:first-child { margin-top: 0; }
 .crewGruppe span { color: var(--gelb); }
+
+/* Vorräte (Stauraum statt Laderaum) */
+.lager { display: flex; flex-direction: column; gap: 10px; }
+.lagerplatz { padding: 6px 8px; background: #0b1b30; border: 1px solid #18375e; }
+.lagerplatz .etikett { color: #9fb4bf; }
+.waren { display: flex; flex-wrap: wrap; gap: 6px; }
+.fach.breit { width: auto; min-width: 180px; height: 56px; justify-content: flex-start; gap: 8px; padding: 0 8px; }
+.fach.breit.leer { display: flex; border-style: solid; opacity: 0.5; }
+.fachtext { display: flex; flex-direction: column; text-align: left; line-height: 1; }
+.fachtext b { font-weight: normal; color: #fff; font-size: 18px; }
+.fachtext small { color: #efd086; font-size: 16px; }

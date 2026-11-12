@@ -96,222 +96,35 @@
   /* ---------------- Statisches Bild des Bootes ---------------- */
   let statisch = null;
 
+  /* Ersatzbild, falls grafik/boot_querschnitt.png fehlt: schlichter Rumpf mit Abteilen, Schotten und Kojen. */
   function baueStatisch() {
     const c = document.createElement('canvas');
     c.width = GB; c.height = GH;
     const g = c.getContext('2d');
-
-    // Außenhülle Spalte für Spalte, mit Raster-Schattierung, Plattennähten und Nieten
     for (let x = 28; x < GB - 28; x++) {
       const h = rumpfHalb(x);
       if (h <= 0) continue;
-      const oben = Math.round(MITTE_Y - h), unten = Math.round(MITTE_Y + h), hoehe = unten - oben;
-      r(g, x, oben, 1, hoehe, FARBE.rumpf);
+      const oben = Math.round(MITTE_Y - h), unten = Math.round(MITTE_Y + h);
+      r(g, x, oben, 1, unten - oben, FARBE.rumpf);
       r(g, x, oben, 1, 3, FARBE.rumpfLicht);
-      r(g, x, oben + 3, 1, 4, FARBE.rumpfHell);
-      if ((x + oben) % 2) px(g, x, oben + 7, FARBE.rumpfHell);
-      r(g, x, unten - 16, 1, 16, FARBE.rumpfDunkel);
-      r(g, x, unten - 6, 1, 6, FARBE.rumpfTief);
-      for (let k = 0; k < 4; k++) if ((x + k) % 2) px(g, x, unten - 17 - k * 2, FARBE.rumpfDunkel);
-      px(g, x, oben - 1, FARBE.kontur);
-      px(g, x, unten, FARBE.kontur);
-      // Längsnaht
-      const naht = Math.round(MITTE_Y + h * 0.5);
-      px(g, x, naht, FARBE.naht);
-      if (x % 8 === 0) px(g, x, naht - 2, FARBE.niete);
-      // Plattenstöße
-      if (x % 56 === 0) for (let y = oben + 4; y < unten - 3; y++) {
-        px(g, x, y, FARBE.naht);
-        if (y % 6 === 0) { px(g, x - 2, y, FARBE.niete); px(g, x + 2, y, FARBE.niete); }
-      }
-      // Oberdeck mit Holzplanken und Flutschlitzen
-      if (x > 170 && x < 1180) {
-        const dt = Math.min(oben - 6, 102);
-        r(g, x, dt, 1, oben - dt, FARBE.deck);
-        px(g, x, dt, x % 14 === 0 ? FARBE.plankeDunkel : FARBE.planke);
-        px(g, x, dt + 1, FARBE.plankeDunkel);
-        px(g, x, dt - 1, FARBE.kontur);
-        if (oben - dt > 7 && x % 10 < 4) r(g, x, oben - 5, 1, 2, FARBE.kontur);
-      }
-      // Kiel
-      if (x > 260 && x < 1080) { r(g, x, unten + 1, 1, 3, FARBE.rumpfTief); px(g, x, unten + 4, FARBE.kontur); }
+      r(g, x, unten - 12, 1, 12, FARBE.rumpfDunkel);
+      px(g, x, oben - 1, FARBE.kontur); px(g, x, unten, FARBE.kontur);
     }
-    // Reling vorn und hinten
-    for (const [a, b] of [[300, 740], [920, 1140]]) {
-      r(g, a, 92, b - a, 1, '#5b6863');
-      for (let x = a; x <= b; x += 18) r(g, x, 92, 1, 10, '#5b6863');
-    }
-    // Turm
-    for (let x = 760; x < 896; x++) {
-      let top = 60;
-      if (x < 780) top += (780 - x) * 1.6;
-      if (x > 876) top += (x - 876) * 1.4;
-      top = Math.round(top);
-      r(g, x, top, 1, 104 - top, FARBE.turm);
-      r(g, x, top, 1, 2, FARBE.turmHell);
-      r(g, x, 98, 1, 6, FARBE.rumpfDunkel);
-      px(g, x, top - 1, FARBE.kontur);
-      if (x % 28 === 0) for (let y = top + 3; y < 100; y++) { px(g, x, y, FARBE.naht); if (y % 6 === 0) px(g, x + 2, y, FARBE.niete); }
-      if (x % 10 === 0 && x > 780 && x < 876) r(g, x, top - 7, 1, 7, '#5b6863');
-    }
-    r(g, 778, 53, 98, 1, '#5b6863');
-    r(g, 790, 74, 64, 2, FARBE.rumpfLicht);
-    for (let i = 0; i < 5; i++) r(g, 796 + i * 11, 80, 6, 4, '#1a2523');
-    // Turmkennung „7“ in Pixelschrift
-    ['1111', '0001', '0010', '0100', '0100'].forEach((z, j) => z.split('').forEach((v, i) => { if (v === '1') r(g, 840 + i * 2, 86 + j * 2, 2, 2, '#c9c2a8'); }));
-    // Deckgeschütz vor dem Turm
-    r(g, 976, 92, 14, 10, FARBE.metallDunkel); r(g, 978, 86, 10, 6, FARBE.metall); r(g, 978, 86, 10, 1, FARBE.metallHell);
-    r(g, 988, 87, 26, 3, FARBE.metall); r(g, 988, 87, 26, 1, FARBE.metallHell); r(g, 1012, 86, 3, 5, FARBE.metallDunkel);
-    // Heck: Ruder, Wellenbock, Tiefenruder; Bug: Torpedoklappen und Bugtiefenruder
-    r(g, 6, 156, 8, 52, FARBE.rumpfDunkel); r(g, 6, 156, 2, 52, FARBE.rumpfHell); r(g, 5, 156, 1, 52, FARBE.kontur);
-    r(g, 16, 177, 26, 5, FARBE.metall); r(g, 16, 177, 26, 1, FARBE.metallHell);
-    r(g, 30, 196, 26, 4, FARBE.rumpfDunkel); r(g, 30, 196, 26, 1, FARBE.rumpfHell);
-    r(g, 1196, 194, 30, 4, FARBE.rumpfDunkel); r(g, 1196, 194, 30, 1, FARBE.rumpfHell);
-    for (let i = 0; i < 4; i++) {
-      const tx = 1246 + (i % 2) * 12, ty = 166 + Math.floor(i / 2) * 18;
-      r(g, tx, ty, 8, 8, FARBE.kontur); r(g, tx + 1, ty + 1, 6, 6, '#1d2625'); r(g, tx + 1, ty + 1, 6, 1, FARBE.rumpfHell);
-    }
-
-    // Innenraum (Schnitt)
+    for (let x = D.ANKER.turmX0; x < D.ANKER.turmX1; x++) { r(g, x, 56, 1, 44, FARBE.turm); px(g, x, 56, FARBE.turmHell); }
     D.ABTEILE.forEach((a, i) => {
-      const x0 = a.x0 * F, x1 = a.x1 * F, w = x1 - x0;
-      r(g, x0, DECKE, w, BODEN - DECKE, WANDFARBEN[i]);
-      r(g, x0, BODEN - 26, w, 26, 'rgba(0,0,0,0.12)');
-      r(g, x0, BODEN - 27, w, 1, 'rgba(255,255,255,0.06)');
-      for (let x = x0 + 12; x < x1 - 4; x += 24) {
-        r(g, x, DECKE + 10, 3, BODEN - DECKE - 10, 'rgba(0,0,0,0.18)');
-        r(g, x, DECKE + 10, 1, BODEN - DECKE - 10, 'rgba(255,255,255,0.06)');
-        for (let y = DECKE + 14; y < BODEN - 2; y += 9) px(g, x + 1, y, 'rgba(255,255,255,0.12)');
-      }
-      r(g, x0, DECKE, w, 4, FARBE.rohr); r(g, x0, DECKE, w, 1, FARBE.rohrHell);
-      r(g, x0, DECKE + 4, w, 3, FARBE.messing); r(g, x0, DECKE + 4, w, 1, FARBE.messingHell);
-      if (i % 2 === 0) { r(g, x0, DECKE + 7, w, 2, FARBE.rot); r(g, x0, DECKE + 7, w, 1, FARBE.rotHell); }
-      r(g, x0, DECKE + 9, w, 2, '#262b29');
-      for (let x = x0 + 3; x < x1; x += 4) px(g, x, DECKE + 9, '#4a4f4c');
-      for (let x = x0 + 16; x < x1 - 4; x += 30) r(g, x, DECKE, 2, 11, FARBE.kontur);
-      r(g, x0, DECKE + 11, w, 2, 'rgba(0,0,0,0.3)');
-      for (const lx of lampenX(a)) {
-        const xx = Math.round(lx) - 3;
-        r(g, xx, DECKE + 11, 7, 1, FARBE.kontur); r(g, xx + 1, DECKE + 12, 5, 4, '#e8c77a');
-        px(g, xx + 1, DECKE + 13, FARBE.kontur); px(g, xx + 5, DECKE + 13, FARBE.kontur); r(g, xx + 1, DECKE + 16, 5, 1, FARBE.kontur);
-      }
+      const x0 = a.x0 * F, w = (a.x1 - a.x0) * F;
+      r(g, x0, DECKE, w, BODEN - DECKE, WANDFARBEN[i % WANDFARBEN.length]);
+      r(g, x0, DECKE, w, 4, FARBE.rohr); r(g, x0, DECKE + 4, w, 3, FARBE.messing);
+      for (const lx of lampenX(a)) { r(g, Math.round(lx) - 3, DECKE + 11, 7, 1, FARBE.kontur); r(g, Math.round(lx) - 2, DECKE + 12, 5, 4, '#e8c77a'); }
     });
-    // Boden mit Gitterrost, Bilge darunter
     const bx0 = D.ABTEILE[0].x0 * F, bx1 = D.ABTEILE[D.ABTEILE.length - 1].x1 * F;
-    r(g, bx0, BODEN, bx1 - bx0, 6, FARBE.boden);
-    for (let x = bx0; x < bx1; x++) for (let y = 0; y < 6; y++) if ((x + y * 2) % 4 === 0) px(g, x, BODEN + y, FARBE.bodenHell);
-    r(g, bx0, BODEN, bx1 - bx0, 1, '#59615c');
-    r(g, bx0, BODEN + 6, bx1 - bx0, 9, FARBE.bilge);
-    r(g, bx0, BODEN + 10, bx1 - bx0, 2, '#2c3230');
-
-    /* Heckraum: E-Maschine, Schalttafel, Kojen */
-    r(g, 158, 186, 52, 34, FARBE.metall);
-    raster(g, 158, 186, 52, 4, FARBE.metallHell); r(g, 158, 186, 52, 1, FARBE.metallHell);
-    for (let x = 162; x < 206; x += 3) r(g, x, 194, 1, 20, FARBE.metallDunkel);
-    r(g, 176, 198, 16, 8, FARBE.kupfer); r(g, 176, 198, 16, 1, '#c07a4a');
-    r(g, 160, 216, 48, 4, FARBE.metallDunkel);
-    r(g, 210, 198, 14, 6, FARBE.messing); r(g, 210, 198, 14, 1, FARBE.messingHell);
-    r(g, 168, 156, 34, 22, '#2b3130'); r(g, 168, 156, 34, 1, '#4a524f');
-    rundanzeige(g, 176, 165, 5); rundanzeige(g, 192, 165, 5);
-    for (let i = 0; i < 4; i++) r(g, 172 + i * 8, 173, 3, 2, i % 2 ? '#c33' : '#3c3');
-    koje(g, 120, 0); koje(g, 120, 1);
-
-    /* Maschinenraum: zwei Diesel mit Zylinderköpfen, Auspuffleitung, Telegraf */
-    for (const x0 of [236, 340]) {
-      r(g, x0, 186, 60, 34, FARBE.metall);
-      r(g, x0, 186, 60, 2, FARBE.metallHell); raster(g, x0, 188, 60, 2, FARBE.metallHell);
-      r(g, x0, 212, 60, 8, FARBE.metallDunkel);
-      for (let k = 0; k < 6; k++) {
-        const kx = x0 + 3 + k * 9;
-        r(g, kx, 174, 7, 12, '#3b4045'); r(g, kx, 174, 7, 1, '#5b6166'); r(g, kx + 2, 170, 3, 4, '#2c3034');
-        px(g, kx + 1, 178, FARBE.messingHell); px(g, kx + 5, 178, FARBE.messingHell);
-      }
-      r(g, x0 - 2, 162, 64, 4, FARBE.messing); r(g, x0 - 2, 162, 64, 1, FARBE.messingHell);
-      for (let k = 0; k < 6; k++) r(g, x0 + 5 + k * 9, 166, 3, 4, FARBE.messing);
-      for (let k = 0; k < 4; k++) r(g, x0 + 8 + k * 14, 199, 8, 1, FARBE.metallHell);
+    r(g, bx0, BODEN, bx1 - bx0, 6, FARBE.boden); r(g, bx0, BODEN + 6, bx1 - bx0, 9, FARBE.bilge);
+    for (let i = 1; i < D.ABTEILE.length; i++) {
+      const x = D.ABTEILE[i].x0 * F;
+      r(g, x - 4, DECKE, 8, BODEN - DECKE, FARBE.schott); r(g, x - 4, DECKE, 1, BODEN - DECKE, FARBE.schottHell);
     }
-    r(g, 318, 192, 4, 28, FARBE.messing); r(g, 318, 192, 1, 28, FARBE.messingHell);
-    r(g, 310, 176, 20, 18, '#1a1f1d'); r(g, 312, 178, 16, 14, FARBE.anzeige);
-    for (let k = 0; k < 4; k++) r(g, 312, 181 + k * 3, 16, 1, '#b8ae90');
-    r(g, 319, 179, 2, 8, '#a33'); r(g, 310, 176, 20, 1, FARBE.messingHell);
-
-    /* Laderaum: Regalbretter mit Stützen */
-    for (const y of [168, 194]) { r(g, 412, y, 120, 3, FARBE.holzDunkel); r(g, 412, y, 120, 1, FARBE.holz); }
-    for (const x of [412, 470, 528]) r(g, x, 160, 3, 60, FARBE.holzDunkel);
-
-    /* Mannschaftsraum: Kojen, Back mit Bänken, Kombüse */
-    koje(g, 564, 0); koje(g, 564, 1); koje(g, 608, 0); koje(g, 608, 1);
-    r(g, 632, 200, 48, 3, FARBE.holz); r(g, 632, 200, 48, 1, FARBE.holzHell);
-    r(g, 636, 203, 2, 17, FARBE.holzDunkel); r(g, 674, 203, 2, 17, FARBE.holzDunkel);
-    r(g, 628, 210, 8, 2, FARBE.holz); r(g, 676, 210, 8, 2, FARBE.holz);
-    r(g, 642, 196, 4, 4, '#d8d0bc'); r(g, 646, 197, 1, 2, '#d8d0bc'); r(g, 660, 197, 6, 3, '#9aa19a');
-    r(g, 684, 190, 32, 30, '#55595c'); r(g, 684, 190, 32, 2, '#868f95');
-    r(g, 688, 196, 24, 10, '#2c2f31'); r(g, 690, 198, 20, 6, '#3c4043');
-    for (let k = 0; k < 3; k++) r(g, 690 + k * 7, 210, 4, 4, '#2a2d2f');
-    r(g, 688, 182, 9, 8, '#8a8f96'); r(g, 688, 182, 9, 1, '#a7adb3'); r(g, 700, 184, 11, 6, '#6a6f74'); r(g, 698, 186, 2, 1, '#6a6f74');
-    for (let k = 0; k < 4; k++) r(g, 686 + k * 8, 160, 1, 12, '#3a3a3a');
-
-    /* Zentrale */
-    r(g, 820, DECKE, 8, 80, FARBE.metall); r(g, 820, DECKE, 2, 80, FARBE.metallHell); r(g, 826, DECKE, 2, 80, FARBE.metallDunkel);
-    r(g, 812, 188, 24, 6, FARBE.metallHell); r(g, 812, 188, 24, 1, '#aab3b8'); r(g, 810, 189, 3, 4, FARBE.kontur); r(g, 835, 189, 3, 4, FARBE.kontur);
-    r(g, 818, 180, 12, 8, FARBE.metallDunkel); r(g, 820, 182, 8, 3, '#1a1f1d');
-    r(g, 726, 152, 66, 36, '#2a302e'); r(g, 726, 152, 66, 1, '#48514d'); r(g, 726, 187, 66, 1, FARBE.kontur);
-    rundanzeige(g, 737, 164, 8); rundanzeige(g, 759, 164, 6); rundanzeige(g, 777, 164, 6);
-    for (let i = 0; i < 6; i++) r(g, 730 + i * 10, 180, 6, 3, i < 3 ? '#3a6b48' : '#6b3a3a');
-    r(g, 736, 196, 10, 24, '#3a4040'); r(g, 736, 196, 10, 1, '#56605c');
-    handrad(g, 734, 196, 7, FARBE.rotHell); handrad(g, 750, 200, 6, FARBE.rad);
-    r(g, 760, 188, 18, 14, '#2a302e'); r(g, 762, 190, 14, 7, '#16261b'); r(g, 762, 190, 14, 1, '#2d4a35');
-    for (let k = 0; k < 3; k++) r(g, 763 + k * 5, 199, 3, 2, FARBE.messing);
-    r(g, 766, 202, 6, 18, '#3a4040');
-    r(g, 786, 180, 22, 40, '#3a4040'); r(g, 786, 180, 22, 1, '#56605c');
-    for (let k = 0; k < 8; k++) r(g, 789 + (k % 4) * 5, 186 + Math.floor(k / 4) * 10, 3, 6, k % 3 === 0 ? FARBE.rotHell : '#3c9c55');
-    r(g, 788, 206, 18, 1, FARBE.messing);
-    r(g, 853, 200, 6, 20, FARBE.metall); handrad(g, 856, 192, 8, FARBE.rad);
-    r(g, 846, 168, 20, 10, '#1a1f1d'); r(g, 848, 170, 16, 6, FARBE.anzeige); r(g, 855, 170, 2, 6, '#a33');
-    r(g, 868, DECKE - 6, 2, 86, FARBE.metall); r(g, 876, DECKE - 6, 2, 86, FARBE.metall);
-    for (let y = DECKE; y < BODEN; y += 8) r(g, 868, y, 10, 2, FARBE.metallHell);
-    r(g, 864, DECKE, 18, 2, FARBE.kontur);
-    r(g, 880, 200, 32, 3, FARBE.holz); r(g, 880, 200, 32, 1, FARBE.holzHell);
-    r(g, 882, 198, 28, 2, '#d8cfae'); px(g, 890, 198, '#3f6f8a'); px(g, 896, 199, '#a33');
-    r(g, 884, 203, 2, 17, FARBE.holzDunkel); r(g, 906, 203, 2, 17, FARBE.holzDunkel);
-    r(g, 900, 176, 2, 22, FARBE.metallDunkel); r(g, 896, 174, 10, 3, FARBE.glas);
-
-    /* Funk- & Horchraum */
-    r(g, 926, 200, 36, 3, FARBE.holz); r(g, 926, 200, 36, 1, FARBE.holzHell); r(g, 928, 203, 2, 17, FARBE.holzDunkel);
-    r(g, 928, 164, 32, 36, '#30373a'); r(g, 928, 164, 32, 1, '#4c5558');
-    r(g, 930, 166, 28, 12, '#1c2123'); r(g, 932, 168, 24, 6, '#26302f');
-    for (let k = 0; k < 4; k++) rundanzeige(g, 934 + k * 7, 186, 2);
-    r(g, 930, 192, 28, 1, FARBE.messing);
-    r(g, 944, 194, 8, 5, '#222'); px(g, 943, 194, '#222'); px(g, 952, 194, '#222');
-    koje(g, 980, 0, true); koje(g, 980, 1);
-    r(g, 1004, 200, 36, 3, FARBE.holz); r(g, 1004, 200, 36, 1, FARBE.holzHell); r(g, 1036, 203, 2, 17, FARBE.holzDunkel);
-    r(g, 1008, 170, 30, 30, '#30373a'); r(g, 1008, 170, 30, 1, '#4c5558');
-    for (let y = -9; y <= 9; y++) for (let x = -9; x <= 9; x++) {
-      const d = Math.hypot(x, y);
-      if (d <= 9.3) px(g, 1023 + x, 184 + y, d > 8 ? FARBE.messing : d > 7 ? '#111' : '#0f2a1a');
-    }
-    for (let k = 0; k < 3; k++) for (let a = 0; a < 40; a++) { const w = a / 40 * Math.PI * 2; if (a % 2) px(g, Math.round(1023 + Math.cos(w) * (2 + k * 2.3)), Math.round(184 + Math.sin(w) * (2 + k * 2.3)), '#1f5a36'); }
-
-    /* Bugtorpedoraum: Kojen, Laufkatze, Rohrklappen */
-    koje(g, 1080, 0); koje(g, 1080, 1); koje(g, 1124, 0); koje(g, 1124, 1); koje(g, 1168, 0); koje(g, 1168, 1);
-    r(g, 1052, DECKE + 14, 140, 2, FARBE.metallDunkel);
-    r(g, 1120, DECKE + 16, 8, 4, FARBE.metall); r(g, 1123, DECKE + 20, 1, 10, '#777'); r(g, 1121, DECKE + 30, 5, 2, '#777');
-    r(g, 1192, 152, 20, 68, '#3b4240'); r(g, 1192, 152, 1, 68, '#56605c');
-    for (let i = 0; i < 4; i++) {
-      const tx = 1194 + (i % 2) * 8, ty = 158 + Math.floor(i / 2) * 28;
-      for (let y = 0; y < 14; y++) for (let x = 0; x < 8; x++) if (Math.hypot(x - 3.5, y - 6.5) < 4.2 || (y > 2 && y < 11 && x > 0 && x < 7)) px(g, tx + x, ty + y, (x + y) % 5 === 0 ? FARBE.messingHell : FARBE.messing);
-      r(g, tx + 3, ty + 5, 2, 4, FARBE.kontur);
-    }
-
-    /* Schotten mit Nieten */
-    for (let i = 0; i < D.ABTEILE.length - 1; i++) {
-      const x = D.ABTEILE[i].x1 * F;
-      r(g, x - 4, DECKE, 8, BODEN - DECKE, FARBE.schott);
-      r(g, x - 4, DECKE, 1, BODEN - DECKE, FARBE.schottHell);
-      r(g, x + 3, DECKE, 1, BODEN - DECKE, FARBE.kontur);
-      for (let y = DECKE + 4; y < 164; y += 5) { px(g, x - 2, y, FARBE.niete); px(g, x + 1, y, FARBE.niete); }
-    }
-    r(g, 84, DECKE, 6, BODEN - DECKE, FARBE.schott); r(g, 1210, DECKE, 6, BODEN - DECKE, FARBE.schott);
+    for (const k of D.KOJEN) koje(g, k.x * F, k.o, !!k.vorhang);
+    for (const p of Object.values(D.POSTEN)) if (p.x != null) { r(g, p.x * F - 6, 196, 12, 24, FARBE.metallDunkel); r(g, p.x * F - 6, 196, 12, 1, FARBE.metallHell); }
     statisch = c;
   }
 
@@ -558,12 +371,13 @@
     const uw = S.sim.unterWasser(st);
     const strom = !uw || b.batterie > 0;
 
+    const A = D.ANKER;
     // Sehrohr und Antenne
     const sehrohrOben = S.sim.eff.sehrohr > 0 && b.tiefe <= 15;
     const sy = sehrohrOben ? 6 : 34;
-    r(ctx, 822, sy, 4, 60 - sy, FARBE.metallHell); r(ctx, 822, sy, 1, 60 - sy, '#aab3b8');
-    r(ctx, 820, sy, 8, 4, FARBE.metall); r(ctx, 826, sy + 1, 3, 2, '#1a2523');
-    r(ctx, 802, 22, 1, 34, '#8a8f95'); r(ctx, 798, 22, 9, 1, '#8a8f95');
+    r(ctx, A.sehrohrX, sy, 4, 60 - sy, FARBE.metallHell); r(ctx, A.sehrohrX, sy, 1, 60 - sy, '#aab3b8');
+    r(ctx, A.sehrohrX - 2, sy, 8, 4, FARBE.metall); r(ctx, A.sehrohrX + 4, sy + 1, 3, 2, '#1a2523');
+    r(ctx, A.sehrohrX + 36, 22, 1, 34, '#8a8f95'); r(ctx, A.sehrohrX + 32, 22, 9, 1, '#8a8f95');
     ctx.drawImage(S.bilder.bild('boot_querschnitt') || statisch, 0, 0);
 
     // Schraube
@@ -576,43 +390,43 @@
       for (let k = 0; k < 8; k++) { const bx = 18 - ((zeit * 40 + k * 23) % 90); ctx.fillRect(Math.round(bx), 168 + ((k * 13) % 22), 2, 2); }
     }
 
-    // Laderaum: Kisten, Fässer, hängender Proviant
-    const le = S.sim.ladeEinheiten(st.ladung) / D.LADERAUM_LE;
-    const kisten = Math.round(le * 18);
-    for (let k = 0; k < kisten; k++) {
-      const reihe = Math.floor(k / 9);
-      kiste(ctx, 416 + (k % 9) * 12 + (reihe === 1 ? 2 : 0), reihe ? 182 : 208, (k * 5 + reihe) % 3);
+    // Proviant hängt im Bug- und Unteroffiziersraum von der Decke (wie viel, hängt vom Vorrat ab)
+    const vp = S.sim.bestand(st, 'verpflegung') / S.sim.kapazitaet(st, 'verpflegung');
+    const haenge = Math.round(vp * 14);
+    for (let k = 0; k < haenge; k++) {
+      const [ax, ay] = k % 2 ? A.proviantURaum : A.proviantBug;
+      const hx = ax + Math.floor(k / 2) * 11, lang = k % 3 === 1;
+      r(ctx, hx + 2, ay, 1, 4, '#5a4a36');
+      r(ctx, hx, ay + 4, lang ? 4 : 6, lang ? 10 : 7, lang ? '#8a4a2a' : '#b07a4a');
+      r(ctx, hx, ay + 4, 1, lang ? 10 : 7, lang ? '#a65d37' : '#cc9360');
     }
-    const proviant = Math.min(10, Math.ceil(st.ladung.proviant / 60));
-    for (let k = 0; k < proviant; k++) {
-      const hx = 418 + k * 11, lang = k % 3 === 1;
-      r(ctx, hx + 2, DECKE + 13, 1, 4, '#5a4a36');
-      r(ctx, hx, DECKE + 17, lang ? 4 : 6, lang ? 10 : 7, lang ? '#8a4a2a' : '#b07a4a');
-      r(ctx, hx, DECKE + 17, 1, lang ? 10 : 7, lang ? '#a65d37' : '#cc9360');
-    }
-    // Reservetorpedos unter den Kojen
-    for (let k = 0; k < Math.min(4, st.ladung.torpedos); k++) {
-      const tx = 1058 + k * 32, ty = 213;
+    // Reservetorpedos unter den Bodenplatten: Bugraum und Heckraum
+    const torpedo = (tx, ty) => {
       r(ctx, tx, ty, 28, 6, '#5a675e'); r(ctx, tx, ty, 28, 1, '#7a877e'); r(ctx, tx + 24, ty, 4, 6, '#454f48');
       r(ctx, tx, ty + 1, 3, 4, '#8a7440'); r(ctx, tx + 8, ty, 1, 6, '#3a433d');
-    }
-    // Rohre geladen?
-    b.rohre.forEach((voll, i) => { r(ctx, 1197 + (i % 2) * 8, 156 + Math.floor(i / 2) * 28, 2, 2, voll ? '#7fd18b' : '#5a1a1a'); });
+    };
+    for (let k = 0; k < Math.min(8, st.ladung.torpedos); k++) torpedo(A.torpedoBug[0] + (k % 6) * 32, A.torpedoBug[1] - (k >= 6 ? 8 : 0));
+    if (st.ladung.torpedosHeck > 0) torpedo(A.torpedoHeck[0], A.torpedoHeck[1]);
+    // Rohre geladen? 4 Bugrohre, 1 Heckrohr
+    b.rohre.forEach((voll, i) => {
+      const [rx, ry] = i < 4 ? [A.bugRohre[0] + (i % 2) * 8, A.bugRohre[1] + Math.floor(i / 2) * 28] : A.heckRohr;
+      r(ctx, rx, ry, 2, 2, voll ? '#7fd18b' : '#5a1a1a');
+    });
     // Tiefenmesser-Zeiger
-    const w = Math.PI * 0.75 + Math.min(1, b.tiefe / D.ZERSTOERUNGSTIEFE) * Math.PI * 1.5;
-    for (let k = 1; k <= 6; k++) px(ctx, Math.round(737 + Math.cos(w) * k), Math.round(164 + Math.sin(w) * k), '#b22');
+    const w = Math.PI * 0.75 + Math.min(1, b.tiefe / S.sim.zerstoerungstiefe(st)) * Math.PI * 1.5;
+    for (let k = 1; k <= 6; k++) px(ctx, Math.round(A.tiefenmesser[0] + Math.cos(w) * k), Math.round(A.tiefenmesser[1] + Math.sin(w) * k), '#b22');
     // Funk-Lämpchen, Horch- und Rechnerschirm
-    const funkAktiv = st.funk.anfrage || st.funk.nachrichten.some((n) => !n.fertig);
-    for (let k = 0; k < 6; k++) r(ctx, 933 + k * 4, 170, 2, 2, funkAktiv && (Math.floor(zeit * 4) + k) % 3 === 0 ? '#ff6a4a' : '#3a2a22');
+    const funkAktiv = st.funk.anfrage || st.funk.nachrichten.some((n) => !n.fertig) || (st.funk.ruf && !st.funk.ruf.empfangen);
+    for (let k = 0; k < 6; k++) r(ctx, A.funkLampen[0] + k * 4, A.funkLampen[1], 2, 2, funkAktiv && (Math.floor(zeit * 4) + k) % 3 === 0 ? '#ff6a4a' : '#3a2a22');
     if (S.sim.eff.sonar > 0) {
       const ww = zeit * 1.6;
-      for (let k = 1; k < 8; k++) px(ctx, Math.round(1023 + Math.cos(ww) * k), Math.round(184 + Math.sin(ww) * k), '#7fe08a');
+      for (let k = 1; k < 8; k++) px(ctx, Math.round(A.horchSchirm[0] + Math.cos(ww) * k), Math.round(A.horchSchirm[1] + Math.sin(ww) * k), '#7fe08a');
     }
-    if (S.sim.eff.torpedo > 0) r(ctx, 763 + Math.floor(zeit * 3) % 12, 192, 2, 3, '#7fe08a');
+    if (S.sim.eff.torpedo > 0) r(ctx, A.rechnerSchirm[0] + 1 + Math.floor(zeit * 3) % 12, A.rechnerSchirm[1] + 2, 2, 3, '#7fe08a');
     // Dampf über der Kombüse
     if (S.sim.eff.kombuese > 0) {
       ctx.fillStyle = 'rgba(230,230,230,0.45)';
-      for (let k = 0; k < 4; k++) { const dy = (zeit * 10 + k * 5) % 18; ctx.fillRect(Math.round(703 + Math.sin(zeit * 2 + k) * 2), Math.round(180 - dy), 2, 2); }
+      for (let k = 0; k < 4; k++) { const dy = (zeit * 10 + k * 5) % 18; ctx.fillRect(Math.round(A.kombuese[0] + Math.sin(zeit * 2 + k) * 2), Math.round(A.kombuese[1] - dy), 2, 2); }
     }
 
     // Lichtschein der Lampen
@@ -708,12 +522,13 @@
     if (zf >= 1.5) {
       D.ABTEILE.forEach((a, i) => {
         const sx = t.tx + (a.x0 + a.x1) / 2 * zf, syy = t.ty + (B.DECKE_Y + 13) * zf;
-        const wtxt = ctx.measureText(a.name).width;
+        let txt = a.name, wtxt = ctx.measureText(txt).width;
+        if (wtxt > (a.x1 - a.x0) * zf - 6) { txt = a.kurz || a.name; wtxt = ctx.measureText(txt).width; }
         if (wtxt > (a.x1 - a.x0) * zf - 6) return;
         ctx.fillStyle = 'rgba(0,0,0,0.55)';
         ctx.fillRect(sx - wtxt / 2 - 3, syy - schrift + 2, wtxt + 6, schrift);
         ctx.fillStyle = i === auswahl.abteil ? '#f2d16b' : '#cfd8cc';
-        ctx.fillText(a.name, sx, syy);
+        ctx.fillText(txt, sx, syy);
       });
     }
     for (const c of st.crew) {

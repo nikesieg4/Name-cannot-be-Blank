@@ -52,7 +52,7 @@
     }
     const basis = D.HAEFEN[0];
     return {
-      version: 1,
+      version: 2,
       zeit: 12 * 60,           // Spielminuten seit Tag 1, 00:00 UTC
       tempo: 1,
       geld: 2500,
@@ -65,10 +65,10 @@
         batterie: 100, druckluft: 100, anblasen: 0,
         abteile: D.ABTEILE.map(() => ({ wasser: 0, rumpf: 100, pumpe: true })),
         schotten: D.ABTEILE.slice(0, -1).map(() => false), // true = geschlossen
-        rohre: [true, true, true, true], ladeFortschritt: 0, teileRest: 0,
+        rohre: [true, true, true, true, true], ladeFortschritt: 0, heckFortschritt: 0, deckUebernahme: null, teileRest: 0,
         upgrades: { pumpen: 0, batterie: 0, rumpf: 0 }, ausbau: {},
       },
-      ladung: { diesel: 9000, torpedos: 6, proviant: 3000, ersatzteile: 20, konserven: 400, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
+      ladung: { diesel: 135000, torpedos: 6, torpedosHeck: 1, torpedosDeck: 2, proviant: 3600, konserven: 400, ersatzteile: 20, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
       crew,
       schichten: D.STANDARD_SCHICHTEN.map((p) => p.slice()),
       schiffe: [],
@@ -86,7 +86,7 @@
 
   /* Ältere Spielstände um neue Felder ergänzen. */
   function ergaenze(st) {
-    for (const k of Object.keys(D.WAREN)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
+    for (const k of Object.keys(D.INVENTAR)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
     if (!st.boot.ausbau) st.boot.ausbau = {};
     while (st.schichten.length < D.STANDARD_SCHICHTEN.length) st.schichten.push(D.STANDARD_SCHICHTEN[st.schichten.length].slice());
     return st;

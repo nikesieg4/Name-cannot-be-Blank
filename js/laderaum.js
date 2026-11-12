@@ -6,70 +6,65 @@
   const geld = (n) => Math.round(n).toLocaleString('de-DE') + ' Kr';
   const zahl = (n) => (Math.round(n * 10) / 10).toLocaleString('de-DE');
 
-  /* Laderaum: 200 LE = 40 Fächer à 5 LE */
-  const FACH_LE = 5, FAECHER = D.LADERAUM_LE / FACH_LE;
-
   let offen = null; // { art: 'inventar', wahl, filter } | { art: 'werft', wahl }
 
   /* Bild eines Gegenstands aus grafik/inventar_items.png in Faktor f */
   function itemBild(ware, f, extra) {
     const [x, w] = D.INVENTAR[ware].bild;
-    const g = ware === 'torpedos' ? Math.max(1, f / 2) : f;
+    const g = w > 24 ? Math.max(1, f / 2) : f;
     return '<i class="itembild ' + (extra || '') + '" aria-hidden="true" style="width:' + w * g + 'px;height:' + 24 * g + 'px;background-size:' + 216 * g + 'px ' + 24 * g + 'px;background-position:-' + x * g + 'px 0"></i>';
   }
 
+  const name = (ware) => D.INVENTAR[ware].name || D.WAREN[ware].name;
   function menge(ware, n) {
-    const w = D.WAREN[ware];
+    const w = D.WAREN[ware] || { einheit: 'Stk' };
     return Math.round(n).toLocaleString('de-DE') + ' ' + (w.einheit === 'Stk' ? 'Stück' : w.einheit);
   }
 
-  /* ---------------- Inventar ---------------- */
+  /* ---------------- Inventar: Stauraum wie auf einem VIIC ---------------- */
   function inventar(st) {
     if (!offen || offen.art !== 'inventar') offen = { art: 'inventar', wahl: 'torpedos', filter: 'alle' };
     const l = st.ladung;
-    const belegt = S.sim.ladeEinheiten(l);
-    const waren = Object.keys(D.INVENTAR).filter((k) => l[k] > 0);
-    if (!waren.includes(offen.wahl)) offen.wahl = waren[0] || 'torpedos';
+    let h = '<h1>Vorräte und Stauraum</h1>';
+    h += '<p class="klein">Ein VIIC hat keinen Laderaum: Torpedos liegen unter den Bodenplatten im Bug- und Heckraum und in zwei Oberdeckbehältern, Proviant ist überall im Boot verstaut.</p>';
+    h += '<div class="reiter">' + D.KATEGORIEN.map(([id, nm]) =>
+      '<button data-aktion="invFilter" data-arg="' + id + '" class="' + (offen.filter === id ? 'aktiv' : '') + '">' + nm + '</button>').join('') + '</div>';
 
-    let h = '<h1>Laderaum</h1>';
-    h += '<div class="zeile"><span>Belegt</span><b>' + zahl(belegt) + ' / ' + D.LADERAUM_LE + ' LE</b></div>';
-    h += '<div class="balken gelb"><i style="width:' + Math.min(100, belegt / D.LADERAUM_LE * 100) + '%"></i></div>';
-    h += '<div class="reiter">' + D.KATEGORIEN.map(([id, name]) =>
-      '<button data-aktion="invFilter" data-arg="' + id + '" class="' + (offen.filter === id ? 'aktiv' : '') + '">' + name + '</button>').join('') + '</div>';
-
-    h += '<div class="inventar"><div class="faecher">';
-    let n = 0;
-    for (const ware of waren) {
-      if (offen.filter !== 'alle' && D.INVENTAR[ware].kat !== offen.filter) continue;
-      const le = l[ware] * D.WAREN[ware].le;
-      const anzahl = Math.max(1, Math.round(le / FACH_LE));
-      for (let i = 0; i < anzahl && n < FAECHER; i++, n++) {
-        h += '<button class="fach' + (offen.wahl === ware ? ' gewaehlt' : '') + (i > 0 ? ' folge' : '') + '" data-aktion="invWahl" data-arg="' + ware + '" aria-label="' + esc(D.WAREN[ware].name + ', ' + menge(ware, l[ware])) + '">' +
-          itemBild(ware, 2) + (i === 0 ? '<span class="anzahl">' + (D.WAREN[ware].einheit === 'L' ? zahl(l[ware] / 1000) + 'k L' : Math.round(l[ware])) + '</span>' : '') + '</button>';
+    h += '<div class="inventar"><div class="lager">';
+    for (const [lager, v] of Object.entries(D.STAURAUM)) {
+      const waren = v.waren || [lager];
+      if (offen.filter !== 'alle' && !waren.some((w) => D.INVENTAR[w].kat === offen.filter)) continue;
+      const max = S.sim.kapazitaet(st, lager), ist = S.sim.bestand(st, lager);
+      h += '<div class="lagerplatz"><div class="zeile"><span class="etikett">' + esc(v.wo.toUpperCase()) + '</span><b>' +
+        (lager === 'diesel' ? Math.round(ist / 1000) + ' / ' + max / 1000 + 'k L' : ist.toLocaleString('de-DE') + ' / ' + max.toLocaleString('de-DE')) + '</b></div>';
+      h += '<div class="balken ' + (ist / max < 0.2 ? 'rot' : 'gelb') + '"><i style="width:' + Math.min(100, ist / max * 100) + '%"></i></div><div class="waren">';
+      for (const w of waren) {
+        h += '<button class="fach breit' + (offen.wahl === w ? ' gewaehlt' : '') + (l[w] > 0 ? '' : ' leer') + '" data-aktion="invWahl" data-arg="' + w + '">' +
+          itemBild(w, 2) + '<span class="fachtext"><b>' + esc(name(w)) + '</b><small>' + menge(w, l[w]) + '</small></span></button>';
       }
+      h += '</div></div>';
     }
-    const frei = Math.max(0, Math.floor((D.LADERAUM_LE - belegt) / FACH_LE));
-    for (let i = 0; i < frei && n < FAECHER; i++, n++) h += '<span class="fach leer"></span>';
     h += '</div>';
 
     // Details
-    const w = offen.wahl, inf = D.INVENTAR[w], ware = D.WAREN[w];
+    const w = offen.wahl, inf = D.INVENTAR[w];
     h += '<div class="detail">';
-    if (l[w] > 0) {
-      h += '<div class="gross">' + itemBild(w, 4) + '</div>';
-      h += '<span class="etikett">' + D.KATEGORIEN.find((k) => k[0] === inf.kat)[1].toUpperCase() + '</span>';
-      h += '<b class="name">' + ware.name + '</b>';
-      h += '<span>' + menge(w, l[w]) + ' · ' + zahl(l[w] * ware.le) + ' LE</span>';
-      h += '<p>' + esc(inf.text) + '</p>';
-      if (w === 'proviant' || w === 'konserven') {
-        const leb = S.sim.lebende(st).length;
-        h += '<p class="klein">Reicht zusammen ' + ((l.proviant + l.konserven) / Math.max(1, leb * st.ration)).toFixed(1) + ' Tage bei ' + st.ration + ' Rationen.</p>';
-      }
-      h += '<div class="aktionen">';
-      if (inf.aktion) h += '<button class="aktiv" data-aktion="invNutzen">' + inf.aktion + '</button>';
-      h += '<button class="warn" data-aktion="invAbwerfen">Über Bord werfen (−' + Math.min(l[w], ware.paket) + ' ' + ware.einheit + ')</button>';
-      h += '</div>';
-    } else h += '<p class="klein">Der Laderaum ist leer.</p>';
+    h += '<div class="gross">' + itemBild(w, 4) + '</div>';
+    h += '<span class="etikett">' + D.KATEGORIEN.find((k) => k[0] === inf.kat)[1].toUpperCase() + ' · ' + esc(D.STAURAUM[S.sim.lagerVon(w)].wo) + '</span>';
+    h += '<b class="name">' + esc(name(w)) + '</b>';
+    h += '<span>' + menge(w, l[w]) + '</span>';
+    h += '<p>' + esc(inf.text) + '</p>';
+    if (w === 'proviant' || w === 'konserven') {
+      const leb = S.sim.lebende(st).length;
+      h += '<p class="klein">Reicht zusammen ' + ((l.proviant + l.konserven) / Math.max(1, leb * st.ration)).toFixed(1) + ' Tage für ' + leb + ' Mann bei ' + st.ration + ' Rationen.</p>';
+    }
+    if (w === 'torpedosDeck' && st.boot.deckUebernahme) {
+      h += '<p class="klein">Übernahme läuft: noch ' + Math.ceil(st.boot.deckUebernahme.rest) + ' min' + (st.boot.deckUebernahme.pause ? ' (unterbrochen)' : '') + '</p>';
+    }
+    h += '<div class="aktionen">';
+    if (inf.aktion && l[w] > 0) h += '<button class="aktiv" data-aktion="invNutzen">' + inf.aktion + '</button>';
+    if (l[w] > 0) h += '<button class="warn" data-aktion="invAbwerfen">Über Bord werfen (−' + Math.min(l[w], (D.WAREN[w] || { paket: 1 }).paket) + ')</button>';
+    h += '</div>';
     if (offen.meldung) h += '<p class="' + (offen.meldung.ok ? 'gut' : 'warnung') + '">' + esc(offen.meldung.text) + '</p>';
     h += '</div></div>';
     h += '<p><button data-aktion="modalZu">Schließen</button></p>';

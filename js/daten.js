@@ -5,50 +5,61 @@
   /* Bootsgeometrie in Pixeln (Bootsgrafik ist 660 × 150 Pixel groß). Heck links, Bug rechts. */
   const BOOT = { B: 660, H: 150, DECKE_Y: 70, BODEN_Y: 110, WASSERLINIE_Y: 60 };
 
+  /* Typ VIIC, Heck links, Bug rechts. 1 Bootseinheit ≈ 10 cm (67,1 m Länge ≈ 660 Einheiten). */
   const ABTEILE = [
-    { id: 'heck', name: 'Heckraum', ort: 'im Heckraum', x0: 44, x1: 112 },
-    { id: 'maschine', name: 'Maschinenraum', ort: 'im Maschinenraum', x0: 112, x1: 204 },
-    { id: 'lager', name: 'Laderaum', ort: 'im Laderaum', x0: 204, x1: 268 },
-    { id: 'mannschaft', name: 'Mannschaftsraum & Kombüse', ort: 'im Mannschaftsraum', x0: 268, x1: 360 },
-    { id: 'zentrale', name: 'Zentrale', ort: 'in der Zentrale', x0: 360, x1: 460 },
-    { id: 'funk', name: 'Funk- & Horchraum', ort: 'im Funk- und Horchraum', x0: 460, x1: 524 },
-    { id: 'bug', name: 'Bugtorpedoraum', ort: 'im Bugtorpedoraum', x0: 524, x1: 606 },
+    { id: 'heck', name: 'Heck- & E-Maschinenraum', kurz: 'E-Maschinen', ort: 'im Heckraum', x0: 44, x1: 128 },
+    { id: 'diesel', name: 'Dieselraum', kurz: 'Diesel', ort: 'im Dieselraum', x0: 128, x1: 224 },
+    { id: 'uraum', name: 'Unteroffiziersraum & Kombüse', kurz: 'U-Raum', ort: 'im Unteroffiziersraum', x0: 224, x1: 297 },
+    { id: 'zentrale', name: 'Zentrale', kurz: 'Zentrale', ort: 'in der Zentrale', x0: 297, x1: 376 },
+    { id: 'funk', name: 'Funk- & Horchraum', kurz: 'Funk', ort: 'im Funkraum', x0: 376, x1: 410 },
+    { id: 'offiziere', name: 'Offiziersraum', kurz: 'Offiziere', ort: 'im Offiziersraum', x0: 410, x1: 455 },
+    { id: 'feldwebel', name: 'Oberfeldwebelraum', kurz: 'O-Feldwebel', ort: 'im Oberfeldwebelraum', x0: 455, x1: 494 },
+    { id: 'bug', name: 'Bugtorpedoraum', kurz: 'Bugraum', ort: 'im Bugraum', x0: 494, x1: 606 },
   ];
+
+  /* Feste Punkte der Bootsgrafik in Grafikpixeln (doppelte Auflösung), passend zu grafik/boot_querschnitt.png */
+  const ANKER = {
+    sehrohrX: 682, turmX0: 616, turmX1: 744,
+    tiefenmesser: [614, 164], rechnerSchirm: [628, 190], funkLampen: [763, 170], horchSchirm: [802, 184], kombuese: [474, 180],
+    bugRohre: [1197, 156], heckRohr: [96, 172], torpedoBug: [1000, 213], torpedoHeck: [96, 213],
+    proviantBug: [1004, 154], proviantURaum: [500, 154],
+  };
 
   /* Posten = Arbeitsplätze im Boot. "system" ist das, was der Posten bedient,
      "spezial" sind die Rollen, die ihn voll beherrschen (alle anderen arbeiten mit 50 %). */
   const POSTEN = {
-    tiefenruder: { name: 'Tiefenruder', abteil: 'zentrale', x: 370, system: 'tauchen', spezial: ['li', 'tauch'] },
-    torpedo: { name: 'Torpedo-Vorhalterechner', abteil: 'zentrale', x: 384, system: 'torpedo', spezial: ['wo1', 'kaleu', 'wo2'] },
-    tauchzellen: { name: 'Tauchzellen-Ventile', abteil: 'zentrale', x: 398, system: 'tauchen', spezial: ['tauch', 'li'] },
-    sehrohr: { name: 'Sehrohr', abteil: 'zentrale', x: 412, system: 'sehrohr', spezial: ['kaleu', 'wo1', 'wo2'] },
-    ruder: { name: 'Seitenruder', abteil: 'zentrale', x: 428, system: 'ruder', spezial: ['ruder', 'nav'] },
-    karte: { name: 'Kartentisch', abteil: 'zentrale', x: 446, system: 'navigation', spezial: ['nav', 'kaleu'] },
-    funk: { name: 'Funkgerät', abteil: 'funk', x: 472, system: 'funk', spezial: ['funker'] },
-    horch: { name: 'Horchgerät', abteil: 'funk', x: 510, system: 'sonar', spezial: ['soni'] },
-    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'maschine', x: 160, system: 'antrieb', spezial: ['maschinist', 'li'] },
-    emaschine: { name: 'E-Maschine', abteil: 'heck', x: 92, system: 'antrieb', spezial: ['maschinist', 'vertau'] },
-    lager: { name: 'Lagerverwaltung', abteil: 'lager', x: 236, system: 'lager', spezial: ['logistik'] },
-    kombuese: { name: 'Kombüse', abteil: 'mannschaft', x: 346, system: 'kombuese', spezial: ['smutje'] },
-    bugraum: { name: 'Torpedo-Nachladen', abteil: 'bug', x: 556, system: 'nachladen', spezial: ['torpedo'] },
+    tiefenruder: { name: 'Tiefenruder', abteil: 'zentrale', x: 305, system: 'tauchen', spezial: ['li', 'tauch'] },
+    torpedo: { name: 'Torpedo-Vorhalterechner', abteil: 'zentrale', x: 318, system: 'torpedo', spezial: ['wo1', 'kaleu', 'wo2'] },
+    tauchzellen: { name: 'Tauchzellen-Ventile', abteil: 'zentrale', x: 331, system: 'tauchen', spezial: ['tauch', 'li'] },
+    sehrohr: { name: 'Sehrohr', abteil: 'zentrale', x: 343, system: 'sehrohr', spezial: ['kaleu', 'wo1', 'wo2'] },
+    ruder: { name: 'Seitenruder', abteil: 'zentrale', x: 356, system: 'ruder', spezial: ['ruder', 'nav'] },
+    karte: { name: 'Kartentisch', abteil: 'zentrale', x: 368, system: 'navigation', spezial: ['nav', 'kaleu'] },
+    funk: { name: 'Funkgerät', abteil: 'funk', x: 384, system: 'funk', spezial: ['funker'] },
+    horch: { name: 'Horchgerät', abteil: 'funk', x: 401, system: 'sonar', spezial: ['soni'] },
+    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'diesel', x: 176, system: 'antrieb', spezial: ['maschinist', 'li'] },
+    emaschine: { name: 'E-Maschine', abteil: 'heck', x: 100, system: 'antrieb', spezial: ['maschinist'] },
+    heckrohr: { name: 'Heckrohr nachladen', abteil: 'heck', x: 56, system: 'heckladen', spezial: ['torpedo'] },
+    lager: { name: 'Vorräte', abteil: 'uraum', x: 266, system: 'lager', spezial: ['logistik'] },
+    kombuese: { name: 'Kombüse', abteil: 'uraum', x: 236, system: 'kombuese', spezial: ['smutje'] },
+    bugraum: { name: 'Bugrohre nachladen', abteil: 'bug', x: 556, system: 'nachladen', spezial: ['torpedo'] },
     leckabwehr: { name: 'Leckabwehr (wandert zum Schaden)', abteil: null, x: null, system: 'reparatur', spezial: ['brand', 'vertau'] },
   };
 
   const SYSTEME = {
     tauchen: 'Tiefensteuerung', torpedo: 'Torpedo-Rechner', sehrohr: 'Sehrohr', ruder: 'Ruder',
     navigation: 'Navigation', funk: 'Funk', sonar: 'Horchgerät', antrieb: 'Antrieb',
-    lager: 'Lager', kombuese: 'Kombüse', nachladen: 'Nachladen', reparatur: 'Leckabwehr',
+    lager: 'Vorräte', kombuese: 'Kombüse', nachladen: 'Bugrohre laden', heckladen: 'Heckrohr laden', reparatur: 'Leckabwehr',
   };
 
-  /* Kojen: o = 0 unten, 1 oben. */
+  /* Kojen: o = 0 unten, 1 oben. off = Offizierskoje. 23 Kojen für 44 Mann – es wird geteilt (Hot Bunking). */
   const KOJEN = [
-    { abteil: 'bug', x: 540, o: 0 }, { abteil: 'bug', x: 540, o: 1 },
-    { abteil: 'bug', x: 562, o: 0 }, { abteil: 'bug', x: 562, o: 1 },
-    { abteil: 'bug', x: 584, o: 0 }, { abteil: 'bug', x: 584, o: 1 },
-    { abteil: 'mannschaft', x: 282, o: 0 }, { abteil: 'mannschaft', x: 282, o: 1 },
-    { abteil: 'mannschaft', x: 304, o: 0 }, { abteil: 'mannschaft', x: 304, o: 1 },
-    { abteil: 'funk', x: 490, o: 0 }, { abteil: 'funk', x: 490, o: 1 },
-    { abteil: 'heck', x: 60, o: 0 }, { abteil: 'heck', x: 60, o: 1 },
+    { abteil: 'heck', x: 74, o: 0 }, { abteil: 'heck', x: 74, o: 1 },
+    { abteil: 'uraum', x: 258, o: 0 }, { abteil: 'uraum', x: 258, o: 1 }, { abteil: 'uraum', x: 280, o: 0 }, { abteil: 'uraum', x: 280, o: 1 },
+    { abteil: 'offiziere', x: 422, o: 0, off: true, vorhang: true }, { abteil: 'offiziere', x: 422, o: 1, off: true },
+    { abteil: 'offiziere', x: 443, o: 0, off: true }, { abteil: 'offiziere', x: 443, o: 1, off: true },
+    { abteil: 'feldwebel', x: 466, o: 0 }, { abteil: 'feldwebel', x: 466, o: 1 }, { abteil: 'feldwebel', x: 484, o: 0 }, { abteil: 'feldwebel', x: 484, o: 1 },
+    { abteil: 'bug', x: 512, o: 0 }, { abteil: 'bug', x: 512, o: 1 }, { abteil: 'bug', x: 532, o: 0 }, { abteil: 'bug', x: 532, o: 1 },
+    { abteil: 'bug', x: 552, o: 0 }, { abteil: 'bug', x: 552, o: 1 }, { abteil: 'bug', x: 572, o: 0 }, { abteil: 'bug', x: 572, o: 1 },
   ];
 
   /* Rollen (nach ubootworkshop.de, ohne Reporter und Schiffsjunge/-mädel) mit realistischer Stärke
@@ -84,7 +95,7 @@
       text: 'Kocht. Ohne Smutje schmeckt das Essen schlechter und die Moral sinkt.' },
     wo2: { name: '2. Wachoffizier', kurz: '2WO', posten: 'sehrohr', anzahl: 1, wache: 2, farbe: '#c8c2ae', offizier: true,
       text: 'Führt die dritte Wache und vertritt den 1WO.' },
-    torpedo: { name: 'Torpedomechaniker', kurz: 'Torp.', posten: 'bugraum', anzahl: 5, wache: 0, farbe: '#b8833f',
+    torpedo: { name: 'Torpedomechaniker', kurz: 'Torp.', posten: ['bugraum', 'heckrohr', 'bugraum', 'bugraum', 'bugraum'], anzahl: 5, wache: 0, farbe: '#b8833f',
       text: 'Wartet die Torpedos und lädt im Bugraum nach.' },
   };
   /* Der Admiral kommt erst mit Beobachter-Missionen an Bord (siehe README). */
@@ -101,20 +112,23 @@
     plan('SSSSSS FDDDDD FDDDDD DFFFSS'),
   ];
 
+  /* Typ VIIC: Prüftiefe 220 m, Zerstörungstiefe je nach Quelle 250–295 m. */
   const TIEFEN = [
     { id: 'oberflaeche', name: 'Oberfläche', m: 0 },
-    { id: 'sehrohr', name: 'Sehrohrtiefe', m: 12 },
-    { id: 'schleich', name: 'Schleichtiefe', m: 60 },
-    { id: 'max', name: 'Max. sichere Tiefe', m: 150 },
+    { id: 'sehrohr', name: 'Sehrohrtiefe', m: 13 },
+    { id: 'schleich', name: 'Schleichtiefe', m: 80 },
+    { id: 'max', name: 'Prüftiefe', m: 220 },
   ];
-  const ZERSTOERUNGSTIEFE = 220;
-  const MAX_SICHER = 150;
+  const ZERSTOERUNGSTIEFE = 260;
+  const MAX_SICHER = 220;
 
+  /* Typ VIIC: 17,7 kn aufgetaucht (2 × MAN-Diesel), 7,6 kn getaucht (2 × E-Maschine).
+     diesel = Liter pro Minute, strom = Batterie-% pro Minute (Volle Fahrt getaucht leert sie in gut einer Stunde). */
   const FAHRT = [
-    { name: 'Stopp', ueber: 0, unter: 0, diesel: 0.4, strom: 0.004 },
-    { name: 'Kleine Fahrt', ueber: 5, unter: 2, diesel: 2, strom: 0.035 },
-    { name: 'Halbe Fahrt', ueber: 10, unter: 4, diesel: 4, strom: 0.08 },
-    { name: 'Volle Fahrt', ueber: 16, unter: 7, diesel: 8, strom: 0.2 },
+    { name: 'Stopp', ueber: 0, unter: 0, diesel: 0.3, strom: 0.004 },
+    { name: 'Kleine Fahrt', ueber: 5, unter: 2, diesel: 1, strom: 0.026 },
+    { name: 'Halbe Fahrt', ueber: 10, unter: 4, diesel: 2.7, strom: 0.083 },
+    { name: 'Volle Fahrt', ueber: 17.7, unter: 7.6, diesel: 12, strom: 1.4 },
   ];
 
   /* Karte: 300 × 200 km, 1 Pixel = 1 km. */
@@ -131,20 +145,38 @@
   ];
   const FEIND_NAME = 'Vardanien';
 
+  /* Waren, die man kaufen kann. paket = Menge pro Kauf. */
   const WAREN = {
-    diesel: { name: 'Diesel', einheit: 'L', le: 1 / 100, paket: 500 },
-    torpedos: { name: 'Torpedos', einheit: 'Stk', le: 5, paket: 1 },
-    proviant: { name: 'Proviant', einheit: 'Rationen', le: 1 / 100, paket: 500 },
-    ersatzteile: { name: 'Ersatzteile', einheit: 'Stk', le: 1 / 2, paket: 5 },
-    konserven: { name: 'Konserven', einheit: 'Rationen', le: 1 / 80, paket: 200 },
-    batteriezelle: { name: 'Batteriezelle', einheit: 'Stk', le: 2, paket: 1 },
-    druckflasche: { name: 'Druckluftflasche', einheit: 'Stk', le: 1, paket: 1 },
-    sanitaet: { name: 'Sanitätskasten', einheit: 'Stk', le: 1 / 2, paket: 1 },
+    diesel: { name: 'Diesel', einheit: 'L', paket: 5000 },
+    torpedos: { name: 'Torpedos', einheit: 'Stk', paket: 1 },
+    proviant: { name: 'Proviant', einheit: 'Rationen', paket: 500 },
+    konserven: { name: 'Konserven', einheit: 'Rationen', paket: 200 },
+    ersatzteile: { name: 'Ersatzteile', einheit: 'Stk', paket: 5 },
+    batteriezelle: { name: 'Batteriezelle', einheit: 'Stk', paket: 1 },
+    druckflasche: { name: 'Druckluftflasche', einheit: 'Stk', paket: 1 },
+    sanitaet: { name: 'Sanitätskasten', einheit: 'Stk', paket: 1 },
+  };
+
+  /* Stauraum wie auf einem VIIC – es gibt keinen Laderaum, alles ist im Boot verteilt.
+     Torpedos: 5 in den Rohren, 6 Reserve im Bugraum, 1 im Heckraum, 2 in Oberdeckbehältern = 14.
+     Diesel: rund 113 t ≈ 135 000 L in den Bunkern. Verpflegung (Proviant + Konserven) zusammen. */
+  const STAURAUM = {
+    diesel: { max: 135000, wo: 'Treibstoffbunker' },
+    torpedos: { max: 6, wo: 'Bugraum (unter den Bodenplatten)' },
+    torpedosHeck: { max: 1, wo: 'Heckraum' },
+    torpedosDeck: { max: 2, wo: 'Oberdeckbehälter' },
+    verpflegung: { max: 5000, wo: 'überall im Boot verstaut', waren: ['proviant', 'konserven'] },
+    ersatzteile: { max: 60, wo: 'Werkzeugkisten' },
+    batteriezelle: { max: 4, wo: 'Batterieraum' },
+    druckflasche: { max: 6, wo: 'Zentrale' },
+    sanitaet: { max: 6, wo: 'Offiziersraum' },
   };
 
   /* Inventar: Kategorie, Bild in grafik/inventar_items.png (x, Breite) und was der Gegenstand tut. */
   const INVENTAR = {
-    torpedos: { kat: 'waffen', bild: [0, 48], text: 'Reserve im Laderaum. Wird im Bugraum automatisch nachgeladen, sobald ein Rohr leer ist und jemand dort arbeitet.' },
+    torpedos: { name: 'Torpedos Bugraum', kat: 'waffen', bild: [0, 48], text: 'Reserve für die vier Bugrohre. Die Torpedomechaniker laden nach, sobald ein Rohr leer ist.' },
+    torpedosHeck: { name: 'Torpedo Heckraum', kat: 'waffen', bild: [0, 48], text: 'Reserve für das Heckrohr. Wird im Heckraum nachgeladen.' },
+    torpedosDeck: { name: 'Oberdeckbehälter', kat: 'waffen', bild: [0, 48], text: 'Zwei Torpedos in druckfesten Behältern unter dem Oberdeck. Nur aufgetaucht bei ruhiger Fahrt ins Boot zu holen – das dauert zwei Stunden.', aktion: 'Ins Boot übernehmen' },
     diesel: { kat: 'treibstoff', bild: [48, 24], text: 'Treibstoff für die Fahrt an der Oberfläche. Die Diesel laden dabei auch die Batterie.' },
     proviant: { kat: 'proviant', bild: [72, 24], text: 'Frisches Essen. Der Smutje kocht dreimal am Tag davon, so viele Rationen wie eingestellt.' },
     konserven: { kat: 'proviant', bild: [96, 24], text: 'Haltbar und verdirbt nicht im Wasser. Wird gegessen, wenn der frische Proviant aufgebraucht ist – macht etwas weniger satt und froh.' },
@@ -154,13 +186,12 @@
     sanitaet: { kat: 'material', bild: [192, 24], text: 'Wird automatisch benutzt, wenn jemand zu ertrinken droht: Er bekommt Luft und Zeit, sich zu retten.' },
   };
   const KATEGORIEN = [['alle', 'Alle'], ['waffen', 'Waffen'], ['treibstoff', 'Treibstoff'], ['proviant', 'Proviant'], ['material', 'Material']];
-  const LADERAUM_LE = 200;
 
   /* Preise je Einheit; null = nicht im Angebot. Ankauf durch den Händler = 60 %. */
   const PREISE = {
-    basis: { diesel: 0.8, torpedos: 600, proviant: 1, ersatzteile: 40, konserven: 1.5, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
-    kalvik: { diesel: 0.6, torpedos: null, proviant: 0.8, ersatzteile: 50, konserven: 1.2, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
-    haendler: { diesel: 1.1, torpedos: null, proviant: 1.5, ersatzteile: 60, konserven: 2, batteriezelle: null, druckflasche: null, sanitaet: 180 },
+    basis: { diesel: 0.02, torpedos: 600, proviant: 1, ersatzteile: 40, konserven: 1.5, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
+    kalvik: { diesel: 0.03, torpedos: null, proviant: 0.8, ersatzteile: 50, konserven: 1.2, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
+    haendler: { diesel: 0.06, torpedos: null, proviant: 1.5, ersatzteile: 60, konserven: 2, batteriezelle: null, druckflasche: null, sanitaet: 180 },
   };
   const ANKAUF = 0.6;
 
@@ -192,7 +223,7 @@
     { id: 'waffen', name: 'Waffen', farbe: '#ff8a6a', knoten: [
       { id: 'schnellladen', name: 'Schnellladen', bild: 9, preis: 2500, text: 'Nachladen im Bugraum 30 % schneller.' },
       { id: 'vorhalter', name: 'Vorhalterechner', bild: 8, preis: 3500, text: 'Torpedos treffen um 15 % besser.' },
-      { id: 'rohr5', name: '5. Rohr', bild: 10, preis: 6000, text: 'Ein zusätzliches Torpedorohr.' }] },
+      { id: 'reserve8', name: 'Torpedohalter', bild: 10, preis: 6000, text: 'Zwei zusätzliche Reserve-Torpedos im Bugraum (6 → 8).' }] },
     { id: 'funk', name: 'Funk & Crew', farbe: '#efd086', knoten: [
       { id: 'funkpeiler', name: 'Funkpeiler', bild: 11, preis: 1500, text: 'Das Sendeband des Stützpunkts ist auf der Skala markiert.' },
       { id: 'morse', name: 'Morse-Lehrgang', bild: 12, preis: 2500, text: 'Der Funker trägt die ersten 3 Zeichen eines Spruchs selbst ein.' },
@@ -231,7 +262,7 @@
 
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
-    ZERSTOERUNGSTIEFE, MAX_SICHER, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, LADERAUM_LE, PREISE, ANKAUF,
+    ZERSTOERUNGSTIEFE, MAX_SICHER, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM,
     UPGRADES, SKILLTREE, INVENTAR, KATEGORIEN, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

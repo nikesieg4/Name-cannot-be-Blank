@@ -95,11 +95,24 @@
     return maxSicher(st) * (0.45 + 0.55 * minRumpf(st) / 100);
   }
 
-  function ladeEinheiten(l) {
-    let s = 0;
-    for (const k of Object.keys(D.WAREN)) s += (l[k] || 0) * D.WAREN[k].le;
-    return s;
+  /* Stauraum: Lagerplatz (Schlüssel in D.STAURAUM) einer Ware, Höchstmenge und freier Platz */
+  function lagerVon(ware) {
+    for (const [k, v] of Object.entries(D.STAURAUM)) if (k === ware || (v.waren && v.waren.includes(ware))) return k;
+    return null;
   }
+  function kapazitaet(st, lager) {
+    const v = D.STAURAUM[lager];
+    return v.max + (lager === 'torpedos' && hatAusbau(st, 'reserve8') ? 2 : 0);
+  }
+  function bestand(st, lager) {
+    const v = D.STAURAUM[lager];
+    return v.waren ? v.waren.reduce((a, w) => a + (st.ladung[w] || 0), 0) : (st.ladung[lager] || 0);
+  }
+  function platz(st, ware) {
+    const l = lagerVon(ware);
+    return l ? Math.max(0, kapazitaet(st, l) - bestand(st, l)) : Infinity;
+  }
+  function torpedosGesamt(st) { return st.ladung.torpedos + st.ladung.torpedosHeck + st.ladung.torpedosDeck + st.boot.rohre.filter(Boolean).length; }
 
   function lebende(st) { return st.crew.filter((c) => !c.tot); }
   function crewNachId(st, id) { return st.crew.find((c) => c.id === id); }
@@ -168,7 +181,8 @@
     let best = null, bd = 1e9;
     D.KOJEN.forEach((k, i) => {
       if (belegt.has(i) || !erreichbar(st, c.x, k.x)) return;
-      const d = Math.abs(k.x - c.x) + (off && k.abteil === 'funk' ? -1000 : 0) + (!off && k.abteil === 'funk' ? 400 : 0);
+      if (k.off && !off) return;
+      const d = Math.abs(k.x - c.x) + (off && k.off ? -1000 : 0) + (c.rolle === 'kaleu' && k.vorhang ? -500 : 0);
       if (d < bd) { bd = d; best = i; }
     });
     return best;
@@ -237,19 +251,22 @@
       log(st, 'Leckabwehr: Alle Schäden behoben.', 'gut');
     }
 
-    // 2. Torpedos nachladen, wenn ein Rohr leer ist und Reserve da ist
-    if (b.rohre.includes(false) && st.ladung.torpedos > 0) {
-      const lader = st.crew.some((c) => !c.tot && c.taetigkeit !== 'schlaf' && (c.posten === 'bugraum' || c.befehl != null) && abteilIndex(c.x) === abteilNachId('bug'));
-      if (!lader) {
-        const zx = D.POSTEN.bugraum.x;
-        const k = st.crew.filter((c) => !c.notfall && frei(c, false) && erreichbar(st, c.x, zx))
-          .sort((a, c) => Math.abs(a.x - zx) - Math.abs(c.x - zx))[0];
-        if (k) {
-          k.notfall = { x: zx, art: 'nachladen' };
-          if (!b.ladeauftrag) { b.ladeauftrag = true; log(st, k.name.split(' ')[0] + ' geht in den Bugraum und lädt nach.', 'info'); }
-        }
+    // 2. Torpedos nachladen, wenn ein Rohr leer ist und Reserve da ist (Bugraum und Heckraum)
+    for (const [posten, abteil, noetig] of [
+      ['bugraum', 'bug', b.rohre.slice(0, 4).includes(false) && st.ladung.torpedos > 0],
+      ['heckrohr', 'heck', !b.rohre[4] && st.ladung.torpedosHeck > 0]]) {
+      const merk = 'lade_' + posten;
+      if (!noetig) { b[merk] = false; continue; }
+      const lader = st.crew.some((c) => !c.tot && c.taetigkeit !== 'schlaf' && (c.aktPosten === posten || c.befehl != null) && abteilIndex(c.x) === abteilNachId(abteil));
+      if (lader) continue;
+      const zx = D.POSTEN[posten].x;
+      const k = st.crew.filter((c) => !c.notfall && frei(c, false) && erreichbar(st, c.x, zx))
+        .sort((a, c) => (a.rolle === 'torpedo' ? 0 : 1) - (c.rolle === 'torpedo' ? 0 : 1) || Math.abs(a.x - zx) - Math.abs(c.x - zx))[0];
+      if (k) {
+        k.notfall = { x: zx, art: 'nachladen' };
+        if (!b[merk]) { b[merk] = true; log(st, k.name.split(' ')[0] + ' geht ' + D.ABTEILE[abteilNachId(abteil)].ort.replace(/^im /, 'in den ') + ' und lädt nach.', 'info'); }
       }
-    } else b.ladeauftrag = false;
+    }
 
     // 3. Volllaufende Abteile ohne Leute darin abschotten, später wieder öffnen
     if (!b.autoSchott) b.autoSchott = {};
@@ -402,7 +419,7 @@
       c.wasser += vol / breite(i + 1);
     }
     // Lenzpumpen: brauchen Strom und jemanden im Abteil oder den LI in der Zentrale
-    const liZentrale = st.crew.some((c) => !c.tot && c.rolle === 'li' && c.taetigkeit !== 'schlaf' && abteilIndex(c.x) === 4);
+    const liZentrale = st.crew.some((c) => !c.tot && c.rolle === 'li' && c.taetigkeit !== 'schlaf' && abteilIndex(c.x) === abteilNachId('zentrale'));
     let verbrauch = 0;
     b.abteile.forEach((a, i) => {
       if (!a.pumpe || a.wasser <= 0 || !strom) return;
@@ -506,7 +523,7 @@
       const nx = b.x + Math.cos(b.kurs) * km, ny = b.y + Math.sin(b.kurs) * km;
       if (imLand(nx, ny)) {
         b.fahrt = 0; b.wegpunkt = null;
-        b.abteile[6].rumpf = Math.max(0, b.abteile[6].rumpf - 10);
+        b.abteile[abteilNachId('bug')].rumpf = Math.max(0, b.abteile[abteilNachId('bug')].rumpf - 10);
         log(st, 'Das Boot ist auf Grund gelaufen! Bugraum beschädigt.', 'alarm');
       } else { b.x = nx; b.y = ny; }
     }
@@ -691,27 +708,54 @@
     if (!bekannt(s)) return 'Ziel ist nicht klassifiziert. Erst im Horchraum das Schraubengeräusch abgleichen.';
     if (b.tiefe > 15) return 'Zum Schießen auf Sehrohrtiefe oder an die Oberfläche gehen.';
     if (sim.eff.torpedo <= 0) return 'Niemand am Torpedo-Vorhalterechner.';
-    const rohr = b.rohre.indexOf(true);
-    if (rohr < 0) return 'Alle Rohre leer. Jemand muss im Bugraum nachladen.';
     const d = dist(s, b);
     if (d > 7) return 'Ziel zu weit entfernt (max. 7 km).';
+    // Ziel vorn (bis 100° zur Seite) → Bugrohre 1–4, Ziel achtern → Heckrohr 5
+    let rel = Math.abs(((Math.atan2(s.y - b.y, s.x - b.x) - b.kurs) * 180 / Math.PI + 540) % 360 - 180);
+    const heck = rel > 100;
+    const rohr = heck ? (b.rohre[4] ? 4 : -1) : b.rohre.slice(0, 4).indexOf(true);
+    if (rohr < 0) return heck ? 'Das Ziel liegt achteraus und das Heckrohr ist leer.' : 'Alle Bugrohre leer. Die Torpedomechaniker laden nach.';
     b.rohre[rohr] = false;
     const chance = Math.min(0.98, klemme(0.95 - d / 10 - (s.kn > 15 ? 0.15 : 0), 0.1, 0.95) * (0.6 + 0.4 * Math.min(1, sim.eff.torpedo)) * (hatAusbau(st, 'vorhalter') ? 1.15 : 1));
     st.torpedos.push({ x: b.x, y: b.y, ziel: s.id, chance, laufzeit: 0 });
-    log(st, 'Rohr ' + (rohr + 1) + ' – los! Torpedo läuft.', 'info');
+    log(st, (heck ? 'Heckrohr' : 'Rohr ' + (rohr + 1)) + ' – los! Torpedo läuft.', 'info');
     for (const c of st.crew) if (!c.tot && c.aktPosten === 'torpedo') c.xp += 3;
     return null;
   };
 
   function nachladenSchritt(st, dt, eff) {
     const b = st.boot;
-    if (eff.nachladen <= 0 || st.ladung.torpedos <= 0 || !b.rohre.includes(false)) return;
-    b.ladeFortschritt += eff.nachladen * dt / (hatAusbau(st, 'schnellladen') ? 14 : 20);
-    if (b.ladeFortschritt >= 1) {
-      b.ladeFortschritt = 0;
-      b.rohre[b.rohre.indexOf(false)] = true;
-      st.ladung.torpedos--;
-      log(st, 'Torpedorohr nachgeladen.', 'info');
+    const dauer = hatAusbau(st, 'schnellladen') ? 14 : 20;
+    // Bugrohre 1–4 aus der Bugraum-Reserve
+    const leer = b.rohre.slice(0, 4).indexOf(false);
+    if (eff.nachladen > 0 && st.ladung.torpedos > 0 && leer >= 0) {
+      b.ladeFortschritt += eff.nachladen * dt / dauer;
+      if (b.ladeFortschritt >= 1) {
+        b.ladeFortschritt = 0; b.rohre[leer] = true; st.ladung.torpedos--;
+        log(st, 'Rohr ' + (leer + 1) + ' nachgeladen.', 'info');
+      }
+    }
+    // Heckrohr 5 aus der Heckraum-Reserve
+    if (eff.heckladen > 0 && st.ladung.torpedosHeck > 0 && !b.rohre[4]) {
+      b.heckFortschritt += eff.heckladen * dt / dauer;
+      if (b.heckFortschritt >= 1) {
+        b.heckFortschritt = 0; b.rohre[4] = true; st.ladung.torpedosHeck--;
+        log(st, 'Heckrohr nachgeladen.', 'info');
+      }
+    }
+    // Torpedo aus dem Oberdeckbehälter übernehmen: nur aufgetaucht und höchstens Kleine Fahrt
+    const u = b.deckUebernahme;
+    if (u) {
+      if (b.tiefe > 0.5 || b.fahrt > 1) { if (!u.pause) log(st, 'Übernahme aus dem Oberdeckbehälter unterbrochen – nur aufgetaucht bei Kleiner Fahrt möglich.', 'warn'); u.pause = true; }
+      else {
+        u.pause = false; u.rest -= dt;
+        if (u.rest <= 0) {
+          b.deckUebernahme = null;
+          st.ladung.torpedosDeck--;
+          if (st.ladung.torpedos < kapazitaet(st, 'torpedos')) st.ladung.torpedos++; else st.ladung.torpedosHeck++;
+          log(st, 'Torpedo aus dem Oberdeckbehälter ins Boot übernommen.', 'gut');
+        }
+      }
     }
   }
 
@@ -842,7 +886,7 @@
         if (st.ladung.proviant + st.ladung.konserven < n * 3) log(st, 'Der Proviant geht zur Neige.', 'warn');
       }
     }
-    if (st.boot.abteile[2].wasser > 0.5 && st.ladung.proviant > 0) {
+    if (st.boot.abteile[abteilNachId('uraum')].wasser > 0.5 && st.ladung.proviant > 0) {
       st.ladung.proviant = Math.floor(st.ladung.proviant * 0.97);
       log(st, 'Wasser im Laderaum verdirbt Proviant.', 'warn');
     }
@@ -935,12 +979,25 @@
     if (preis == null) return 'Nicht im Angebot.';
     if (st.geld < preis) return 'Nicht genug Geld.';
     const w = D.WAREN[ware];
-    if (ladeEinheiten(st.ladung) + w.paket * w.le > D.LADERAUM_LE + 1e-9) return 'Der Laderaum ist voll.';
+    if (ware === 'torpedos') {
+      // erst Bugraum, dann Heckraum, dann Oberdeckbehälter
+      const ziel = ['torpedos', 'torpedosHeck', 'torpedosDeck'].find((l) => st.ladung[l] < kapazitaet(st, l));
+      if (!ziel) return 'Kein Platz mehr für Torpedos (Bug, Heck und Oberdeck voll).';
+      st.geld -= preis; st.ladung[ziel]++;
+      return null;
+    }
+    if (platz(st, ware) < w.paket) return 'Dafür ist kein Platz mehr (' + D.STAURAUM[lagerVon(ware)].wo + ').';
     st.geld -= preis; st.ladung[ware] += w.paket;
     return null;
   };
   sim.verkaufen = function (st, ort, ware) {
     const w = D.WAREN[ware];
+    if (ware === 'torpedos') {
+      const von = ['torpedosDeck', 'torpedos', 'torpedosHeck'].find((l) => st.ladung[l] > 0);
+      if (!von) return 'Keine Reserve-Torpedos an Bord.';
+      st.geld += sim.verkaufspreis(st, ort, ware); st.ladung[von]--;
+      return null;
+    }
     if (st.ladung[ware] < w.paket) return 'Nicht genug an Bord.';
     st.geld += sim.verkaufspreis(st, ort, ware); st.ladung[ware] -= w.paket;
     return null;
@@ -982,10 +1039,19 @@
       log(st, 'Druckluftflasche angeschlossen: Druckluft ' + Math.round(b.druckluft) + ' %.', 'gut');
       return null;
     }
+    if (ware === 'torpedosDeck') {
+      if (b.deckUebernahme) return 'Die Übernahme läuft schon.';
+      if (b.tiefe > 0.5) return 'Nur aufgetaucht möglich.';
+      if (b.fahrt > 1) return 'Erst auf Kleine Fahrt oder Stopp gehen.';
+      if (st.ladung.torpedos >= kapazitaet(st, 'torpedos') && st.ladung.torpedosHeck >= 1) return 'Im Boot ist kein Platz für einen weiteren Torpedo.';
+      b.deckUebernahme = { rest: 120, pause: false };
+      log(st, 'Die Seeleute öffnen den Oberdeckbehälter und holen einen Torpedo ins Boot (2 Stunden).', 'info');
+      return null;
+    }
     return 'Dieser Gegenstand wird automatisch benutzt.';
   };
   sim.abwerfen = function (st, ware) {
-    const w = D.WAREN[ware];
+    const w = D.WAREN[ware] || { paket: 1, einheit: 'Stk', name: D.INVENTAR[ware].name };
     const menge = Math.min(st.ladung[ware] || 0, w.paket);
     if (menge <= 0) return 'Nichts davon an Bord.';
     st.ladung[ware] -= menge;
@@ -1019,7 +1085,6 @@
     st.geld -= z.knoten.preis;
     if (z.knoten.upgrade) st.boot.upgrades[z.knoten.upgrade[0]] = z.knoten.upgrade[1];
     else st.boot.ausbau[id] = true;
-    if (id === 'rohr5') st.boot.rohre.push(false);
     log(st, 'Werft: ' + z.knoten.name + ' eingebaut.', 'gut');
     return null;
   };
@@ -1041,7 +1106,7 @@
   Object.assign(sim, {
     abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
     hatAusbau, maxSicher, zerstoerungstiefe, horchweite,
-    ladeEinheiten, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
+    lagerVon, kapazitaet, bestand, platz, torpedosGesamt, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });
   S.sim = sim;
 })(window.Spiel = window.Spiel || {});

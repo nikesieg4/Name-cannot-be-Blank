@@ -40,7 +40,6 @@
     const leb = S.sim.lebende(st);
     const moral = leb.length ? leb.reduce((s, c) => s + c.moral, 0) / leb.length : 0;
     const tage = leb.length ? (st.ladung.proviant + st.ladung.konserven) / (leb.length * st.ration) : 0;
-    const le = S.sim.ladeEinheiten(st.ladung);
     const fl = S.sim.flutung(st);
     let h = '';
     h += '<div class="zeile"><span>' + sym('geld') + 'Geld</span><b>' + geld(st.geld) + '</b></div>';
@@ -50,7 +49,7 @@
     h += '<div class="zeile"><span>' + sym('batterie') + 'Batterie</span><b>' + pz(b.batterie) + '</b></div>' + balken(b.batterie, b.batterie < 20 ? 'rot' : 'blau');
     h += '<div class="zeile"><span>' + sym('druckluft') + 'Druckluft</span><b>' + pz(b.druckluft) + '</b></div>' + balken(b.druckluft, 'blau');
     h += '<div class="zeile"><span>' + sym('rumpf') + 'Ersatzteile</span><b>' + st.ladung.ersatzteile + '</b></div>';
-    h += '<div class="zeile"><span>Laderaum</span><button data-aktion="inventar" title="Inventar öffnen (I)">' + Math.round(le) + ' / ' + D.LADERAUM_LE + ' LE</button></div>';
+    h += '<div class="zeile"><span>' + sym('torpedo') + 'Torpedos</span><button data-aktion="inventar" title="Vorräte öffnen (I)">' + S.sim.torpedosGesamt(st) + ' / 14</button></div>';
     if (fl > 0.005) h += '<div class="zeile warnung"><span>Wasser im Boot</span><b>' + pz(fl * 100) + '</b></div>' + balken(fl / 0.7 * 100, 'rot');
     setze($('status'), h);
 
@@ -133,12 +132,12 @@
   function waffen(st) {
     const b = st.boot;
     const ziel = st.schiffe.find((s) => s.id === st.ziel);
-    let h = '<div class="zeile"><span>Bugrohre</span><span class="rohre">' + b.rohre.map((v) => '<i class="' + (v ? 'voll' : '') + '"></i>').join('') + '</span></div>';
-    h += '<div class="zeile"><span>Reserve</span><b>' + st.ladung.torpedos + '</b></div>';
-    if (b.rohre.includes(false) && st.ladung.torpedos > 0) {
-      h += S.sim.eff.nachladen > 0 ? '<div class="klein">Nachladen ' + pz(b.ladeFortschritt * 100) + '</div>' + balken(b.ladeFortschritt * 100, 'gelb')
-        : '<div class="klein">Zum Nachladen jemanden in den Bugraum schicken.</div>';
-    }
+    const l = st.ladung;
+    let h = '<div class="zeile"><span>Bugrohre 1–4</span><span class="rohre">' + b.rohre.slice(0, 4).map((v) => '<i class="' + (v ? 'voll' : '') + '"></i>').join('') + '</span></div>';
+    h += '<div class="zeile"><span>Heckrohr 5</span><span class="rohre"><i class="' + (b.rohre[4] ? 'voll' : '') + '"></i></span></div>';
+    h += '<div class="zeile"><span>Reserve Bug · Heck · Deck</span><b>' + l.torpedos + ' · ' + l.torpedosHeck + ' · ' + l.torpedosDeck + '</b></div>';
+    if (b.rohre.slice(0, 4).includes(false) && l.torpedos > 0) h += '<div class="klein">Bugrohre laden ' + pz(b.ladeFortschritt * 100) + '</div>' + balken(b.ladeFortschritt * 100, 'gelb');
+    if (!b.rohre[4] && l.torpedosHeck > 0) h += '<div class="klein">Heckrohr laden ' + pz(b.heckFortschritt * 100) + '</div>' + balken(b.heckFortschritt * 100, 'gelb');
     if (ziel) {
       const bekannt = S.sim.bekannt(ziel);
       h += '<div class="zeile"><span>Ziel</span><b>' + (bekannt ? D.SCHIFFSTYPEN[ziel.typ].name : 'Kontakt') + ', ' + S.sim.dist(ziel, b).toFixed(1) + ' km</b></div>';
@@ -311,12 +310,12 @@
 
   function handel(st, ort) {
     const S2 = S.sim;
-    let h = '<h1>' + esc(ort.name) + '</h1><p>Geld: <b>' + geld(st.geld) + '</b> · Laderaum: ' + Math.round(S2.ladeEinheiten(st.ladung)) + ' / ' + D.LADERAUM_LE + ' LE' +
+    let h = '<h1>' + esc(ort.name) + '</h1><p>Geld: <b>' + geld(st.geld) + '</b> · Verpflegung: ' + S2.bestand(st, 'verpflegung').toLocaleString('de-DE') + ' / ' + S2.kapazitaet(st, 'verpflegung').toLocaleString('de-DE') + ' Rationen' +
       (S2.lebende(st).some((c) => c.rolle === 'logistik') ? ' · <span class="gut">Logistik-Maat: 10 % Rabatt</span>' : '') + '</p>';
     h += '<h3>Waren</h3><table><tr><th>Ware</th><th>An Bord</th><th>Kaufen</th><th>Verkaufen</th></tr>';
     for (const [id, w] of Object.entries(D.WAREN)) {
       const k = S2.kaufpreis(st, ort, id), v = S2.verkaufspreis(st, ort, id);
-      h += '<tr><td>' + item(id) + w.name + ' <span class="klein">(' + w.paket + ' ' + w.einheit + ')</span></td><td>' + Math.round(st.ladung[id]).toLocaleString('de-DE') + ' ' + w.einheit + '</td>';
+      h += '<tr><td>' + item(id) + w.name + ' <span class="klein">(' + w.paket + ' ' + w.einheit + ')</span></td><td>' + Math.round(id === 'torpedos' ? st.ladung.torpedos + st.ladung.torpedosHeck + st.ladung.torpedosDeck : st.ladung[id]).toLocaleString('de-DE') + ' ' + w.einheit + '</td>';
       h += '<td>' + (k == null ? '<span class="klein">nicht im Angebot</span>' : '<button data-aktion="kaufen" data-arg="' + id + '">+' + w.paket + ' für ' + geld(k) + '</button>') + '</td>';
       h += '<td><button data-aktion="verkaufen" data-arg="' + id + '"' + (st.ladung[id] < w.paket ? ' disabled' : '') + '>−' + w.paket + ' für ' + geld(v) + '</button></td></tr>';
     }

@@ -104,13 +104,12 @@ Die Rollen stammen von [ubootworkshop.de/rollen.php](https://www.ubootworkshop.d
 
 ## Boot
 
-Das Boot hat sieben Abteile (Heck → Bug): **Heckraum** (E-Maschine), **Maschinenraum** (Diesel), **Laderaum**, **Mannschaftsraum & Kombüse**, **Zentrale** (mit Turm und Sehrohr), **Funk- & Horchraum**, **Bugtorpedoraum**.
+Das Boot ist ein **Typ VIIC** der Kriegsmarine (67,1 m, 17,7 kn aufgetaucht, 7,6 kn getaucht) im Pixel-Stil. Acht Abteile (Heck → Bug): **Heck- & E-Maschinenraum** (Heckrohr, 2 E-Maschinen), **Dieselraum** (2 Diesel, Maschinentelegraf), **Unteroffiziersraum & Kombüse**, **Zentrale** (unter dem Turm, mit Sehrohr, Tiefen- und Seitenruder, Vorhalterechner, Kartentisch), **Funk- & Horchraum**, **Offiziersraum**, **Oberfeldwebelraum**, **Bugtorpedoraum** (4 Rohre, 8 Kojen). Außen: Turm mit Wintergarten und 2-cm-Flak, 8,8-cm-Deckgeschütz.
 
+- **Torpedos (14):** 4 Bugrohre und 1 Heckrohr geladen, 6 Reserve unter den Bodenplatten im Bugraum, 1 im Heckraum, 2 in Oberdeckbehältern. Das Ziel bestimmt das Rohr: vorn (bis 100° zur Seite) die Bugrohre, achtern das Heckrohr. Die Oberdeckbehälter lassen sich nur aufgetaucht bei Kleiner Fahrt ins Boot holen (2 Stunden).
+- **Stauraum statt Laderaum:** Diesel in den Bunkern (135 000 L), Verpflegung überall im Boot verstaut (bis 5 000 Rationen), Material in Werkzeugkisten, Batterieraum, Zentrale und Offiziersraum.
 - **Rumpf pro Abteil:** Treffer beschädigen einzelne Abteile. Beschädigte Abteile lecken, unter Wasser umso stärker, je tiefer man ist.
-- **Abschotten:** Schotten zwischen den Abteilen lassen sich einzeln oder für ein ganzes Abteil schließen. Das hält das Wasser auf, sperrt aber auch die Crew ein.
-- **Auspumpen:** Jedes Abteil hat eine Lenzpumpe. Sie braucht Strom und jemanden im Abteil oder den LI in der Zentrale.
-- **Reparieren:** Die Leckabwehr verbraucht dabei Ersatzteile.
-- **Notfall-KI der Crew:** Bei Schäden stellt sich von selbst ein Leckabwehr-Trupp zusammen: zuerst wer auf „Leckabwehr“ eingeteilt ist, dann Leute aus der Freizeit, bei schweren Schäden werden auch Schlafende geweckt (1 Person bei kleinen, bis zu 4 bei schweren Schäden). Wer am Posten Dienst hat, bleibt dort. Jeder bleibt an seinem Schaden, bis er behoben ist; wer im Abteil steht, hält auch die Lenzpumpe am Laufen. Ist ein Rohr leer und Reserve da, geht jemand aus der Freizeit in den Bugraum und lädt nach. Läuft ein Abteil voll, in dem niemand ist und zu dem niemand unterwegs ist, schottet die Leckabwehr es ab und öffnet die Schotten wieder, wenn das Wasser unter 25 % fällt. Direkte Befehle des Spielers haben immer Vorrang.
+- **Abschotten, Auspumpen, Reparieren:** wie bisher; Schotten lassen sich einzeln schließen, jedes Abteil hat eine Lenzpumpe, die Leckabwehr verbraucht Ersatzteile.
 - **Gewicht:** Zu viel Wasser im Boot macht es schwer, es sinkt. Ab 70 % Flutung ist es verloren.
 
 **Tiefen:**
@@ -118,10 +117,10 @@ Das Boot hat sieben Abteile (Heck → Bug): **Heckraum** (E-Maschine), **Maschin
 | Stufe | Tiefe |
 |---|---|
 | Oberfläche | 0 m |
-| Sehrohrtiefe | 12 m (Funk, Sehrohr und Torpedos möglich) |
-| Schleichtiefe | 60 m |
-| Max. sichere Tiefe | 150 m |
-| Zerstörungstiefe | 220 m (**nicht wählbar**) |
+| Sehrohrtiefe | 13 m (Funk, Sehrohr und Torpedos möglich) |
+| Schleichtiefe | 80 m |
+| Prüftiefe | 220 m |
+| Zerstörungstiefe | 260 m (**nicht wählbar**, Quellen nennen 250–295 m) |
 
 Die **sichere Tiefe sinkt mit dem Rumpfzustand**. Ist das schwächste Abteil beschädigt, wird es schon über der „maximalen sicheren Tiefe“ gefährlich. Je weiter man darüber liegt, desto höher ist die Chance zu implodieren.
 
