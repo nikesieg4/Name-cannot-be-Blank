@@ -494,3 +494,6 @@ body.zeige-log #logLeiste { display: block; }
 @keyframes blink { 50% { opacity: 0.35; } }
 @media (max-width: 1400px) { #tiefenUhr { width: 124px; height: 124px; } }
 @media (max-width: 640px) { #tiefenUhr { width: 96px; height: 96px; } }
+/* Torpedotypen in den Rohren */
+.rohre i.voll.G7a, .rohrreihe i.voll.G7a { background: var(--orange); border-color: #6b4a1e; }
+.zielkarte { flex-wrap: wrap; }

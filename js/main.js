@@ -334,7 +334,10 @@
       case 'zielWeg': st.ziel = null; break;
       case 'alarmtauchen': fehler(S.sim.alarmtauchen(st)); break;
       case 'zielPlus': S.sim.setzeZielTiefe(st, st.boot.zielM + Number(arg)); break;
-      case 'feuern': fehler(S.sim.feuern(st)); break;
+      case 'feuern': fehler(S.sim.feuern(st, null, Number(arg) || 1)); break;
+      case 'ladeTyp': st.boot.ladeTyp = st.boot.ladeTyp === 'G7a' ? 'G7e' : 'G7a'; S.sim.log(st, 'I. WO: Nächster Schuss und Nachladen mit ' + st.boot.ladeTyp + '.', 'info'); break;
+      case 'geschuetz': fehler(S.sim.geschuetz(st)); break;
+      case 'echolot': st.boot.echolot = !st.boot.echolot; S.sim.log(st, st.boot.echolot ? 'Echolot eingeschaltet – es ist zu hören.' : 'Echolot ausgeschaltet.', 'info'); break;
       case 'anfunken': fehler(S.sim.anfunken(st)); break;
       case 'crew': auswahl.crew = auswahl.crew === Number(arg) ? null : Number(arg); auswahl.abteil = null; break;
       case 'steuern':

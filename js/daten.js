@@ -159,6 +159,14 @@
   ];
   const FEIND_NAME = 'Vardanien';
 
+  /* Torpedos (Handbuch Kap. 6.2). stufen = Fahrt in kn und Laufstrecke in km; blasen = sichtbare Blasenbahn. */
+  const TORPEDOTYPEN = {
+    G7e: { name: 'G7e (T II/III)', kurz: 'G7e', stufen: [[30, 5]], blasen: false, text: 'Elektrisch, keine Blasenbahn – für den Tagangriff getaucht.' },
+    G7a: { name: 'G7a (T I)', kurz: 'G7a', stufen: [[44, 5], [40, 7.5], [30, 12.5]], blasen: true, text: 'Dampf-Gas, schnell, aber mit sichtbarer Blasenbahn – nachts bevorzugt.' },
+  };
+  const VERSAGER = 0.1;        // Frühzünder, Tiefgänger, Aufschlagzünder ohne Zündung („Torpedokrise“)
+  const WABO_LAERM = 0.3;      // Pumpen und Echolot verraten das Boot
+
   /* Waren, die man kaufen kann. paket = Menge pro Kauf. */
   const WAREN = {
     diesel: { name: 'Diesel', einheit: 'L', paket: 5000 },
@@ -169,6 +177,7 @@
     batteriezelle: { name: 'Batteriezelle', einheit: 'Stk', paket: 1 },
     druckflasche: { name: 'Druckluftflasche', einheit: 'Stk', paket: 1 },
     sanitaet: { name: 'Sanitätskasten', einheit: 'Stk', paket: 1 },
+    munition88: { name: 'Munition 8,8 cm', einheit: 'Schuss', paket: 25 },
   };
 
   /* Stauraum wie auf einem VIIC – es gibt keinen Laderaum, alles ist im Boot verteilt.
@@ -184,6 +193,8 @@
     batteriezelle: { max: 4, wo: 'Batterieraum' },
     druckflasche: { max: 6, wo: 'Zentrale' },
     sanitaet: { max: 6, wo: 'Offiziersraum' },
+    munition88: { max: 205, wo: 'Munitionskammer (8,8 cm SK C/35)' },
+    munitionFlak: { max: 1500, wo: 'Bereitschaftsmunition Flak (2 cm C/30)' },
   };
 
   /* Inventar: Kategorie, Bild in grafik/inventar_items.png (x, Breite) und was der Gegenstand tut. */
@@ -197,15 +208,17 @@
     ersatzteile: { kat: 'material', bild: [120, 24], text: 'Verbraucht die Leckabwehr beim Reparieren von Lecks und Rumpfschäden.' },
     batteriezelle: { kat: 'material', bild: [144, 24], text: 'Geladene Reservezelle. Einsetzen bringt sofort +30 % Batterie – auch getaucht.', aktion: 'Zelle einsetzen' },
     druckflasche: { kat: 'material', bild: [168, 24], text: 'Füllt die Druckluft fürs Notanblasen um +25 % auf – auch getaucht.', aktion: 'Anschließen' },
+    munition88: { name: '8,8-cm-Munition', kat: 'waffen', bild: [168, 24], text: 'Für das 8,8-cm-Geschütz auf dem Vordeck. Nur aufgetaucht bei ruhiger See gegen einzelne Handelsschiffe – Geschützführer ist der II. WO.' },
+    munitionFlak: { name: '2-cm-Flak-Munition', kat: 'waffen', bild: [168, 24], text: 'Für die 2-cm-Flak auf dem Wintergarten. Gegen Flugzeuge – die gibt es im Spiel noch nicht.' },
     sanitaet: { kat: 'material', bild: [192, 24], text: 'Wird automatisch benutzt, wenn jemand zu ertrinken droht: Er bekommt Luft und Zeit, sich zu retten.' },
   };
   const KATEGORIEN = [['alle', 'Alle'], ['waffen', 'Waffen'], ['treibstoff', 'Treibstoff'], ['proviant', 'Proviant'], ['material', 'Material']];
 
   /* Preise je Einheit; null = nicht im Angebot. Ankauf durch den Händler = 60 %. */
   const PREISE = {
-    basis: { diesel: 0.02, torpedos: 600, proviant: 1, ersatzteile: 40, konserven: 1.5, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
-    kalvik: { diesel: 0.03, torpedos: null, proviant: 0.8, ersatzteile: 50, konserven: 1.2, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
-    haendler: { diesel: 0.06, torpedos: null, proviant: 1.5, ersatzteile: 60, konserven: 2, batteriezelle: null, druckflasche: null, sanitaet: 180 },
+    basis: { munition88: 8, diesel: 0.02, torpedos: 600, proviant: 1, ersatzteile: 40, konserven: 1.5, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
+    kalvik: { munition88: null, diesel: 0.03, torpedos: null, proviant: 0.8, ersatzteile: 50, konserven: 1.2, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
+    haendler: { munition88: null, diesel: 0.06, torpedos: null, proviant: 1.5, ersatzteile: 60, konserven: 2, batteriezelle: null, druckflasche: null, sanitaet: 180 },
   };
   const ANKAUF = 0.6;
 
@@ -276,7 +289,7 @@
 
   S.daten = {
     BOOT, ABTEILE, POSTEN, SYSTEME, KOJEN, ROLLEN, SCHICHT_NAMEN, STANDARD_SCHICHTEN, TIEFEN,
-    ZERSTOERUNGSTIEFE, MAX_SICHER, KONSTRUKTIONSTIEFE, BATTERIERAEUME, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM,
+    ZERSTOERUNGSTIEFE, MAX_SICHER, KONSTRUKTIONSTIEFE, BATTERIERAEUME, FAHRT, WELT, LAND, HAEFEN, FEIND_NAME, WAREN, PREISE, ANKAUF, ANKER, STAURAUM, TORPEDOTYPEN, VERSAGER, WABO_LAERM,
     UPGRADES, SKILLTREE, INVENTAR, KATEGORIEN, SCHIFFSTYPEN, MORSE, FUNK, HORCH, VORNAMEN, NACHNAMEN, stufe,
   };
 })(window.Spiel = window.Spiel || {});

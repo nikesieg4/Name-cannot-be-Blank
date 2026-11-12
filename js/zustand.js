@@ -65,10 +65,11 @@
         batterie: 100, druckluft: 100, anblasen: 0,
         abteile: D.ABTEILE.map(() => ({ wasser: 0, rumpf: 100, pumpe: true })),
         schotten: D.ABTEILE.slice(0, -1).map(() => false), // true = geschlossen
-        rohre: [true, true, true, true, true], ladeFortschritt: 0, heckFortschritt: 0, deckUebernahme: null, teileRest: 0,
+        rohre: ['G7e', 'G7e', 'G7a', 'G7a', 'G7e'], ladeTyp: 'G7e', echolot: false,
+        reserveG7a: { torpedos: 2, torpedosHeck: 0, torpedosDeck: 2 }, ladeFortschritt: 0, heckFortschritt: 0, deckUebernahme: null, teileRest: 0,
         upgrades: { pumpen: 0, batterie: 0, rumpf: 0 }, ausbau: {},
       },
-      ladung: { diesel: 135000, torpedos: 6, torpedosHeck: 1, torpedosDeck: 2, proviant: 3500, konserven: 5000, ersatzteile: 20, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
+      ladung: { diesel: 135000, torpedos: 6, torpedosHeck: 1, torpedosDeck: 2, proviant: 3500, konserven: 5000, ersatzteile: 20, batteriezelle: 0, druckflasche: 1, sanitaet: 2, munition88: 205, munitionFlak: 1500 },
       crew,
       schichten: D.STANDARD_SCHICHTEN.map((p) => p.slice()),
       schiffe: [],

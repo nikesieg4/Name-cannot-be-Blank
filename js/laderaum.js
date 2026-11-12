@@ -54,6 +54,10 @@
     h += '<b class="name">' + esc(name(w)) + '</b>';
     h += '<span>' + menge(w, l[w]) + '</span>';
     h += '<p>' + esc(inf.text) + '</p>';
+    if (/^torpedos/.test(w)) {
+      const a = (st.boot.reserveG7a || {})[w] || 0;
+      h += '<p class="klein">Davon ' + (l[w] - a) + ' × G7e (elektrisch, keine Blasenbahn) und ' + a + ' × G7a (Dampf-Gas, Blasenbahn).</p>';
+    }
     if (w === 'proviant' || w === 'konserven') {
       const leb = S.sim.lebende(st).length;
       h += '<p class="klein">Reicht zusammen ' + ((l.proviant + l.konserven) / Math.max(1, leb * st.ration)).toFixed(1) + ' Tage für ' + leb + ' Mann bei ' + st.ration + ' Rationen.</p>';

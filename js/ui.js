@@ -130,20 +130,29 @@
     setze($('fahrtInfo'), h);
   }
 
+  /* Rohr-Kästchen mit Torpedotyp: grün G7e, orange G7a, leer rot */
+  const rohrI = (v, extra) => '<i class="' + (v ? 'voll ' + v : '') + (extra || '') + '" title="' + (v || 'leer') + '"></i>';
+
   function waffen(st) {
     const b = st.boot;
-    const ziel = st.schiffe.find((s) => s.id === st.ziel);
-    const l = st.ladung;
-    let h = '<div class="zeile"><span>Bugrohre 1–4</span><span class="rohre">' + b.rohre.slice(0, 4).map((v) => '<i class="' + (v ? 'voll' : '') + '"></i>').join('') + '</span></div>';
-    h += '<div class="zeile"><span>Heckrohr 5</span><span class="rohre"><i class="' + (b.rohre[4] ? 'voll' : '') + '"></i></span></div>';
-    h += '<div class="zeile"><span>Reserve Bug · Heck · Deck</span><b>' + l.torpedos + ' · ' + l.torpedosHeck + ' · ' + l.torpedosDeck + '</b></div>';
-    if (b.rohre.slice(0, 4).includes(false) && l.torpedos > 0) h += '<div class="klein">Bugrohre laden ' + pz(b.ladeFortschritt * 100) + '</div>' + balken(b.ladeFortschritt * 100, 'gelb');
+    const ziel = st.schiffe.find((s) => s.id === st.ziel && !s.versenkt);
+    const l = st.ladung, a = b.reserveG7a || { torpedos: 0, torpedosHeck: 0, torpedosDeck: 0 };
+    let h = '<div class="zeile"><span>Bugrohre 1–4</span><span class="rohre">' + b.rohre.slice(0, 4).map((v) => rohrI(v)).join('') + '</span></div>';
+    h += '<div class="zeile"><span>Heckrohr 5</span><span class="rohre">' + rohrI(b.rohre[4]) + '</span></div>';
+    const res = (k) => (l[k] - (a[k] || 0)) + ' e / ' + (a[k] || 0) + ' a';
+    h += '<div class="zeile klein"><span>Reserve Bug</span><span>' + res('torpedos') + '</span></div>';
+    h += '<div class="zeile klein"><span>Reserve Heck · Oberdeck</span><span>' + res('torpedosHeck') + ' · ' + res('torpedosDeck') + '</span></div>';
+    h += '<div class="zeile"><span>Typ für Schuss und Nachladen</span><button data-aktion="ladeTyp" title="' + esc(D.TORPEDOTYPEN[b.ladeTyp || 'G7e'].text) + '">' + (b.ladeTyp || 'G7e') + ' ⇄</button></div>';
+    if (b.rohre.slice(0, 4).some((r) => !r) && l.torpedos > 0) h += '<div class="klein">Bugrohre laden ' + pz(b.ladeFortschritt * 100) + '</div>' + balken(b.ladeFortschritt * 100, 'gelb');
     if (!b.rohre[4] && l.torpedosHeck > 0) h += '<div class="klein">Heckrohr laden ' + pz(b.heckFortschritt * 100) + '</div>' + balken(b.heckFortschritt * 100, 'gelb');
     if (ziel) {
       const bekannt = S.sim.bekannt(ziel);
       h += '<div class="zeile"><span>Ziel</span><b>' + (bekannt ? D.SCHIFFSTYPEN[ziel.typ].name : 'Kontakt') + ', ' + S.sim.dist(ziel, b).toFixed(1) + ' km</b></div>';
     } else h += '<div class="klein">Kein Ziel. Klicke auf der Karte auf einen Kontakt.</div>';
-    h += '<button class="breit warn" data-aktion="feuern"' + (ziel ? '' : ' disabled') + '>Torpedo los!</button>';
+    h += '<div class="knopfraster"><button class="warn" data-aktion="feuern" data-arg="1"' + (ziel ? '' : ' disabled') + '>Einzelschuss</button>' +
+      '<button class="warn" data-aktion="feuern" data-arg="2"' + (ziel ? '' : ' disabled') + '>Fächer (2)</button></div>';
+    h += '<div class="zeile" style="margin-top:6px"><span>8,8 cm · ' + l.munition88 + ' Schuss</span><button data-aktion="geschuetz"' + (ziel || b.geschuetz != null ? '' : ' disabled') + ' class="' + (b.geschuetz != null ? 'aktiv' : '') + '">' + (b.geschuetz != null ? 'Feuer einstellen' : 'Geschütz') + '</button></div>';
+    h += '<div class="zeile klein"><span>2-cm-Flak</span><span>' + l.munitionFlak + ' Schuss</span></div>';
     setze($('waffen'), h);
   }
 
@@ -309,7 +318,7 @@
     }
     // Meeresgrund (braun), falls er auf der Skala liegt
     const grund = S.sim.grundTiefe(st);
-    if (grund <= zt) s += '<path d="M ' + p(grund, 48) + ' L ' + p(grund, 36) + '" stroke="#6b4a2a" stroke-width="4"/>';
+    if (b.echolot && grund <= zt) s += '<path d="M ' + p(grund, 48) + ' L ' + p(grund, 36) + '" stroke="#6b4a2a" stroke-width="4"/>';
     // Zieltiefe (grün) und Zeiger
     // Soll-Zeiger (grün, gewünschte Tiefe) und Ist-Zeiger (rot)
     const ziel = b.zielM;
@@ -331,11 +340,15 @@
         '<div class="tiefeneingabe"><button data-aktion="zielPlus" data-arg="-10" aria-label="10 m flacher">−10</button>' +
         '<label class="unsichtbar" for="zielEingabe">Gewünschte Tiefe in Metern</label><input id="zielEingabe" type="number" inputmode="numeric" min="0" step="5">' +
         '<button data-aktion="zielPlus" data-arg="10" aria-label="10 m tiefer">+10</button></div>' +
+        '<div class="tiefeneingabe"><button data-aktion="echolot" id="hudEcholot" title="Echolot: zeigt die Wassertiefe, ist aber zu hören"></button></div>' +
         '<div class="tiefeneingabe"><button data-aktion="alarmtauchen" class="warn" title="Alarmtauchen (T)">Alarm!</button><button data-aktion="anblasen" class="warn" id="hudAnblasen"></button></div></div></div><div id="hudTiefeWarn"></div>';
     }
     const b = st.boot, sicher = S.sim.sichereTiefe(st);
     const wt = S.sim.wassertiefe(b.x, b.y);
-    setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + Math.round(wt) + ' m · Konstr. ' + S.sim.konstruktionstiefe(st) + ' / Prüf. ' + Math.round(sicher) + ' m');
+    const schicht = S.sim.unterWasser(st) && b.tiefe > 15 ? ' · Schicht ~' + S.sim.sprungschicht(b.x, b.y) + ' m' : '';
+    setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + (b.echolot ? Math.round(wt) + ' m' : '?') + schicht + ' · Prüf. ' + Math.round(sicher) + ' m');
+    setze($('hudEcholot'), b.echolot ? 'Echolot an' : 'Echolot aus');
+    $('hudEcholot').classList.toggle('aktiv', !!b.echolot);
     setze($('tiefenUhr'), tiefenSVG(st));
     setze($('hudTiefenKnoepfe'), D.TIEFEN.map((t, i) => '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>').join(''));
     const ein = $('zielEingabe');
@@ -344,12 +357,13 @@
     setze($('hudAnblasen'), 'Anblasen');
     const luecke = S.sim.grundTiefe(st) - b.tiefe;
     let h = '';
-    if (b.asdic != null && st.zeit - b.asdic < 2) h += '<div class="warnung blink">ASDIC-Ortung – Schleichfahrt!</div>';
+    if (b.asdic != null && st.zeit - b.asdic < 2) h += '<div class="warnung blink">ASDIC-Ortung! Schleichfahrt, Pumpen und Echolot aus</div>';
+    if (b.ghgTaub && st.zeit < b.ghgTaub) h += '<div class="warnung">Horchgerät nach Detonationen taub</div>';
     if (b.tiefe > sicher) h += '<div class="warnung">⚠ Unter Prüfungstiefe – Implosionsgefahr!</div>';
     else if (b.tiefe > S.sim.konstruktionstiefe(st)) h += '<div class="warnung">Unter Konstruktionstiefe – nur im Notfall</div>';
     else if (b.alarmtauchen) h += '<div class="warnung blink">Alarmtauchen!</div>';
     else if (b.aufGrund) h += '<div class="' + (b.schrammt ? 'warnung' : 'gut') + '">' + (b.schrammt ? 'Schrammt über den Grund!' : 'Liegt auf Grund') + '</div>';
-    else if (b.tiefe > 4 && luecke < 25) h += '<div class="warnung">Grund ' + Math.round(luecke) + ' m unter dem Kiel</div>';
+    else if (b.tiefe > 4 && luecke < 25 && b.echolot) h += '<div class="warnung">Echolot: Grund ' + Math.round(luecke) + ' m unter dem Kiel</div>';
     else if (S.sim.flutung(st) > 0.12) h += '<div class="warnung">Boot zu schwer – es sinkt!</div>';
     else if (S.sim.eff.tauchen <= 0) h += '<div class="warnung">Niemand an der Tiefensteuerung!</div>';
     if (b.zielM > sicher && !(b.tiefe > sicher)) h += '<div class="warnung">Soll-Tiefe liegt unter der sicheren Tiefe!</div>';
@@ -375,7 +389,7 @@
     const rationen = l.proviant + l.konserven, tage = rationen / Math.max(1, leb.length * st.ration);
     const reserve = l.torpedos + l.torpedosHeck + l.torpedosDeck;
     const fl = S.sim.flutung(st), rumpf = S.sim.minRumpf(st);
-    const rohre = '<span class="rohrreihe">' + b.rohre.map((v, i) => '<i class="' + (v ? 'voll' : '') + (i === 4 ? ' heck' : '') + '"></i>').join('') + '</span>';
+    const rohre = '<span class="rohrreihe">' + b.rohre.map((v, i) => rohrI(v, i === 4 ? ' heck' : '')).join('') + '</span>';
     let h = '<button class="zaehler" data-aktion="inventar"><span class="k">' + sym('torpedo') + 'Torpedos</span>' + rohre + '<small>Reserve ' + reserve + '</small></button>';
     h += zaehler('inventar', '', 'proviant', 'Rationen', tage.toFixed(1) + ' T', rationen.toLocaleString('de-DE') + ' · ' + Math.ceil(leb.length * st.ration) + '/Tag', tage < 3 ? 'alarm' : tage < 7 ? 'warn' : '');
     const dp = l.diesel / D.STAURAUM.diesel.max * 100;
@@ -396,7 +410,10 @@
     if (ziel) {
       const bek = S.sim.bekannt(ziel);
       z = '<div class="zielkarte"><span>Ziel: <b>' + (bek ? D.SCHIFFSTYPEN[ziel.typ].name : 'Kontakt') + '</b> · ' + S.sim.dist(ziel, b).toFixed(1) + ' km</span>' +
-        '<button class="warn" data-aktion="feuern">Torpedo los!</button><button data-aktion="zielWeg" aria-label="Ziel aufheben">✕</button></div>';
+        '<button data-aktion="ladeTyp" title="Torpedotyp für Schuss und Nachladen">' + (b.ladeTyp || 'G7e') + '</button>' +
+        '<button class="warn" data-aktion="feuern" data-arg="1">Torpedo los!</button><button class="warn" data-aktion="feuern" data-arg="2">Fächer</button>' +
+        (b.tiefe < 0.5 ? '<button data-aktion="geschuetz" class="' + (b.geschuetz != null ? 'aktiv' : '') + '">' + (b.geschuetz != null ? 'Feuer halt' : '8,8 cm') + '</button>' : '') +
+        '<button data-aktion="zielWeg" aria-label="Ziel aufheben">✕</button></div>';
     }
     setze($('hudZiel'), z);
   }

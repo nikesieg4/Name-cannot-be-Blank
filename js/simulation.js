@@ -134,10 +134,23 @@
   function konstruktionstiefe(st) { return D.KONSTRUKTIONSTIEFE + (hatAusbau(st, 'tieftauchen') ? 20 : 0); }
   function maxSicher(st) { return D.MAX_SICHER + (hatAusbau(st, 'tieftauchen') ? 35 : 0); }
   function zerstoerungstiefe(st) { return D.ZERSTOERUNGSTIEFE + (hatAusbau(st, 'tieftauchen') ? 50 : 0); }
+  /* Gruppenhorchgerät (Handbuch Kap. 7): rund 20 km Einzelschiff, nur getaucht brauchbar, am besten unter 3 kn
+     Eigenfahrt; nach Wasserbomben-Detonationen kurz „betäubt“. */
   function horchweite(st, eff) {
-    if (eff.sonar <= 0) return 0;
-    return (unterWasser(st) ? 18 : 6) * Math.min(1, eff.sonar) * (hatAusbau(st, 'horchweite') ? 1.25 : 1);
+    if (eff.sonar <= 0 || !unterWasser(st) || st.boot.tiefe < 8) return 0;
+    if (st.boot.ghgTaub && st.zeit < st.boot.ghgTaub) return 0;
+    const kn = sim.knoten || 0;
+    const fahrt = kn <= 3 ? 1 : kn <= 4 ? 0.85 : kn <= 6 ? 0.55 : 0.35;
+    return 20 * Math.min(1, eff.sonar) * fahrt * (hatAusbau(st, 'horchweite') ? 1.25 : 1);
   }
+  /* toter Winkel achtern (eigene Schrauben): etwa 140° bis 220° relativ zum Bug */
+  function imTotenWinkel(st, s) {
+    const b = st.boot;
+    const rel = ((Math.atan2(s.y - b.y, s.x - b.x) - b.kurs) * 180 / Math.PI + 720) % 360;
+    return rel > 140 && rel < 220;
+  }
+  /* Sprungschicht: Temperaturgrenze in 35–90 m, darunter liegt das Boot für ASDIC oft im Schallschatten */
+  function sprungschicht(x, y) { return Math.round(60 + 18 * Math.sin(x / 37) + 12 * Math.cos(y / 23)); }
 
   function sichereTiefe(st) {
     return maxSicher(st) * (0.45 + 0.55 * minRumpf(st) / 100);
@@ -159,6 +172,23 @@
   function platz(st, ware) {
     const l = lagerVon(ware);
     return l ? Math.max(0, kapazitaet(st, l) - bestand(st, l)) : Infinity;
+  }
+  /* Torpedotypen in der Reserve: b.reserveG7a zählt die G7a je Lagerplatz, der Rest sind G7e */
+  function reserveNehmen(st, lager, wunsch) {
+    const b = st.boot;
+    if (!b.reserveG7a) b.reserveG7a = { torpedos: 0, torpedosHeck: 0, torpedosDeck: 0 };
+    const ges = st.ladung[lager] || 0, a = b.reserveG7a[lager] || 0;
+    if (ges <= 0) return null;
+    let typ = wunsch === 'G7a' ? (a > 0 ? 'G7a' : 'G7e') : (ges - a > 0 ? 'G7e' : 'G7a');
+    st.ladung[lager]--;
+    if (typ === 'G7a') b.reserveG7a[lager] = a - 1;
+    return typ;
+  }
+  function reserveDazu(st, lager, typ) {
+    const b = st.boot;
+    if (!b.reserveG7a) b.reserveG7a = { torpedos: 0, torpedosHeck: 0, torpedosDeck: 0 };
+    st.ladung[lager] = (st.ladung[lager] || 0) + 1;
+    if (typ === 'G7a') b.reserveG7a[lager] = (b.reserveG7a[lager] || 0) + 1;
   }
   function torpedosGesamt(st) { return st.ladung.torpedos + st.ladung.torpedosHeck + st.ladung.torpedosDeck + st.boot.rohre.filter(Boolean).length; }
 
@@ -302,7 +332,7 @@
 
     // 2. Torpedos nachladen, wenn ein Rohr leer ist und Reserve da ist (Bugraum und Heckraum)
     for (const [posten, abteil, noetig] of [
-      ['bugraum', 'bug', b.rohre.slice(0, 4).includes(false) && st.ladung.torpedos > 0],
+      ['bugraum', 'bug', b.rohre.slice(0, 4).some((r) => !r) && st.ladung.torpedos > 0],
       ['heckrohr', 'heck', !b.rohre[4] && st.ladung.torpedosHeck > 0]]) {
       const merk = 'lade_' + posten;
       if (!noetig) { b[merk] = false; continue; }
@@ -340,6 +370,10 @@
     if (c.befehl != null) return { x: c.befehl, art: 'befehl' };
     const p = st.schichten[c.schicht][h];
     let z;
+    // Schleichfahrt getaucht: jeder bleibt auf seiner Station (Trimm, Lärm) – außer im Notfall
+    if (!c.notfall && D.FAHRT[st.boot.fahrt].leise && unterWasser(st) && c.taetigkeit && c.taetigkeit !== 'zurKoje' && c.taetigkeit !== 'flucht') {
+      return { x: c.x, art: c.taetigkeit === 'schlaf' ? 'schlaf' : c.taetigkeit };
+    }
     if (c.notfall) z = c.notfall;
     else if (st.alarm || p === 'D') z = { x: postenX(st, c), art: 'dienst' };
     else if (nochNichtAbgeloest(st, c)) z = { x: c.x, art: 'dienst' };
@@ -683,7 +717,12 @@
     if (b.tiefe < 4 && d < 12) ortung = 'sicht';
     else if (b.tiefe <= 15 && d < 2.5 && Math.random() < 0.3 * dt) ortung = 'sicht';
     else if (uw) {
-      const laerm = b.aufGrund && (sim.knoten || 0) < 0.5 ? 0.03 : 0.08 + Math.min(1, (sim.knoten || 0) / 7.6) * 0.9;
+      let laerm = b.aufGrund && (sim.knoten || 0) < 0.5 ? 0.03 : D.FAHRT[b.fahrt].leise ? 0.05 : 0.08 + Math.min(1, (sim.knoten || 0) / 7.6) * 0.9;
+      // Pumpen und Echolot sind laut und verraten das Boot
+      if (b.abteile.some((a) => a.pumpe && a.wasser > 0.01)) laerm += D.WABO_LAERM;
+      if (b.echolot) laerm += D.WABO_LAERM;
+      const unterSchicht = b.tiefe > sprungschicht(b.x, b.y) + 5;
+      if (unterSchicht) laerm *= 0.6;
       // Horchgerät: bei eigener Jagdfahrt ist der Zerstörer taub
       const horchR = 2 + 8 * laerm;
       if (d < horchR && s.kn <= 15 && Math.random() < 0.25 * laerm * dt) ortung = 'horch';
@@ -694,6 +733,7 @@
           let p = 0.6 * (1 - d / 2.5);
           if (b.aufGrund) p *= wassertiefe(b.x, b.y) < 80 ? 0.08 : 0.2;
           if (b.tiefe > 100) p *= 0.7;
+          if (unterSchicht) p *= 0.35;   // Schallschatten unter der Sprungschicht
           if (Math.random() < p * dt) ortung = 'asdic';
         }
       }
@@ -746,6 +786,7 @@
       wirkung += Math.max(0, 1 - h / 0.06) * Math.max(0, 1 - v / 30);
     }
     b.erschuetterung = Math.min(1, 0.25 + wirkung);
+    b.ghgTaub = st.zeit + 3;   // Wasserwirbel und Luftblasen betäuben das Horchgerät
     for (const c of lebende(st)) c.moral = Math.max(0, c.moral - (wirkung > 0.3 ? 3 : 1));
     if (wirkung > 0.05) {
       const treffer = wirkung > 0.8 ? 3 : wirkung > 0.35 ? 2 : 1;
@@ -782,7 +823,7 @@
 
       // Entdeckung durch das Boot
       if (d < sicht) { s.ident = 1; s.klass = true; s.entdeckt = 'sicht'; }
-      else if (d < sonar) {
+      else if (d < sonar && !imTotenWinkel(st, s)) {
         // ident = Qualität der Horch-Aufnahme. Erkannt ist der Kontakt erst nach dem Abgleich im Horchraum.
         s.entdeckt = 'sonar';
         s.ident = Math.min(1, s.ident + eff.sonar * dt / 6);
@@ -815,22 +856,72 @@
       const s = st.schiffe.find((x) => x.id === t.ziel && !x.versenkt);
       if (!s) { t.weg = true; continue; }
       const d = dist(t, s);
-      const km = 40 * 1.852 / 60 * dt;
+      const km = (t.kn || 40) * 1.852 / 60 * dt;
       t.laufzeit += dt;
-      if (d <= km || t.laufzeit > 12) {
+      // Blasenbahn bei Tag: Geleitfahrzeuge in der Nähe werden aufmerksam
+      if (t.blasen && !t.gesehen && t.laufzeit > 0.5) {
+        t.gesehen = true;
+        for (const z of st.schiffe) if (z.typ === 'zerstoerer' && !z.versenkt && dist(z, st.boot) < 8) { z.alarmiert = true; z.suche = 40; z.letzteSicht = { x: st.boot.x, y: st.boot.y }; }
+      }
+      if (d <= km) {
         t.weg = true;
-        if (d <= km && Math.random() < t.chance) {
+        if (Math.random() < t.chance) {
+          if (Math.random() < D.VERSAGER) { log(st, 'Treffer – aber Versager! Der ' + t.typ + ' hat nicht gezündet.', 'warn'); continue; }
           s.hp--;
           if (s.typ === 'zerstoerer') { s.alarmiert = true; s.letzteSicht = { x: st.boot.x, y: st.boot.y }; s.suche = 40; }
           if (s.hp <= 0) schiffVersenkt(st, s);
           else log(st, 'Torpedotreffer auf ' + D.SCHIFFSTYPEN[s.typ].name + '! Er ist schwer beschädigt.', 'gut');
-        } else log(st, 'Torpedo hat das Ziel verfehlt.', 'warn');
+        } else log(st, 'Der ' + t.typ + ' hat das Ziel verfehlt.', 'warn');
+      } else if (t.laufzeit > (t.maxZeit || 12)) {
+        t.weg = true; log(st, 'Laufzeit um – der ' + t.typ + ' hat das Ziel nicht erreicht.', 'warn');
       } else {
         t.x += (s.x - t.x) / d * km; t.y += (s.y - t.y) / d * km;
       }
     }
     st.torpedos = st.torpedos.filter((t) => !t.weg);
   }
+
+  /* 8,8-cm-Geschütz (Handbuch Kap. 6.6): nur aufgetaucht, Geschützführer II. WO, Bedienung bei Gefechtsstationen.
+     Etwa 8 Schuss pro Minute; ein Frachter braucht rund 20 Treffer. */
+  function geschuetzSchritt(st, dt) {
+    const b = st.boot;
+    if (b.geschuetz == null) return;
+    const s = st.schiffe.find((x) => x.id === b.geschuetz && !x.versenkt);
+    const halt = (t) => { b.geschuetz = null; log(st, 'Geschütz: ' + t, 'info'); };
+    if (!s) return halt('Feuer eingestellt.');
+    if (b.tiefe > 0.5) return halt('Feuer eingestellt – Boot taucht.');
+    if (st.ladung.munition88 <= 0) return halt('Keine 8,8-cm-Munition mehr.');
+    const d = dist(s, b);
+    if (d > 6) return halt('Ziel außer Reichweite (6 km).');
+    b.schussRest = (b.schussRest || 0) + 8 * dt;
+    while (b.schussRest >= 1 && st.ladung.munition88 > 0) {
+      b.schussRest -= 1; st.ladung.munition88--;
+      if (Math.random() < klemme(0.5 - d / 12, 0.05, 0.5)) {
+        s.geschuetzTreffer = (s.geschuetzTreffer || 0) + 1;
+        const noetig = s.typ === 'zerstoerer' ? 30 : 20;
+        if (s.geschuetzTreffer >= noetig) { schiffVersenkt(st, s); b.geschuetz = null; return; }
+        if (s.geschuetzTreffer % 5 === 0) log(st, 'Geschütz: ' + s.geschuetzTreffer + ' Treffer auf dem ' + D.SCHIFFSTYPEN[s.typ].name + '.', 'gut');
+      }
+    }
+    if (s.typ === 'zerstoerer' || st.schiffe.some((z) => z.typ === 'zerstoerer' && !z.versenkt && dist(z, b) < 12)) {
+      for (const z of st.schiffe) if (z.typ === 'zerstoerer' && !z.versenkt && dist(z, b) < 15) { z.alarmiert = true; z.letzteSicht = { x: b.x, y: b.y }; z.suche = 30; }
+    }
+  }
+  sim.geschuetz = function (st) {
+    const b = st.boot;
+    if (b.geschuetz != null) { b.geschuetz = null; log(st, 'Geschütz: Feuer einstellen!', 'info'); return null; }
+    const s = st.schiffe.find((x) => x.id === st.ziel && !x.versenkt);
+    if (!s) return 'Kein Ziel gewählt.';
+    if (!D.SCHIFFSTYPEN[s.typ].feind) return 'Feuer auf neutrale Schiffe ist verboten.';
+    if (b.tiefe > 0.5) return 'Das Geschütz geht nur aufgetaucht.';
+    if (!st.alarm) return 'Erst Gefechtsstationen – die Geschützbedienung muss an Deck.';
+    if (!lebende(st).some((c) => c.rolle === 'wo2' || c.rolle === 'wo1')) return 'Kein Geschützführer an Bord.';
+    if (st.ladung.munition88 <= 0) return 'Keine 8,8-cm-Munition.';
+    if (dist(s, b) > 6) return 'Ziel zu weit (Geschütz bis 6 km).';
+    b.geschuetz = s.id;
+    log(st, 'II. WO: „Geschütz – Feuer frei!“', 'warn');
+    return null;
+  };
 
   function schiffVersenkt(st, s) {
     const t = D.SCHIFFSTYPEN[s.typ];
@@ -870,7 +961,10 @@
     return { ok: false, text: 'Falsch gemeldet. Der Soni braucht 10 Minuten für eine neue Aufnahme.' };
   };
 
-  sim.feuern = function (st) {
+  function istTag(st) { const h = uhrzeit(st).stunde; return h >= 7 && h < 19; }
+  sim.istTag = istTag;
+
+  sim.feuern = function (st, typ, faecher) {
     const b = st.boot;
     const s = st.schiffe.find((x) => x.id === st.ziel && !x.versenkt);
     if (!s) return 'Kein Ziel ausgewählt. Klicke auf der Karte auf einen Kontakt.';
@@ -880,38 +974,53 @@
     if (b.tiefe > 15) return 'Zum Schießen auf Sehrohrtiefe oder an die Oberfläche gehen.';
     if (sim.eff.torpedo <= 0) return 'Niemand am Torpedo-Vorhalterechner.';
     const d = dist(s, b);
-    if (d > 7) return 'Ziel zu weit entfernt (max. 7 km).';
+    if (d > 12.5) return 'Ziel zu weit entfernt (größte Laufstrecke 12,5 km mit G7a).';
     // Ziel vorn (bis 100° zur Seite) → Bugrohre 1–4, Ziel achtern → Heckrohr 5
-    let rel = Math.abs(((Math.atan2(s.y - b.y, s.x - b.x) - b.kurs) * 180 / Math.PI + 540) % 360 - 180);
+    const rel = Math.abs(((Math.atan2(s.y - b.y, s.x - b.x) - b.kurs) * 180 / Math.PI + 540) % 360 - 180);
     const heck = rel > 100;
-    const rohr = heck ? (b.rohre[4] ? 4 : -1) : b.rohre.slice(0, 4).indexOf(true);
-    if (rohr < 0) return heck ? 'Das Ziel liegt achteraus und das Heckrohr ist leer.' : 'Alle Bugrohre leer. Die Torpedomechaniker laden nach.';
-    b.rohre[rohr] = false;
-    const chance = Math.min(0.98, klemme(0.95 - d / 10 - (s.kn > 15 ? 0.15 : 0), 0.1, 0.95) * (0.6 + 0.4 * Math.min(1, sim.eff.torpedo)) * (hatAusbau(st, 'vorhalter') ? 1.15 : 1));
-    st.torpedos.push({ x: b.x, y: b.y, ziel: s.id, chance, laufzeit: 0 });
-    log(st, (heck ? 'Heckrohr' : 'Rohr ' + (rohr + 1)) + ' – los! Torpedo läuft.', 'info');
+    const wunsch = typ || b.ladeTyp || 'G7e';
+    let rohre = heck ? (b.rohre[4] ? [4] : []) : [0, 1, 2, 3].filter((i) => b.rohre[i]);
+    if (!rohre.length) return heck ? 'Das Ziel liegt achteraus und das Heckrohr ist leer.' : 'Alle Bugrohre leer. Die Torpedomixer laden nach.';
+    rohre.sort((x, y) => (b.rohre[x] === wunsch ? 0 : 1) - (b.rohre[y] === wunsch ? 0 : 1));
+    rohre = rohre.slice(0, Math.max(1, Math.min(heck ? 1 : 4, faecher || 1)));
+    const tag = istTag(st);
+    let geschossen = 0;
+    for (const r of rohre) {
+      const t = D.TORPEDOTYPEN[b.rohre[r]] || D.TORPEDOTYPEN.G7e;
+      // kleinste Fahrtstufe, deren Laufstrecke reicht
+      const stufe = t.stufen.find(([, km]) => km >= d);
+      if (!stufe) { if (!geschossen) return t.kurz + ': Ziel außerhalb der Laufstrecke (' + t.stufen[t.stufen.length - 1][1] + ' km).'; continue; }
+      let chance = klemme(0.95 - d / 10 - (s.kn > 15 ? 0.15 : 0), 0.1, 0.95) * (0.6 + 0.4 * Math.min(1, sim.eff.torpedo)) * (hatAusbau(st, 'vorhalter') ? 1.15 : 1);
+      if (rohre.length > 1) chance *= 0.8;                       // Fächer: Streuwinkel
+      if (t.blasen && tag) chance *= 0.8;                        // Blasenbahn bei Tag: Gegner kann ausweichen
+      st.torpedos.push({ x: b.x, y: b.y, ziel: s.id, chance: Math.min(0.98, chance), laufzeit: 0, kn: stufe[0], maxZeit: stufe[1] / (stufe[0] * 1.852 / 60), typ: t.kurz, blasen: t.blasen && tag });
+      log(st, (r === 4 ? 'Heckrohr' : 'Rohr ' + (r + 1)) + ' – los! ' + t.kurz + ' mit ' + stufe[0] + ' kn, Laufzeit ' + Math.round(d / (stufe[0] * 1.852 / 60) * 60) + ' s.', 'info');
+      b.rohre[r] = null;
+      geschossen++;
+    }
     for (const c of st.crew) if (!c.tot && c.aktPosten === 'torpedo') c.xp += 3;
     return null;
   };
 
   function nachladenSchritt(st, dt, eff) {
     const b = st.boot;
-    const dauer = hatAusbau(st, 'schnellladen') ? 14 : 20;
-    // Bugrohre 1–4 aus der Bugraum-Reserve
-    const leer = b.rohre.slice(0, 4).indexOf(false);
+    // Nachladen eines Rohrs mit Flaschenzug und Laderinne: rund 10–15 Minuten (Handbuch Kap. 6.1)
+    const dauer = hatAusbau(st, 'schnellladen') ? 9 : 12;
+    const leer = b.rohre.slice(0, 4).findIndex((r) => !r);
     if (eff.nachladen > 0 && st.ladung.torpedos > 0 && leer >= 0) {
       b.ladeFortschritt += eff.nachladen * dt / dauer;
       if (b.ladeFortschritt >= 1) {
-        b.ladeFortschritt = 0; b.rohre[leer] = true; st.ladung.torpedos--;
-        log(st, 'Rohr ' + (leer + 1) + ' nachgeladen.', 'info');
+        b.ladeFortschritt = 0;
+        b.rohre[leer] = reserveNehmen(st, 'torpedos', b.ladeTyp || 'G7e');
+        log(st, 'Rohr ' + (leer + 1) + ' nachgeladen (' + b.rohre[leer] + ').', 'info');
       }
     }
-    // Heckrohr 5 aus der Heckraum-Reserve
     if (eff.heckladen > 0 && st.ladung.torpedosHeck > 0 && !b.rohre[4]) {
       b.heckFortschritt += eff.heckladen * dt / dauer;
       if (b.heckFortschritt >= 1) {
-        b.heckFortschritt = 0; b.rohre[4] = true; st.ladung.torpedosHeck--;
-        log(st, 'Heckrohr nachgeladen.', 'info');
+        b.heckFortschritt = 0;
+        b.rohre[4] = reserveNehmen(st, 'torpedosHeck', b.ladeTyp || 'G7e');
+        log(st, 'Heckrohr nachgeladen (' + b.rohre[4] + ').', 'info');
       }
     }
     // Torpedo aus dem Oberdeckbehälter übernehmen: nur aufgetaucht und höchstens Kleine Fahrt
@@ -922,8 +1031,8 @@
         u.pause = false; u.rest -= dt;
         if (u.rest <= 0) {
           b.deckUebernahme = null;
-          st.ladung.torpedosDeck--;
-          if (st.ladung.torpedos < kapazitaet(st, 'torpedos')) st.ladung.torpedos++; else st.ladung.torpedosHeck++;
+          const typ = reserveNehmen(st, 'torpedosDeck', 'G7a') || 'G7a';
+          reserveDazu(st, st.ladung.torpedos < kapazitaet(st, 'torpedos') ? 'torpedos' : 'torpedosHeck', typ);
           log(st, 'Torpedo aus dem Oberdeckbehälter ins Boot übernommen.', 'gut');
         }
       }
@@ -1149,6 +1258,7 @@
       fahrtSchritt(st, dt, eff);
       schiffeSchritt(st, dt, eff);
       torpedoSchritt(st, dt);
+      geschuetzSchritt(st, dt);
       nachladenSchritt(st, dt, eff);
       funkSchritt(st, dt, eff);
       missionSchritt(st);
@@ -1232,7 +1342,7 @@
       // erst Bugraum, dann Heckraum, dann Oberdeckbehälter
       const ziel = ['torpedos', 'torpedosHeck', 'torpedosDeck'].find((l) => st.ladung[l] < kapazitaet(st, l));
       if (!ziel) return 'Kein Platz mehr für Torpedos (Bug, Heck und Oberdeck voll).';
-      st.geld -= preis; st.ladung[ziel]++;
+      st.geld -= preis; reserveDazu(st, ziel, st.boot.ladeTyp || 'G7e');
       return null;
     }
     if (platz(st, ware) < w.paket) return 'Dafür ist kein Platz mehr (' + D.STAURAUM[lagerVon(ware)].wo + ').';
@@ -1244,7 +1354,7 @@
     if (ware === 'torpedos') {
       const von = ['torpedosDeck', 'torpedos', 'torpedosHeck'].find((l) => st.ladung[l] > 0);
       if (!von) return 'Keine Reserve-Torpedos an Bord.';
-      st.geld += sim.verkaufspreis(st, ort, ware); st.ladung[von]--;
+      st.geld += sim.verkaufspreis(st, ort, ware); reserveNehmen(st, von, 'G7e');
       return null;
     }
     if (st.ladung[ware] < w.paket) return 'Nicht genug an Bord.';
@@ -1303,7 +1413,7 @@
     const w = D.WAREN[ware] || { paket: 1, einheit: 'Stk', name: D.INVENTAR[ware].name };
     const menge = Math.min(st.ladung[ware] || 0, w.paket);
     if (menge <= 0) return 'Nichts davon an Bord.';
-    st.ladung[ware] -= menge;
+    if (/^torpedos/.test(ware)) reserveNehmen(st, ware, 'G7e'); else st.ladung[ware] -= menge;
     log(st, menge + ' ' + w.einheit + ' ' + w.name + ' über Bord geworfen.', 'info');
     return null;
   };
@@ -1354,7 +1464,7 @@
 
   Object.assign(sim, {
     abteilIndex, abteilNachId, uhrzeit, log, planquadrat, imLand, flutung, minRumpf, sichereTiefe,
-    hatAusbau, maxSicher, konstruktionstiefe, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
+    hatAusbau, maxSicher, konstruktionstiefe, sprungschicht, reserveNehmen, zerstoerungstiefe, horchweite, wassertiefe, grundTiefe, KIEL_M,
     lagerVon, kapazitaet, bestand, platz, torpedosGesamt, lebende, crewNachId, crewFaktor, unterWasser, antenneFrei, dist, berechneEffizienz, verlieren,
   });
   S.sim = sim;
