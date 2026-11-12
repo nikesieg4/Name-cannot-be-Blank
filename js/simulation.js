@@ -135,12 +135,43 @@
     return best;
   }
 
+  /* Bei Gefechtsstationen gehen manche Rollen auf einen anderen Posten (1WO an den Vorhalterechner). */
+  function postenVon(st, c) {
+    const r = D.ROLLEN[c.rolle];
+    return st.alarm && r && r.gefecht && c.posten === (Array.isArray(r.posten) ? c.posten : r.posten) ? r.gefecht : c.posten;
+  }
+
+  /* Wachablösung: Wer Dienst hatte, bleibt am Posten, bis jemand anderes dasselbe System übernommen hat
+     (höchstens 20 Minuten in die neue Wache hinein). */
+  function nochNichtAbgeloest(st, c) {
+    if (c.taetigkeit !== 'dienst' || !c.aktPosten || st.zeit % 60 >= 20) return false;
+    const sys = D.POSTEN[c.aktPosten].system;
+    return !st.crew.some((o) => o !== c && !o.tot && o.aktPosten && o.taetigkeit !== 'schlaf' && D.POSTEN[o.aktPosten].system === sys);
+  }
+
   function postenX(st, c) {
     if (c.posten === 'leckabwehr') {
       const i = schadensZiel(st);
       return i >= 0 ? mitte(i) + ((c.id * 7) % 16) - 8 : 300 + (c.id % 3) * 4;
     }
-    return D.POSTEN[c.posten].x;
+    // Wer denselben Posten hat, steht leicht versetzt nebeneinander
+    return D.POSTEN[postenVon(st, c)].x + ((c.id * 5) % 7) - 3;
+  }
+
+  /* Hot Bunking: Kojen werden geteilt. Wer schlafen geht, nimmt eine freie Koje (Offiziere zuerst
+     im Funk- und Kommandantenraum), sonst schläft er auf dem Boden (koje = null). */
+  function kojeFuer(st, c) {
+    const belegt = new Set();
+    for (const o of st.crew) if (o !== c && !o.tot && o.koje != null) belegt.add(o.koje);
+    if (c.koje != null && !belegt.has(c.koje)) return c.koje;
+    const off = D.ROLLEN[c.rolle] && D.ROLLEN[c.rolle].offizier;
+    let best = null, bd = 1e9;
+    D.KOJEN.forEach((k, i) => {
+      if (belegt.has(i) || !erreichbar(st, c.x, k.x)) return;
+      const d = Math.abs(k.x - c.x) + (off && k.abteil === 'funk' ? -1000 : 0) + (!off && k.abteil === 'funk' ? 400 : 0);
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
   }
 
   /* Weg frei? Geschlossene Schotten zwischen zwei Positionen blockieren. */
@@ -165,7 +196,7 @@
   }
 
   /* ---------- Notfall-KI: Lecks reparieren, Torpedos nachladen, volllaufende Abteile abschotten ---------- */
-  function notfallPlanung(st) {
+  function notfallPlanung(st, h) {
     const b = st.boot;
     for (const c of st.crew) { c.notfall = null; if (c.taetigkeit !== 'reparatur') c.repZiel = null; }
     const frei = (c, auchSchlaf) => !c.tot && c.befehl == null && st.gesteuert !== c.id &&
@@ -179,17 +210,14 @@
     if (schaeden.length) {
       const schwer = gesamt > 25;
       const groesse = gesamt > 70 ? 4 : schwer ? 3 : 1;
-      const trupp = [];
-      // zuerst alle, die fest auf Leckabwehr eingeteilt sind (bei schweren Schäden auch aus der Koje)
-      for (const c of st.crew) {
-        if (c.posten !== 'leckabwehr' || c.tot || c.befehl != null || st.gesteuert === c.id) continue;
-        if (c.taetigkeit === 'schlaf' && !schwer) continue;
-        trupp.push(c);
-      }
-      // dann Helfer: zuerst wer Freizeit hat, bei schweren Schäden auch Schlafende; Brandmeister und Vertäuer bevorzugt
+      // Wer Leckabwehr-Dienst hat, ist immer dabei. Dazu kommen Helfer bis zur nötigen Truppgröße:
+      // erst Wache, die frei hat (Leckabwehr-Leute, Brandmeister und Seeleute zuerst), bei schweren Schäden auch Schlafende.
+      const imDienst = (c) => st.alarm || st.schichten[c.schicht][h] === 'D';
+      const trupp = st.crew.filter((c) => !c.tot && c.posten === 'leckabwehr' && imDienst(c) && c.taetigkeit !== 'schlaf' && c.befehl == null && st.gesteuert !== c.id);
+      const z0 = mitte(schaeden[0].i);
+      const rang = (c) => (c.taetigkeit === 'schlaf' ? 2 : 0) + (c.posten === 'leckabwehr' || c.rolle === 'brand' || c.rolle === 'vertau' ? 0 : 1);
       const kandidaten = st.crew.filter((c) => !trupp.includes(c) && frei(c, schwer))
-        .sort((a, c) => ((a.rolle === 'brand' || a.rolle === 'vertau' ? 0 : 1) - (c.rolle === 'brand' || c.rolle === 'vertau' ? 0 : 1)) ||
-          ((a.taetigkeit === 'schlaf') - (c.taetigkeit === 'schlaf')) || Math.abs(a.x - mitte(schaeden[0].i)) - Math.abs(c.x - mitte(schaeden[0].i)));
+        .sort((a, c) => (c.taetigkeit === 'reparatur') - (a.taetigkeit === 'reparatur') || rang(a) - rang(c) || Math.abs(a.x - z0) - Math.abs(c.x - z0));
       while (trupp.length < groesse && kandidaten.length) trupp.push(kandidaten.shift());
       const ziele = schaeden.slice(0, Math.min(schaeden.length, 2));
       trupp.forEach((c, k) => {
@@ -248,7 +276,11 @@
     let z;
     if (c.notfall) z = c.notfall;
     else if (st.alarm || p === 'D') z = { x: postenX(st, c), art: 'dienst' };
-    else if (p === 'S') z = { x: D.KOJEN[c.koje].x, art: 'schlaf' };
+    else if (nochNichtAbgeloest(st, c)) z = { x: c.x, art: 'dienst' };
+    else if (p === 'S') {
+      c.koje = kojeFuer(st, c);
+      z = { x: c.koje != null ? D.KOJEN[c.koje].x : c.messeX, art: 'schlaf' };
+    }
     else z = { x: c.messeX, art: 'frei' };
     // Selbstschutz: nicht in geflutete Abteile, aus vollaufenden Abteilen fliehen.
     const hier = st.boot.abteile[abteilIndex(c.x)];
@@ -291,7 +323,7 @@
   }
 
   function crewSchritt(st, dt, h) {
-    notfallPlanung(st);
+    notfallPlanung(st, h);
     for (const c of st.crew) {
       if (c.tot) continue;
       const i = abteilIndex(c.x);
@@ -301,6 +333,7 @@
         const angekommen = bewege(st, c, z.x, 26 * (0.7 + 0.3 * c.moral / 100) * dt);
         c.taetigkeit = z.art === 'schlaf' ? (angekommen ? 'schlaf' : 'zurKoje') : z.art;
         c.aktPosten = angekommen && c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'frei' && c.taetigkeit !== 'reparatur' ? naechsterPosten(c) : null;
+        if (c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'zurKoje') c.koje = null;
       } else {
         c.taetigkeit = 'gesteuert';
         c.aktPosten = c.laeuft ? null : naechsterPosten(c);
@@ -997,7 +1030,7 @@
     if (st.geld < 500) return 'Nicht genug Geld.';
     st.geld -= 500;
     const benutzt = new Set(st.crew.map((c) => c.name));
-    const neu = Z.neuesCrewmitglied(st.naechsteId++, alt.rolle, alt.koje, benutzt);
+    const neu = Z.neuesCrewmitglied(st.naechsteId++, alt.rolle, alt.schicht, benutzt, alt.posten);
     neu.xp = 0;
     st.crew[st.crew.indexOf(alt)] = neu;
     log(st, neu.name + ' als neuer ' + D.ROLLEN[neu.rolle].name + ' angeheuert.', 'gut');

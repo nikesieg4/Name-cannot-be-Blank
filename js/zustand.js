@@ -13,16 +13,24 @@
     return 'Matrose ' + (benutzt.size + 1);
   }
 
-  function neuesCrewmitglied(id, rolle, koje, benutzt) {
+  /* Freizeit-Platz: Messe im Mannschaftsraum, Bugraum oder Heckraum (Bootseinheiten) */
+  function freizeitPlatz() {
+    const r = Math.random();
+    if (r < 0.55) return 300 + Math.floor(Math.random() * 44);
+    if (r < 0.85) return 532 + Math.floor(Math.random() * 56);
+    return 50 + Math.floor(Math.random() * 22);
+  }
+
+  function neuesCrewmitglied(id, rolle, schicht, benutzt, posten) {
     const r = D.ROLLEN[rolle];
-    const k = D.KOJEN[koje];
+    const messeX = freizeitPlatz();
     return {
       id, rolle, name: neuerName(benutzt),
-      posten: r.posten, schicht: r.schicht, koje,
-      x: k.x, richtung: 1, laeuft: false, anim: 0,
+      posten: posten || (Array.isArray(r.posten) ? r.posten[0] : r.posten), schicht, koje: null,
+      x: messeX, richtung: 1, laeuft: false, anim: 0,
       taetigkeit: 'frei', aktPosten: null,
       wach: 2 + Math.random() * 6, moral: 72, xp: Math.floor(Math.random() * 20), luft: 100,
-      tot: false, befehl: null, messeX: 314 + Math.floor(Math.random() * 26),
+      tot: false, befehl: null, messeX,
     };
   }
 
@@ -30,12 +38,17 @@
     const benutzt = new Set();
     const crew = [];
     let id = 1;
-    for (const rolle of Object.keys(D.ROLLEN)) crew.push(neuesCrewmitglied(id++, rolle, D.ROLLEN[rolle].koje, benutzt));
+    // Besatzung nach Rollen: jede Rolle in ihrer Stärke, reihum auf die drei Wachen und Posten verteilt
+    for (const [rolle, r] of Object.entries(D.ROLLEN)) {
+      for (let k = 0; k < r.anzahl; k++) {
+        const posten = Array.isArray(r.posten) ? r.posten[k % r.posten.length] : r.posten;
+        crew.push(neuesCrewmitglied(id++, rolle, r.wache === 3 ? 3 : (r.wache + k) % 3, benutzt, posten));
+      }
+    }
     // Startaufstellung passend zum Schichtplan um 12:00 UTC
     for (const c of crew) {
       const p = D.STANDARD_SCHICHTEN[c.schicht][12];
       if (p === 'D' && D.POSTEN[c.posten].x != null) c.x = D.POSTEN[c.posten].x;
-      else if (p === 'F') c.x = c.messeX;
     }
     const basis = D.HAEFEN[0];
     return {
@@ -55,7 +68,7 @@
         rohre: [true, true, true, true], ladeFortschritt: 0, teileRest: 0,
         upgrades: { pumpen: 0, batterie: 0, rumpf: 0 }, ausbau: {},
       },
-      ladung: { diesel: 9000, torpedos: 6, proviant: 600, ersatzteile: 20, konserven: 40, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
+      ladung: { diesel: 9000, torpedos: 6, proviant: 3000, ersatzteile: 20, konserven: 400, batteriezelle: 0, druckflasche: 1, sanitaet: 2 },
       crew,
       schichten: D.STANDARD_SCHICHTEN.map((p) => p.slice()),
       schiffe: [],
@@ -75,8 +88,9 @@
   function ergaenze(st) {
     for (const k of Object.keys(D.WAREN)) if (typeof st.ladung[k] !== 'number') st.ladung[k] = 0;
     if (!st.boot.ausbau) st.boot.ausbau = {};
+    while (st.schichten.length < D.STANDARD_SCHICHTEN.length) st.schichten.push(D.STANDARD_SCHICHTEN[st.schichten.length].slice());
     return st;
   }
 
-  S.zustand = { neuesSpiel, ergaenze, neuesCrewmitglied, neuerName, zufall };
+  S.zustand = { neuesSpiel, ergaenze, neuesCrewmitglied, freizeitPlatz, neuerName, zufall };
 })(window.Spiel = window.Spiel || {});

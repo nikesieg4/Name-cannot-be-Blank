@@ -350,3 +350,8 @@ th { color: var(--leise); font-weight: normal; }
   .baum { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 16px; }
   .werftdetail { flex-wrap: wrap; }
 }
+
+/* Crew-Liste nach Rollen gruppiert */
+.crewGruppe { font-family: 'Silkscreen', monospace; font-size: 10px; letter-spacing: 1px; color: var(--leise); text-transform: uppercase; margin: 8px 0 2px; }
+.crewGruppe:first-child { margin-top: 0; }
+.crewGruppe span { color: var(--gelb); }

@@ -70,9 +70,19 @@
   }
 
   function crewListe(st, auswahl) {
-    const h = st.crew.map((c) => {
+    // nach Rollen gruppiert, mit Überschrift und Stärke je Rolle
+    const reihen = Object.keys(D.ROLLEN);
+    const liste = st.crew.slice().sort((a, c) => reihen.indexOf(a.rolle) - reihen.indexOf(c.rolle) || a.id - c.id);
+    let vorher = null;
+    const h = liste.map((c) => {
       const r = D.ROLLEN[c.rolle];
-      return '<div class="crew' + (c.tot ? ' tot' : '') + (auswahl.crew === c.id ? ' gewaehlt' : '') + '" data-aktion="crew" data-arg="' + c.id + '">' +
+      let kopf = '';
+      if (c.rolle !== vorher) {
+        vorher = c.rolle;
+        const alle = st.crew.filter((x) => x.rolle === c.rolle), leb = alle.filter((x) => !x.tot).length;
+        kopf = '<div class="crewGruppe">' + r.name + (alle.length > 1 ? ' <span>' + leb + (leb < alle.length ? ' / ' + alle.length : '') + '</span>' : '') + '</div>';
+      }
+      return kopf + '<div class="crew' + (c.tot ? ' tot' : '') + (auswahl.crew === c.id ? ' gewaehlt' : '') + '" data-aktion="crew" data-arg="' + c.id + '">' +
         '<span class="punkt" style="background:' + r.farbe + '"></span>' +
         '<span class="info">' + esc(c.name) + ' <small>' + r.kurz + ' · ' + esc(taetigkeitText(st, c)) + '</small></span>' +
         '<span class="moral ' + (c.moral < 30 ? 'warnung' : '') + '">' + (c.tot ? '✝' : Math.round(c.moral / 5) * 5) + '</span></div>';

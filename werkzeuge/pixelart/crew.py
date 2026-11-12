@@ -17,6 +17,8 @@ ROLLEN = [  # id, Name, Rollenfarbe, Kopf, Koerper, Haut, Haar
     ('ruder', 'Rudergänger', '#a3b86c', 'muetze', 'pullover', '#f0c8a8', '#3a2a1c'),
     ('soni', 'Horchfunker', '#c2a0d0', 'kopfhoerer', 'pullover', '#e2b08a', '#8a3a22'),
     ('smutje', 'Smutje', '#e6e0d0', 'koch', 'schuerze', '#c98f66', '#7a5530'),
+    ('wo2', '2. Wachoffizier', '#c8c2ae', 'schirm', 'offizier', '#e2b08a', '#c9a35a'),
+    ('torpedo', 'Torpedomechaniker', '#b8833f', 'muetze', 'overall', '#c98f66', '#3a2a1c'),
 ]
 
 KOEPFE = {

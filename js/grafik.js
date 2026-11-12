@@ -412,6 +412,12 @@
     return cv;
   }
 
+  /* Schlafplatz in Grafikpixeln: Koje (oben y 184, unten y 208) oder – bei Hot Bunking ohne freie Koje – der Boden. */
+  function schlafPlatz(c) {
+    const k = c.koje != null ? D.KOJEN[c.koje] : null;
+    return k ? { x: k.x, y: k.o ? 184 : 208 } : { x: c.x, y: 222 };
+  }
+
   function figur(g, c, zeit) {
     const rolle = D.ROLLEN[c.rolle];
     const haut = HAUT[c.id % HAUT.length];
@@ -423,18 +429,19 @@
       return;
     }
     const reihe = Object.keys(D.ROLLEN).indexOf(c.rolle);
-    const blatt = reihe >= 0 && reihe < 13 ? S.bilder.bild('crew_sheet') : null;
-    const schlafBlatt = reihe >= 0 && reihe < 13 ? S.bilder.bild('crew_schlaf') : null;
+    let blatt = S.bilder.bild('crew_sheet'), schlafBlatt = S.bilder.bild('crew_schlaf');
+    if (reihe < 0 || !blatt || reihe >= blatt.naturalHeight / 28) blatt = null;
+    if (reihe < 0 || !schlafBlatt || reihe >= schlafBlatt.naturalHeight / 12) schlafBlatt = null;
     if (c.taetigkeit === 'schlaf' && schlafBlatt) {
       // Pixel-Grafik: 28 × 12 je Rolle, Kopf rechts auf dem Kissen
-      const k = D.KOJEN[c.koje];
-      const kx = k.x * F, y = (k.o ? 184 : 208) - 3;
+      const k = schlafPlatz(c);
+      const kx = k.x * F, y = k.y - 3;
       g.drawImage(schlafBlatt, 0, reihe * 12, 28, 12, kx - 13, y - 11, 28, 12);
       return;
     }
     if (c.taetigkeit === 'schlaf') {
-      const k = D.KOJEN[c.koje];
-      const kx = k.x * F, y = (k.o ? 184 : 208) - 3;
+      const k = schlafPlatz(c);
+      const kx = k.x * F, y = k.y - 3;
       r(g, kx + 8, y - 5, 7, 5, haut); r(g, kx + 8, y - 5, 7, 1, HAAR[(c.id * 7) % HAAR.length]);
       px(g, kx + 9, y - 3, '#1a1410');
       r(g, kx - 15, y - 6, 23, 6, FARBE.decken); r(g, kx - 15, y - 6, 23, 1, FARBE.deckenHell);
@@ -683,9 +690,9 @@
       if (c.tot) continue;
       const aus = c.id === auswahl.crew, ges = c.id === st.gesteuert;
       if (!aus && !ges) continue;
-      const k = c.taetigkeit === 'schlaf' ? D.KOJEN[c.koje] : null;
+      const k = c.taetigkeit === 'schlaf' ? schlafPlatz(c) : null;
       const mx = k ? k.x * F + 10 : Math.round(c.x * F);
-      const my = k ? (k.o ? 184 : 208) - 18 : BODEN - 36 - Math.floor(zeit * 3) % 2;
+      const my = k ? k.y - 18 : BODEN - 36 - Math.floor(zeit * 3) % 2;
       const f = ges ? '#7fe08a' : '#f2d16b';
       r(ctx, mx - 4, my, 9, 2, f); r(ctx, mx - 2, my + 2, 5, 2, f); r(ctx, mx - 1, my + 4, 3, 1, f);
       if (c.befehl != null && !ges) { ctx.fillStyle = 'rgba(242,209,107,0.7)'; ctx.fillRect(c.befehl * F - 1, BODEN, 2, 5); }
@@ -711,9 +718,9 @@
     }
     for (const c of st.crew) {
       if (c.tot || (c.id !== auswahl.crew && c.id !== auswahl.hover)) continue;
-      const k = c.taetigkeit === 'schlaf' ? D.KOJEN[c.koje] : null;
+      const k = c.taetigkeit === 'schlaf' ? schlafPlatz(c) : null;
       const sx = t.tx + (k ? k.x + 4 : c.x) * zf;
-      const syy = t.ty + (k ? (k.o ? 80 : 92) : B.BODEN_Y - 20) * zf;
+      const syy = t.ty + (k ? k.y / 2 - 12 : B.BODEN_Y - 20) * zf;
       const txt = c.name + ' · ' + D.ROLLEN[c.rolle].kurz;
       const wtxt = ctx.measureText(txt).width;
       ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -737,8 +744,8 @@
       if (c.tot) continue;
       let mx, my, bx, by;
       if (c.taetigkeit === 'schlaf') {
-        const k = D.KOJEN[c.koje];
-        mx = k.x; my = k.o ? 89 : 101; bx = 9; by = 4.5;
+        const k = schlafPlatz(c);
+        mx = k.x; my = k.y / 2 - 3; bx = 9; by = 4.5;
       } else { mx = c.x; my = B.BODEN_Y - 7; bx = 4; by = 8; }
       const dx = Math.abs(p.x - mx), dy = Math.abs(p.y - my);
       if (dx <= bx + tol && dy <= by + tol) {

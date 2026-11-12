@@ -73,28 +73,34 @@ Ein 2D-U-Boot-Spiel im Pixel-Look für den Browser. Du bist der **Kaleu** (Kapit
 
 Jedes Crewmitglied hat einen **Namen**, eine **Rolle**, **Moral**, einen **Wach-Zähler** und **Erfahrung** (Stufe 1–5, macht schneller). Crewmitglieder können **ertrinken**. Krankheiten gibt es vorerst nicht.
 
-Die Rollen stammen von [ubootworkshop.de/rollen.php](https://www.ubootworkshop.de/rollen.php), ohne Reporter und Schiffsjunge/-mädel:
+Die Rollen stammen von [ubootworkshop.de/rollen.php](https://www.ubootworkshop.de/rollen.php), ohne Reporter und Schiffsjunge/-mädel. Die Stärke entspricht einem **Typ-VIIC-Boot der Kriegsmarine: 44 Mann**, davon 5 Offiziere:
 
-| Rolle | Aufgabe im Spiel | Standard-Posten |
-|---|---|---|
-| Kapitänleutnant (Kaleu) | Spielfigur. Kommandant, bedient das Sehrohr | Sehrohr |
-| 1. Wachoffizier (1WO) | Vertritt den Kaleu, leitet den Torpedoangriff | Torpedo-Vorhalterechner |
-| Leitender Ingenieur (LI) | Tiefensteuerung, steuert die Pumpen aus der Zentrale | Tiefenruder |
-| Navigationsoffizier (NAV) | Karte und Kurs, kann das Ruder übernehmen | Seitenruder |
-| Brandmeister | Leckabwehr, repariert am schnellsten | Leckabwehr (geht automatisch zum Schaden) |
-| Funker-Obermaat | Funk senden, empfangen und **entschlüsseln** | Funkgerät |
-| Logistik-Maat | Lager, Proviant, Ersatzteile, 10 % Rabatt beim Handeln | Lagerverwaltung |
-| Maschinist | Diesel und Maschinentelegraf | Diesel |
-| Tauchzellen-Gast | Tauchstation | Tauchzellen-Ventile |
-| Vertäuungs-Gast | Leinen im Hafen, auf See E-Maschine und Leckabwehr | E-Maschine |
-| Rudergänger | Steuert das Boot | Seitenruder |
-| Horchfunker (Soni) | Horchgerät, erkennt Schiffe an ihren Geräuschen | Horchgerät |
-| Smutje | Kocht, ohne Smutje sinkt die Moral | Kombüse |
-| Admiral | **Nicht von Anfang an an Bord.** Kommt bei bestimmten Aufträgen im Hafen als Beobachter dazu (geplant). | – |
+| Rolle | Anzahl | Aufgabe im Spiel | Standard-Posten |
+|---|---|---|---|
+| Kapitänleutnant (Kaleu) | 1 | Spielfigur. Kommandant, führt Wache A | Sehrohr |
+| 1. Wachoffizier (1WO) | 1 | Führt Wache B, leitet bei Gefechtsstationen den Torpedoangriff | Sehrohr (Gefecht: Vorhalterechner) |
+| 2. Wachoffizier (2WO) | 1 | Führt Wache C | Sehrohr |
+| Leitender Ingenieur (LI) | 1 | Tiefensteuerung, steuert die Pumpen aus der Zentrale | Tiefenruder |
+| Obersteuermann (NAV) | 1 | Karte und Kurs, kann das Ruder übernehmen | Kartentisch |
+| Brandmeister | 2 | Leckabwehr, repariert am schnellsten | Leckabwehr |
+| Seemann | 4 | Ausguck, Leinen im Hafen, Leckabwehr | Leckabwehr |
+| Funker | 3 | Funk senden, empfangen und **entschlüsseln**, einer pro Wache | Funkgerät |
+| Horchfunker (Soni) | 3 | Horchgerät, einer pro Wache | Horchgerät |
+| Maschinist | 14 | Diesel und E-Maschinen | Diesel / E-Maschine |
+| Tauchzellen-Gast | 3 | Tauchstation | Tauchzellen-Ventile |
+| Rudergänger | 3 | Steuert das Boot | Seitenruder |
+| Torpedomechaniker | 5 | Wartet die Torpedos, lädt nach | Bugraum |
+| Logistik-Maat | 1 | Lager, 10 % Rabatt beim Handeln (Tagesdienst) | Lagerverwaltung |
+| Smutje | 1 | Kocht, ohne Smutje sinkt die Moral (Tagesdienst) | Kombüse |
+| Admiral | – | **Nicht von Anfang an an Bord.** Kommt bei bestimmten Aufträgen als Beobachter dazu (geplant). | – |
 
-**Posten:** Ein System funktioniert nur, wenn jemand am passenden Posten steht. Fachleute (★) arbeiten mit voller Leistung, alle anderen mit halber. So kann man Ausfälle mit anderen Leuten überbrücken.
+**Posten:** Ein System funktioniert nur, wenn jemand am passenden Posten steht. Fachleute (★) arbeiten mit voller Leistung, alle anderen mit halber. Wer denselben Posten hat, steht nebeneinander; die Leistung zählt vom Besten.
 
-**Schichten:** Es gibt drei frei einstellbare Schichtgruppen (Wache A, Wache B, Tagesdienst). Für jede Stunde des Tages legt man **Dienst**, **Schlaf** oder **Freizeit** fest und ordnet jedem Crewmitglied eine Schicht und einen Dienstposten zu. **Gefechtsstationen** schickt alle sofort auf ihre Posten, dann schläft aber niemand mehr.
+**Schichten:** Drei-Wachen-System wie auf See: Wache A, B und C haben je 4 Stunden Dienst, 4 Stunden Schlaf und 4 Stunden frei, zweimal am Tag – so schläft immer nur ein Drittel. Dazu kommt der Tagesdienst (Smutje, Logistik-Maat). Alles ist im Schichtplan frei einstellbar. Beim Wachwechsel bleibt die alte Wache am Posten, bis die Ablösung da ist. **Gefechtsstationen** schickt alle sofort auf ihre Gefechtsposten, dann schläft aber niemand mehr.
+
+**Hot Bunking:** Es gibt weniger Kojen als Leute. Wer schlafen geht, nimmt eine freie Koje (Offiziere zuerst im Kommandanten- und Funkraum), sonst schläft er auf dem Boden.
+
+**Proviant:** 44 Mann essen bei 3 Rationen etwa 132 Rationen am Tag. Das Boot startet mit 3 000 Rationen frischem Proviant und 400 Rationen Konserven (gut drei Wochen).
 
 ## Boot
 

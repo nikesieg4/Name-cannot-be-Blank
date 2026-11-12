@@ -19,18 +19,18 @@
      "spezial" sind die Rollen, die ihn voll beherrschen (alle anderen arbeiten mit 50 %). */
   const POSTEN = {
     tiefenruder: { name: 'Tiefenruder', abteil: 'zentrale', x: 370, system: 'tauchen', spezial: ['li', 'tauch'] },
-    torpedo: { name: 'Torpedo-Vorhalterechner', abteil: 'zentrale', x: 384, system: 'torpedo', spezial: ['wo1', 'kaleu'] },
+    torpedo: { name: 'Torpedo-Vorhalterechner', abteil: 'zentrale', x: 384, system: 'torpedo', spezial: ['wo1', 'kaleu', 'wo2'] },
     tauchzellen: { name: 'Tauchzellen-Ventile', abteil: 'zentrale', x: 398, system: 'tauchen', spezial: ['tauch', 'li'] },
-    sehrohr: { name: 'Sehrohr', abteil: 'zentrale', x: 412, system: 'sehrohr', spezial: ['kaleu', 'wo1'] },
+    sehrohr: { name: 'Sehrohr', abteil: 'zentrale', x: 412, system: 'sehrohr', spezial: ['kaleu', 'wo1', 'wo2'] },
     ruder: { name: 'Seitenruder', abteil: 'zentrale', x: 428, system: 'ruder', spezial: ['ruder', 'nav'] },
     karte: { name: 'Kartentisch', abteil: 'zentrale', x: 446, system: 'navigation', spezial: ['nav', 'kaleu'] },
     funk: { name: 'Funkgerät', abteil: 'funk', x: 472, system: 'funk', spezial: ['funker'] },
     horch: { name: 'Horchgerät', abteil: 'funk', x: 510, system: 'sonar', spezial: ['soni'] },
-    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'maschine', x: 160, system: 'antrieb', spezial: ['maschinist'] },
+    diesel: { name: 'Diesel & Maschinentelegraf', abteil: 'maschine', x: 160, system: 'antrieb', spezial: ['maschinist', 'li'] },
     emaschine: { name: 'E-Maschine', abteil: 'heck', x: 92, system: 'antrieb', spezial: ['maschinist', 'vertau'] },
     lager: { name: 'Lagerverwaltung', abteil: 'lager', x: 236, system: 'lager', spezial: ['logistik'] },
     kombuese: { name: 'Kombüse', abteil: 'mannschaft', x: 346, system: 'kombuese', spezial: ['smutje'] },
-    bugraum: { name: 'Torpedo-Nachladen', abteil: 'bug', x: 556, system: 'nachladen', spezial: [] },
+    bugraum: { name: 'Torpedo-Nachladen', abteil: 'bug', x: 556, system: 'nachladen', spezial: ['torpedo'] },
     leckabwehr: { name: 'Leckabwehr (wandert zum Schaden)', abteil: null, x: null, system: 'reparatur', spezial: ['brand', 'vertau'] },
   };
 
@@ -51,45 +51,53 @@
     { abteil: 'heck', x: 60, o: 0 }, { abteil: 'heck', x: 60, o: 1 },
   ];
 
-  /* Alle Rollen von ubootworkshop.de außer Reporter und Schiffsjunge/-mädel.
-     schicht: 0 = Wache A, 1 = Wache B, 2 = Tagesdienst. koje = Index in KOJEN. */
+  /* Rollen (nach ubootworkshop.de, ohne Reporter und Schiffsjunge/-mädel) mit realistischer Stärke
+     wie auf einem Typ-VIIC-Boot der Kriegsmarine: 44 Mann, davon 5 Offiziere.
+     anzahl = Leute dieser Rolle an Bord, wache = Wache des ersten (weitere reihum über A–C; 3 = Tagesdienst),
+     posten = Standard-Posten (eine Liste wird reihum verteilt), gefecht = Posten bei Gefechtsstationen. Reihenfolge = Reihen in grafik/crew_sheet.png. */
   const ROLLEN = {
-    kaleu: { name: 'Kapitänleutnant', kurz: 'Kaleu', posten: 'sehrohr', schicht: 0, koje: 10, farbe: '#f1ede2', offizier: true,
+    kaleu: { name: 'Kapitänleutnant', kurz: 'Kaleu', posten: 'sehrohr', anzahl: 1, wache: 0, farbe: '#f1ede2', offizier: true,
       text: 'Kommandant. Verantwortlich für Auftrag und Sicherheit aller an Bord.' },
-    wo1: { name: '1. Wachoffizier', kurz: '1WO', posten: 'torpedo', schicht: 1, koje: 11, farbe: '#d8d2bf', offizier: true,
-      text: 'Vertritt den Kaleu, gibt Befehle weiter und leitet den Torpedoangriff.' },
-    li: { name: 'Leitender Ingenieur', kurz: 'LI', posten: 'tiefenruder', schicht: 0, koje: 12, farbe: '#c9b27a', offizier: true,
+    wo1: { name: '1. Wachoffizier', kurz: '1WO', posten: 'sehrohr', gefecht: 'torpedo', anzahl: 1, wache: 1, farbe: '#d8d2bf', offizier: true,
+      text: 'Vertritt den Kaleu, führt eine Wache und leitet den Torpedoangriff.' },
+    li: { name: 'Leitender Ingenieur', kurz: 'LI', posten: 'tiefenruder', anzahl: 1, wache: 0, farbe: '#c9b27a', offizier: true,
       text: 'Leitet Maschinenraum und Tauchstation. Hält das Boot auf Tiefe.' },
-    nav: { name: 'Navigationsoffizier', kurz: 'NAV', posten: 'ruder', schicht: 1, koje: 13, farbe: '#9fb7c9', offizier: true,
-      text: 'Führt Karte und Kurs, leitet Funk, Horchraum und Ruder.' },
-    brand: { name: 'Brandmeister', kurz: 'BM', posten: 'leckabwehr', schicht: 2, koje: 6, farbe: '#c96a4a',
+    nav: { name: 'Obersteuermann', kurz: 'NAV', posten: 'karte', anzahl: 1, wache: 1, farbe: '#9fb7c9', offizier: true,
+      text: 'Führt Karte und Kurs, kann das Ruder übernehmen.' },
+    brand: { name: 'Brandmeister', kurz: 'BM', posten: 'leckabwehr', anzahl: 2, wache: 0, farbe: '#c96a4a',
       text: 'Führt die Leckabwehr. Repariert schneller als alle anderen.' },
-    funker: { name: 'Funker-Obermaat', kurz: 'Funker', posten: 'funk', schicht: 0, koje: 7, farbe: '#7fae8a',
-      text: 'Sendet, empfängt und entschlüsselt Funksprüche.' },
-    logistik: { name: 'Logistik-Maat', kurz: 'Maat', posten: 'lager', schicht: 2, koje: 8, farbe: '#b59a6a',
+    funker: { name: 'Funker', kurz: 'Funker', posten: 'funk', anzahl: 3, wache: 0, farbe: '#7fae8a',
+      text: 'Sendet, empfängt und entschlüsselt Funksprüche. Ein Funker pro Wache.' },
+    logistik: { name: 'Logistik-Maat', kurz: 'Maat', posten: 'lager', anzahl: 1, wache: 3, farbe: '#b59a6a',
       text: 'Verwaltet Ersatzteile, Material und Proviant. Bringt beim Handeln Rabatt.' },
-    maschinist: { name: 'Maschinist', kurz: 'Masch.', posten: 'diesel', schicht: 0, koje: 9, farbe: '#8a8f96',
-      text: 'Bedient den Maschinentelegrafen und die Diesel.' },
-    tauch: { name: 'Tauchzellen-Gast', kurz: 'Tauch', posten: 'tauchzellen', schicht: 1, koje: 0, farbe: '#6f9bb5',
+    maschinist: { name: 'Maschinist', kurz: 'Masch.', posten: ['diesel', 'emaschine'], anzahl: 14, wache: 0, farbe: '#8a8f96',
+      text: 'Diesel- und E-Maschinen-Personal. Fast ein Drittel der Besatzung.' },
+    tauch: { name: 'Tauchzellen-Gast', kurz: 'Tauch', posten: 'tauchzellen', anzahl: 3, wache: 0, farbe: '#6f9bb5',
       text: 'Regelt an der Tauchstation Tiefe und Tauchgeschwindigkeit.' },
-    vertau: { name: 'Vertäuungs-Gast', kurz: 'Vertäu', posten: 'emaschine', schicht: 1, koje: 1, farbe: '#8c7a5e',
-      text: 'Im Hafen für Leinen zuständig, auf See an der E-Maschine und in der Leckabwehr.' },
-    ruder: { name: 'Rudergänger', kurz: 'Ruder', posten: 'ruder', schicht: 0, koje: 2, farbe: '#a3b86c',
-      text: 'Steuert das Boot und hält den Kurs.' },
-    soni: { name: 'Horchfunker', kurz: 'Soni', posten: 'horch', schicht: 1, koje: 3, farbe: '#c2a0d0',
+    vertau: { name: 'Seemann', kurz: 'Seem.', posten: 'leckabwehr', anzahl: 4, wache: 1, farbe: '#8c7a5e',
+      text: 'Im Hafen an den Leinen, auf See Ausguck, Leckabwehr und überall, wo Hände fehlen.' },
+    ruder: { name: 'Rudergänger', kurz: 'Ruder', posten: 'ruder', anzahl: 3, wache: 0, farbe: '#a3b86c',
+      text: 'Steuert das Boot und hält den Kurs. Einer pro Wache.' },
+    soni: { name: 'Horchfunker', kurz: 'Soni', posten: 'horch', anzahl: 3, wache: 0, farbe: '#c2a0d0',
       text: 'Hört Schiffe am Horchgerät und erkennt sie an ihren Geräuschen.' },
-    smutje: { name: 'Smutje', kurz: 'Smutje', posten: 'kombuese', schicht: 2, koje: 4, farbe: '#e6e0d0',
+    smutje: { name: 'Smutje', kurz: 'Smutje', posten: 'kombuese', anzahl: 1, wache: 3, farbe: '#e6e0d0',
       text: 'Kocht. Ohne Smutje schmeckt das Essen schlechter und die Moral sinkt.' },
+    wo2: { name: '2. Wachoffizier', kurz: '2WO', posten: 'sehrohr', anzahl: 1, wache: 2, farbe: '#c8c2ae', offizier: true,
+      text: 'Führt die dritte Wache und vertritt den 1WO.' },
+    torpedo: { name: 'Torpedomechaniker', kurz: 'Torp.', posten: 'bugraum', anzahl: 5, wache: 0, farbe: '#b8833f',
+      text: 'Wartet die Torpedos und lädt im Bugraum nach.' },
   };
   /* Der Admiral kommt erst mit Beobachter-Missionen an Bord (siehe README). */
 
-  const SCHICHT_NAMEN = ['Wache A', 'Wache B', 'Tagesdienst'];
+  const SCHICHT_NAMEN = ['Wache A', 'Wache B', 'Wache C', 'Tagesdienst'];
 
   function plan(text) { return text.replace(/\s/g, '').split(''); }
-  /* D = Dienst, S = Schlaf, F = Freizeit. Je 24 Stunden ab 00:00 UTC. */
+  /* D = Dienst, S = Schlaf, F = Freizeit. Je 24 Stunden ab 00:00 UTC.
+     Drei-Wachen-System: 4 Stunden Wache, 4 Stunden Schlaf, 4 Stunden frei – immer schläft nur ein Drittel. */
   const STANDARD_SCHICHTEN = [
-    plan('DDDDDD SSSSSS DDDDDD FFFFFF'),
-    plan('SSSSSS DDDDDD FFFFFF DDDDDD'),
+    plan('DDDD SSSS FFFF DDDD SSSS FFFF'),
+    plan('FFFF DDDD SSSS FFFF DDDD SSSS'),
+    plan('SSSS FFFF DDDD SSSS FFFF DDDD'),
     plan('SSSSSS FDDDDD FDDDDD DFFFSS'),
   ];
 
@@ -126,9 +134,9 @@
   const WAREN = {
     diesel: { name: 'Diesel', einheit: 'L', le: 1 / 100, paket: 500 },
     torpedos: { name: 'Torpedos', einheit: 'Stk', le: 5, paket: 1 },
-    proviant: { name: 'Proviant', einheit: 'Rationen', le: 1 / 20, paket: 50 },
+    proviant: { name: 'Proviant', einheit: 'Rationen', le: 1 / 100, paket: 500 },
     ersatzteile: { name: 'Ersatzteile', einheit: 'Stk', le: 1 / 2, paket: 5 },
-    konserven: { name: 'Konserven', einheit: 'Rationen', le: 1 / 20, paket: 20 },
+    konserven: { name: 'Konserven', einheit: 'Rationen', le: 1 / 80, paket: 200 },
     batteriezelle: { name: 'Batteriezelle', einheit: 'Stk', le: 2, paket: 1 },
     druckflasche: { name: 'Druckluftflasche', einheit: 'Stk', le: 1, paket: 1 },
     sanitaet: { name: 'Sanitätskasten', einheit: 'Stk', le: 1 / 2, paket: 1 },
@@ -150,9 +158,9 @@
 
   /* Preise je Einheit; null = nicht im Angebot. Ankauf durch den Händler = 60 %. */
   const PREISE = {
-    basis: { diesel: 0.8, torpedos: 600, proviant: 3, ersatzteile: 40, konserven: 4, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
-    kalvik: { diesel: 0.6, torpedos: null, proviant: 2.5, ersatzteile: 50, konserven: 3.5, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
-    haendler: { diesel: 1.1, torpedos: null, proviant: 4, ersatzteile: 60, konserven: 5, batteriezelle: null, druckflasche: null, sanitaet: 180 },
+    basis: { diesel: 0.8, torpedos: 600, proviant: 1, ersatzteile: 40, konserven: 1.5, batteriezelle: 300, druckflasche: 150, sanitaet: 120 },
+    kalvik: { diesel: 0.6, torpedos: null, proviant: 0.8, ersatzteile: 50, konserven: 1.2, batteriezelle: 350, druckflasche: null, sanitaet: 150 },
+    haendler: { diesel: 1.1, torpedos: null, proviant: 1.5, ersatzteile: 60, konserven: 2, batteriezelle: null, druckflasche: null, sanitaet: 180 },
   };
   const ANKAUF = 0.6;
 
