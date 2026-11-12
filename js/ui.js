@@ -22,7 +22,7 @@
 
   const TAETIGKEIT = {
     dienst: 'im Dienst', schlaf: 'schläft', zurKoje: 'geht zur Koje', frei: 'Freizeit', befehl: 'Befehl',
-    flucht: 'flieht vor Wasser', gesteuert: 'gesteuert', tot: 'tot',
+    flucht: 'flieht vor Wasser', gesteuert: 'gesteuert', tot: 'tot', reparatur: 'repariert', nachladen: 'lädt Torpedos nach',
   };
 
   function taetigkeitText(st, c) {

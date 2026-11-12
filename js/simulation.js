@@ -164,11 +164,90 @@
     return best;
   }
 
+  /* ---------- Notfall-KI: Lecks reparieren, Torpedos nachladen, volllaufende Abteile abschotten ---------- */
+  function notfallPlanung(st) {
+    const b = st.boot;
+    for (const c of st.crew) { c.notfall = null; if (c.taetigkeit !== 'reparatur') c.repZiel = null; }
+    const frei = (c, auchSchlaf) => !c.tot && c.befehl == null && st.gesteuert !== c.id &&
+      (c.taetigkeit === 'frei' || c.taetigkeit === 'zurKoje' || c.taetigkeit === 'reparatur' || c.taetigkeit === 'nachladen' || (auchSchlaf && c.taetigkeit === 'schlaf'));
+
+    // 1. Schäden: Leckabwehr-Trupp zusammenstellen
+    const schaeden = b.abteile.map((a, i) => ({ i, w: (100 - a.rumpf) + a.wasser * 60, a }))
+      .filter((x) => (x.a.rumpf < (st.ladung.ersatzteile > 0 ? 99 : 60) || x.a.wasser > 0.03) && x.a.wasser < 0.6)
+      .sort((x, y) => y.w - x.w);
+    const gesamt = schaeden.reduce((sum, x) => sum + x.w, 0);
+    if (schaeden.length) {
+      const schwer = gesamt > 25;
+      const groesse = gesamt > 70 ? 4 : schwer ? 3 : 1;
+      const trupp = [];
+      // zuerst alle, die fest auf Leckabwehr eingeteilt sind (bei schweren Schäden auch aus der Koje)
+      for (const c of st.crew) {
+        if (c.posten !== 'leckabwehr' || c.tot || c.befehl != null || st.gesteuert === c.id) continue;
+        if (c.taetigkeit === 'schlaf' && !schwer) continue;
+        trupp.push(c);
+      }
+      // dann Helfer: zuerst wer Freizeit hat, bei schweren Schäden auch Schlafende; Brandmeister und Vertäuer bevorzugt
+      const kandidaten = st.crew.filter((c) => !trupp.includes(c) && frei(c, schwer))
+        .sort((a, c) => ((a.rolle === 'brand' || a.rolle === 'vertau' ? 0 : 1) - (c.rolle === 'brand' || c.rolle === 'vertau' ? 0 : 1)) ||
+          ((a.taetigkeit === 'schlaf') - (c.taetigkeit === 'schlaf')) || Math.abs(a.x - mitte(schaeden[0].i)) - Math.abs(c.x - mitte(schaeden[0].i)));
+      while (trupp.length < groesse && kandidaten.length) trupp.push(kandidaten.shift());
+      const ziele = schaeden.slice(0, Math.min(schaeden.length, 2));
+      trupp.forEach((c, k) => {
+        // Wer schon an einem Schaden arbeitet, bleibt dort, bis er behoben ist.
+        let z = c.repZiel != null ? schaeden.find((x) => x.i === c.repZiel) : null;
+        if (!z) z = ziele[k % ziele.length];
+        if (!erreichbar(st, c.x, mitte(z.i))) z = schaeden.find((x) => erreichbar(st, c.x, mitte(x.i)));
+        if (z) { c.notfall = { x: mitte(z.i) + ((c.id * 7) % 16) - 8, art: 'reparatur' }; c.repZiel = z.i; }
+      });
+      if (!b.leckalarm && trupp.some((c) => c.notfall)) {
+        b.leckalarm = true;
+        const namen = trupp.filter((c) => c.notfall).map((c) => c.name.split(' ')[0]);
+        log(st, 'Leckabwehr! ' + namen.join(', ') + ' ' + (namen.length > 1 ? 'eilen' : 'eilt') + ' ' + D.ABTEILE[schaeden[0].i].ort.replace(/^im /, 'in den ').replace(/^in der /, 'in die ') + '.', 'warn');
+      }
+    } else if (b.leckalarm) {
+      b.leckalarm = false;
+      log(st, 'Leckabwehr: Alle Schäden behoben.', 'gut');
+    }
+
+    // 2. Torpedos nachladen, wenn ein Rohr leer ist und Reserve da ist
+    if (b.rohre.includes(false) && st.ladung.torpedos > 0) {
+      const lader = st.crew.some((c) => !c.tot && c.taetigkeit !== 'schlaf' && (c.posten === 'bugraum' || c.befehl != null) && abteilIndex(c.x) === abteilNachId('bug'));
+      if (!lader) {
+        const zx = D.POSTEN.bugraum.x;
+        const k = st.crew.filter((c) => !c.notfall && frei(c, false) && erreichbar(st, c.x, zx))
+          .sort((a, c) => Math.abs(a.x - zx) - Math.abs(c.x - zx))[0];
+        if (k) {
+          k.notfall = { x: zx, art: 'nachladen' };
+          if (!b.ladeauftrag) { b.ladeauftrag = true; log(st, k.name.split(' ')[0] + ' geht in den Bugraum und lädt nach.', 'info'); }
+        }
+      }
+    } else b.ladeauftrag = false;
+
+    // 3. Volllaufende Abteile ohne Leute darin abschotten, später wieder öffnen
+    if (!b.autoSchott) b.autoSchott = {};
+    b.abteile.forEach((a, i) => {
+      const leer = !st.crew.some((c) => !c.tot && (abteilIndex(c.x) === i || c.repZiel === i));
+      if (a.wasser > 0.45 && leer) {
+        const zu = [];
+        for (const t of [i - 1, i]) if (t >= 0 && t < b.schotten.length && !b.schotten[t]) { b.schotten[t] = true; b.autoSchott[t] = true; zu.push(t); }
+        if (zu.length) log(st, 'Leckabwehr schottet ' + D.ABTEILE[i].ort.replace(/^im /, 'den ').replace(/^in der /, 'die ').replace(/^in /, '') + ' ab.', 'warn');
+      }
+    });
+    for (const t of Object.keys(b.autoSchott)) {
+      const n = Number(t);
+      if (b.schotten[n] && b.abteile[n].wasser < 0.25 && b.abteile[n + 1].wasser < 0.25) {
+        b.schotten[n] = false; delete b.autoSchott[t];
+        log(st, 'Schott zwischen ' + D.ABTEILE[n].name + ' und ' + D.ABTEILE[n + 1].name + ' wieder geöffnet.', 'info');
+      } else if (!b.schotten[n]) delete b.autoSchott[t];
+    }
+  }
+
   function crewZiel(st, c, h) {
     if (c.befehl != null) return { x: c.befehl, art: 'befehl' };
     const p = st.schichten[c.schicht][h];
     let z;
-    if (st.alarm || p === 'D') z = { x: postenX(st, c), art: 'dienst' };
+    if (c.notfall) z = c.notfall;
+    else if (st.alarm || p === 'D') z = { x: postenX(st, c), art: 'dienst' };
     else if (p === 'S') z = { x: D.KOJEN[c.koje].x, art: 'schlaf' };
     else z = { x: c.messeX, art: 'frei' };
     // Selbstschutz: nicht in geflutete Abteile, aus vollaufenden Abteilen fliehen.
@@ -212,6 +291,7 @@
   }
 
   function crewSchritt(st, dt, h) {
+    notfallPlanung(st);
     for (const c of st.crew) {
       if (c.tot) continue;
       const i = abteilIndex(c.x);
@@ -220,7 +300,7 @@
         const z = crewZiel(st, c, h);
         const angekommen = bewege(st, c, z.x, 26 * (0.7 + 0.3 * c.moral / 100) * dt);
         c.taetigkeit = z.art === 'schlaf' ? (angekommen ? 'schlaf' : 'zurKoje') : z.art;
-        c.aktPosten = angekommen && c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'frei' ? naechsterPosten(c) : null;
+        c.aktPosten = angekommen && c.taetigkeit !== 'schlaf' && c.taetigkeit !== 'frei' && c.taetigkeit !== 'reparatur' ? naechsterPosten(c) : null;
       } else {
         c.taetigkeit = 'gesteuert';
         c.aktPosten = c.laeuft ? null : naechsterPosten(c);
@@ -309,7 +389,7 @@
     const b = st.boot;
     for (const c of st.crew) {
       if (c.tot || c.laeuft || c.taetigkeit === 'schlaf' || c.taetigkeit === 'frei') continue;
-      const darf = (c.posten === 'leckabwehr' && c.taetigkeit === 'dienst') || c.taetigkeit === 'befehl' || c.taetigkeit === 'gesteuert';
+      const darf = (c.posten === 'leckabwehr' && c.taetigkeit === 'dienst') || c.taetigkeit === 'reparatur' || c.taetigkeit === 'befehl' || c.taetigkeit === 'gesteuert';
       if (!darf) continue;
       const i = abteilIndex(c.x);
       const a = b.abteile[i];

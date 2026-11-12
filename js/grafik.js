@@ -448,7 +448,7 @@
     const bild = c.laeuft ? 1 + (Math.floor(c.anim) % 2) : 0;
     if (blatt) {
       // Pixel-Grafik: Bilder stehen, laufen 1, laufen 2, arbeiten (am Posten)
-      const nr = c.laeuft ? bild : (c.aktPosten && c.taetigkeit !== 'frei' ? 3 : 0);
+      const nr = c.laeuft ? bild : ((c.aktPosten && c.taetigkeit !== 'frei') || c.taetigkeit === 'reparatur' ? 3 : 0);
       const bx = Math.round(c.x * F) - 6, by = BODEN - 28 + (nr === 1 ? 1 : 0);
       if (c.richtung < 0) {
         g.save(); g.translate(bx + 12, by); g.scale(-1, 1); g.drawImage(blatt, nr * 12, reihe * 28, 12, 28, 0, 0, 12, 28); g.restore();

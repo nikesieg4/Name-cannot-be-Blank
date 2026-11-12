@@ -104,6 +104,7 @@ Das Boot hat sieben Abteile (Heck → Bug): **Heckraum** (E-Maschine), **Maschin
 - **Abschotten:** Schotten zwischen den Abteilen lassen sich einzeln oder für ein ganzes Abteil schließen. Das hält das Wasser auf, sperrt aber auch die Crew ein.
 - **Auspumpen:** Jedes Abteil hat eine Lenzpumpe. Sie braucht Strom und jemanden im Abteil oder den LI in der Zentrale.
 - **Reparieren:** Die Leckabwehr verbraucht dabei Ersatzteile.
+- **Notfall-KI der Crew:** Bei Schäden stellt sich von selbst ein Leckabwehr-Trupp zusammen: zuerst wer auf „Leckabwehr“ eingeteilt ist, dann Leute aus der Freizeit, bei schweren Schäden werden auch Schlafende geweckt (1 Person bei kleinen, bis zu 4 bei schweren Schäden). Wer am Posten Dienst hat, bleibt dort. Jeder bleibt an seinem Schaden, bis er behoben ist; wer im Abteil steht, hält auch die Lenzpumpe am Laufen. Ist ein Rohr leer und Reserve da, geht jemand aus der Freizeit in den Bugraum und lädt nach. Läuft ein Abteil voll, in dem niemand ist und zu dem niemand unterwegs ist, schottet die Leckabwehr es ab und öffnet die Schotten wieder, wenn das Wasser unter 25 % fällt. Direkte Befehle des Spielers haben immer Vorrang.
 - **Gewicht:** Zu viel Wasser im Boot macht es schwer, es sinkt. Ab 70 % Flutung ist es verloren.
 
 **Tiefen:**
