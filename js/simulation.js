@@ -149,6 +149,83 @@
   function zerstoerungstiefe(st) { return D.ZERSTOERUNGSTIEFE + (hatAusbau(st, 'tieftauchen') ? 50 : 0); }
   /* Gruppenhorchgerät (Handbuch Kap. 7): rund 20 km Einzelschiff, nur getaucht brauchbar, am besten unter 3 kn
      Eigenfahrt; nach Wasserbomben-Detonationen kurz „betäubt“. */
+  /* ---------------- Wetter, Licht und Sicht ----------------
+     Seegang 1–7, Sicht klar / diesig / Nebel, Bewölkung. Nachts und bei schlechter Sicht sieht man
+     weniger – der Gegner aber auch. Das Sehrohr sieht nur ausgefahren und bis Sehrohrtiefe. */
+  const SICHT_NAMEN = { 1: 'klar', 0.6: 'diesig', 0.25: 'Nebel' };
+  function wetter(st) {
+    if (!st.wetter) st.wetter = { seegang: 3, sicht: 1, bedeckt: false, bis: st.zeit + 180 };
+    return st.wetter;
+  }
+  function wetterSchritt(st) {
+    const w = wetter(st);
+    if (st.zeit < w.bis) return;
+    w.bis = st.zeit + 120 + Math.random() * 240;
+    const alt = w.seegang + '|' + w.sicht;
+    w.seegang = klemme(w.seegang + Math.round((Math.random() - 0.5) * 2.6), 1, 7);
+    const r = Math.random();
+    w.sicht = w.sicht === 1 ? (r < 0.2 ? 0.6 : 1) : w.sicht === 0.6 ? (r < 0.4 ? 1 : r < 0.6 ? 0.25 : 0.6) : (r < 0.5 ? 0.6 : 0.25);
+    w.bedeckt = w.sicht < 1 ? true : Math.random() < 0.35;
+    if (alt !== w.seegang + '|' + w.sicht) log(st, 'Wetter: Seegang ' + w.seegang + ', Sicht ' + SICHT_NAMEN[w.sicht] + (w.bedeckt ? ', bedeckt' : '') + '.', 'info');
+  }
+  sim.wetter = wetter;
+  sim.wetterText = function (st) { const w = wetter(st); return 'Seegang ' + w.seegang + ' · ' + SICHT_NAMEN[w.sicht] + (w.bedeckt && w.sicht === 1 ? ' · bedeckt' : ''); };
+  /* Tageslicht 0 (Nacht) bis 1 (Tag) */
+  function licht(st) {
+    const h = (st.zeit % 1440) / 60;
+    if (h < 5 || h > 21) return 0;
+    if (h < 8) return (h - 5) / 3;
+    if (h > 18) return (21 - h) / 3;
+    return 1;
+  }
+  sim.licht = licht;
+  function sehrohrOben(st) { const b = st.boot; return !!b.sehrohrAus && b.tiefe > 4 && b.tiefe <= 15; }
+  sim.sehrohrOben = sehrohrOben;
+  /* Wie weit man vom Boot aus sehen kann – ohne Rücksicht darauf, ob jemand hinsieht. */
+  function sichtweite(st) {
+    const b = st.boot, w = wetter(st);
+    const basis = b.tiefe <= 4 ? 14 : sehrohrOben(st) ? 9 : 0;
+    return basis * w.sicht * (0.3 + 0.7 * licht(st));
+  }
+  sim.sichtweite = sichtweite;
+  sim.sehrohr = function (st, aus) {
+    const b = st.boot;
+    if (aus && b.tiefe > 15) return 'Sehrohr geht nur bis Sehrohrtiefe (13 m).';
+    if (!!b.sehrohrAus === !!aus) return null;
+    b.sehrohrAus = !!aus;
+    if (b.tiefe > 4) log(st, aus ? 'Sehrohr ausgefahren.' : 'Sehrohr eingefahren.', 'info');
+    return null;
+  };
+
+  /* Horchgerät von Hand: Was ist in dieser Peilung (Grad relativ zum Bug) zu hören? */
+  sim.horchPeilung = function (st, peil) {
+    const b = st.boot;
+    const weite = horchweite(st, { sonar: 1 });
+    const kn = sim.knoten || 0;
+    const r = { staerke: 0, schiff: null, eigen: Math.min(1, kn / 7.6), grund: !unterWasser(st) || b.tiefe < 8 ? 'oben' : b.ghgTaub && st.zeit < b.ghgTaub ? 'taub' : null, toterWinkel: peil > 140 && peil < 220 };
+    if (!weite || r.toterWinkel) return r;
+    for (const s of st.schiffe) {
+      if (s.versenkt) continue;
+      const d = dist(s, b);
+      if (d >= weite) continue;
+      const rel = ((Math.atan2(s.y - b.y, s.x - b.x) - b.kurs) * 180 / Math.PI + 720) % 360;
+      const ab = Math.abs(((rel - peil + 540) % 360) - 180);
+      const st2 = Math.max(0, 1 - ab / 14) * (0.25 + 0.75 * (1 - d / weite));
+      if (st2 > r.staerke) { r.staerke = st2; r.schiff = ab <= 6 ? s : null; r.naechstes = s; }
+    }
+    return r;
+  };
+  /* Der Kaleu horcht selbst: Der angepeilte Kontakt wird aufgenommen, auch wenn kein Horcher am Gerät sitzt. */
+  sim.horchen = function (st, peil) {
+    const r = sim.horchPeilung(st, peil);
+    if (r.schiff) {
+      r.schiff.manuell = st.zeit + 15;
+      if (r.schiff.entdeckt === 'nein') { r.schiff.entdeckt = 'sonar'; log(st, 'Schraubengeräusch in ' + String(Math.round(peil)).padStart(3, '0') + '° aufgefasst.', 'info'); }
+      r.schiff.ident = Math.min(1, r.schiff.ident + 0.08);
+    }
+    return r;
+  };
+
   function horchweite(st, eff) {
     if (eff.sonar <= 0 || !unterWasser(st) || st.boot.tiefe < 8) return 0;
     if (st.boot.ghgTaub && st.zeit < st.boot.ghgTaub) return 0;
@@ -669,6 +746,7 @@
       if (eff.antrieb > 0) kn = f.unter * (0.6 + 0.4 * Math.min(1, eff.antrieb));
       b.batterie = Math.max(0, b.batterie - (eff.antrieb > 0 ? f.strom : 0.004) * dt / (1 + 0.33 * b.upgrades.batterie));
     }
+    if (!uw) kn *= 1 - Math.max(0, wetter(st).seegang - 4) * 0.08;   // schwere See bremst über Wasser
     sim.knoten = kn;
     return !uw || b.batterie > 0;
   }
@@ -741,13 +819,19 @@
     if (unterWasser(st) || !lebtRolle(st, 'nav')) return;
     const m = st.zeit % 1440, tag = Math.floor(st.zeit / 1440);
     const daemmerung = m >= 330 && m < 420 ? 0 : m >= 1140 && m < 1230 ? 1 : -1;
+    const himmelFrei = !wetter(st).bedeckt;
+    if (!himmelFrei && (daemmerung >= 0 || (m >= 690 && m < 750)) && b.keinBesteck !== tag * 3 + Math.max(daemmerung, 0) + (daemmerung < 0 ? 2 : 0)) {
+      b.keinBesteck = tag * 3 + Math.max(daemmerung, 0) + (daemmerung < 0 ? 2 : 0);
+      log(st, 'Obersteuermann: „Himmel bedeckt – kein Besteck möglich.“', 'info');
+    }
+    if (!himmelFrei) { if (istTag(st) && b.unsicher > 2 && wetter(st).sicht > 0.25 && landAbstand(b.x, b.y) < 18 * wetter(st).sicht) besteck(st, 'Kreuzpeilung an Landmarken', 0.3, false, true); return; }
     if (daemmerung >= 0 && b.besteckKey !== tag * 3 + daemmerung) {
       b.besteckKey = tag * 3 + daemmerung;
       besteck(st, daemmerung ? 'Sternbesteck in der Abenddämmerung' : 'Sternbesteck in der Morgendämmerung', 0.6);
     } else if (m >= 690 && m < 750 && b.besteckKey !== tag * 3 + 2) {
       b.besteckKey = tag * 3 + 2;
       besteck(st, 'Mittagsbreite (Sonnenhöhe)', 0.4, true);
-    } else if (istTag(st) && b.unsicher > 2 && landAbstand(b.x, b.y) < 18) {
+    } else if (istTag(st) && b.unsicher > 2 && landAbstand(b.x, b.y) < 18 * wetter(st).sicht) {
       besteck(st, 'Kreuzpeilung an Landmarken', 0.3, false, true);
     }
   }
@@ -799,8 +883,11 @@
     if (s.wabos == null) { s.wabos = 15; s.waboPause = 0; }
     const uw = b.tiefe >= 4;
     let ortung = null;
-    if (b.tiefe < 4 && d < 12) ortung = 'sicht';
-    else if (b.tiefe <= 15 && d < 2.5 && Math.random() < 0.3 * dt) ortung = 'sicht';
+    const w = wetter(st), hell = licht(st);
+    // Aufgetaucht: nachts und bei schlechter Sicht ist das flache Boot kaum auszumachen
+    if (b.tiefe < 4 && d < 12 * w.sicht * (0.2 + 0.8 * hell)) ortung = 'sicht';
+    // Sehrohr: nur ausgefahren zu sehen – bei glatter See und hoher Fahrt verrät es die Schaumfeder
+    else if (sehrohrOben(st) && d < 2.5 * w.sicht && Math.random() < 0.3 * dt * hell * (w.seegang <= 2 ? 1.6 : w.seegang >= 5 ? 0.4 : 1) * ((sim.knoten || 0) > 3 ? 1.5 : 0.6)) ortung = 'sicht';
     else if (uw) {
       let laerm = b.aufGrund && (sim.knoten || 0) < 0.5 ? 0.03 : D.FAHRT[b.fahrt].leise ? 0.05 : 0.08 + Math.min(1, (sim.knoten || 0) / 7.6) * 0.9;
       // Pumpen und Echolot sind laut und verraten das Boot
@@ -883,8 +970,11 @@
   function schiffeSchritt(st, dt, eff) {
     const b = st.boot;
     const uw = unterWasser(st);
-    const sicht = !uw ? 14 : (antenneFrei(st) && eff.sehrohr > 0 ? 9 * Math.min(1, eff.sehrohr) : 0);
+    if (b.tiefe > 15 && b.sehrohrAus) b.sehrohrAus = false;
+    // Aufgetaucht hält die Brückenwache Ausguck; getaucht nur durchs ausgefahrene Sehrohr (Wache oder Kaleu selbst)
+    const sicht = sichtweite(st) * (!uw ? 1 : (sim.blick ? 1 : Math.min(1, eff.sehrohr)));
     const sonar = horchweite(st, eff);
+    const sonarHand = horchweite(st, { sonar: 1 });
 
     for (const s of st.schiffe) {
       if (s.versenkt) continue;
@@ -908,10 +998,10 @@
 
       // Entdeckung durch das Boot
       if (d < sicht) { s.ident = 1; s.klass = true; s.entdeckt = 'sicht'; }
-      else if (d < sonar && !imTotenWinkel(st, s)) {
+      else if ((d < sonar || (d < sonarHand && s.manuell > st.zeit)) && !imTotenWinkel(st, s)) {
         // ident = Qualität der Horch-Aufnahme. Erkannt ist der Kontakt erst nach dem Abgleich im Horchraum.
         s.entdeckt = 'sonar';
-        s.ident = Math.min(1, s.ident + eff.sonar * dt / 6);
+        s.ident = Math.min(1, s.ident + Math.max(eff.sonar, d < sonar ? 0 : 0.5) * dt / 6);
         if (!s.klass && s.ident >= 0.9 && hatAusbau(st, 'feingehoer')) {
           s.klass = true;
           log(st, 'Der Horcher erkennt das Schraubengeräusch: ' + D.SCHIFFSTYPEN[s.typ].name + '.', 'gut');
@@ -975,13 +1065,14 @@
     const halt = (t) => { b.geschuetz = null; log(st, 'Geschütz: ' + t, 'info'); };
     if (!s) return halt('Feuer eingestellt.');
     if (b.tiefe > 0.5) return halt('Feuer eingestellt – Boot taucht.');
+    if (wetter(st).seegang >= 6) return halt('Feuer eingestellt – die See geht über das Deck.');
     if (st.ladung.munition88 <= 0) return halt('Keine 8,8-cm-Munition mehr.');
     const d = dist(s, b);
     if (d > 6) return halt('Ziel außer Reichweite (6 km).');
     b.schussRest = (b.schussRest || 0) + 8 * dt;
     while (b.schussRest >= 1 && st.ladung.munition88 > 0) {
       b.schussRest -= 1; st.ladung.munition88--;
-      if (Math.random() < klemme(0.5 - d / 12, 0.05, 0.5)) {
+      if (Math.random() < klemme(0.5 - d / 12, 0.05, 0.5) * (1 - Math.max(0, wetter(st).seegang - 3) * 0.12)) {
         s.geschuetzTreffer = (s.geschuetzTreffer || 0) + 1;
         const noetig = s.typ === 'zerstoerer' ? 30 : 20;
         if (s.geschuetzTreffer >= noetig) { schiffVersenkt(st, s); b.geschuetz = null; return; }
@@ -1000,6 +1091,7 @@
     if (!D.SCHIFFSTYPEN[s.typ].feind) return 'Feuer auf neutrale Schiffe ist verboten.';
     if (b.tiefe > 0.5) return 'Das Geschütz geht nur aufgetaucht.';
     if (!st.alarm) return 'Erst Gefechtsstationen – die Geschützbedienung muss an Deck.';
+    if (wetter(st).seegang >= 6) return 'Bei Seegang ' + wetter(st).seegang + ' lässt sich das Geschütz nicht besetzen.';
     if (!lebende(st).some((c) => c.rolle === 'wo2' || c.rolle === 'wo1')) return 'Kein Geschützführer an Bord.';
     if (st.ladung.munition88 <= 0) return 'Keine 8,8-cm-Munition.';
     if (dist(s, b) > 6) return 'Ziel zu weit (Geschütz bis 6 km).';
@@ -1455,6 +1547,7 @@
       geschuetzSchritt(st, dt);
       nachladenSchritt(st, dt, eff);
       funkSchritt(st, dt, eff);
+      wetterSchritt(st);
       missionSchritt(st);
       if (lebende(st).length === 0) { verlieren(st, 'Die gesamte Besatzung ist tot.'); break; }
       while (st.zeit >= st.naechsteStunde) { st.naechsteStunde += 60; stundenSchritt(st); }
@@ -1462,7 +1555,7 @@
   };
 
   /* ---------------- Befehle ---------------- */
-  sim.setzeTiefe = function (st, i) { st.boot.zielTiefe = i; st.boot.zielM = D.TIEFEN[i].m; log(st, 'Befehl: ' + D.TIEFEN[i].name + ' (' + D.TIEFEN[i].m + ' m).', 'info'); };
+  sim.setzeTiefe = function (st, i) { st.boot.zielTiefe = i; st.boot.zielM = D.TIEFEN[i].m; log(st, 'Befehl: ' + D.TIEFEN[i].name + ' (' + D.TIEFEN[i].m + ' m).' + (i === 1 ? ' Sehrohr mit P ausfahren.' : ''), 'info'); };
   /* Alarmtauchen (Kap. 3): Diesel aus, E-Maschinen Große Fahrt, Fluten – Turm schneidet in rund 30 s unter. */
   sim.alarmtauchen = function (st) {
     const b = st.boot;

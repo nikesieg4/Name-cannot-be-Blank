@@ -268,7 +268,7 @@
   }
 
   function kopf(st) {
-    $('uhr').textContent = S.sim.uhrzeit(st).text;
+    setze($('uhr'), S.sim.uhrzeit(st).text + ' · ' + S.sim.wetterText(st));
     document.querySelectorAll('#tempo button').forEach((b) => b.classList.toggle('aktiv', Number(b.dataset.arg) === st.tempo));
     $('btnAlarm').classList.toggle('aktiv', st.alarm);
   }
@@ -342,6 +342,7 @@
         '<label class="unsichtbar" for="zielEingabe">Gewünschte Tiefe in Metern</label><input id="zielEingabe" type="number" inputmode="numeric" min="0" step="5">' +
         '<button data-aktion="zielPlus" data-arg="10" aria-label="10 m tiefer">+10</button></div>' +
         '<div class="tiefeneingabe"><button data-aktion="echolot" id="hudEcholot" title="Echolot: zeigt die Wassertiefe, ist aber zu hören"></button></div>' +
+        '<div class="tiefeneingabe"><button data-aktion="sehrohr" id="hudSehrohr" title="Durchs Sehrohr oder Fernglas sehen (P)"></button><button data-aktion="horchgeraet" title="Horchgerät bedienen (H)">Horchen</button></div>' +
         '<div class="tiefeneingabe"><button data-aktion="alarmtauchen" class="warn" title="Alarmtauchen (T)">Alarm!</button><button data-aktion="anblasen" class="warn" id="hudAnblasen"></button></div></div></div><div id="hudTiefeWarn"></div>';
     }
     const b = st.boot, sicher = S.sim.sichereTiefe(st);
@@ -350,6 +351,9 @@
     setze($('hudTiefeKopf'), 'Tiefe · Soll ' + b.zielM + ' m · Grund ' + (b.echolot ? Math.round(wt) + ' m' : '?') + schicht + ' · Prüf. ' + Math.round(sicher) + ' m');
     setze($('hudEcholot'), b.echolot ? 'Echolot an' : 'Echolot aus');
     $('hudEcholot').classList.toggle('aktiv', !!b.echolot);
+    setze($('hudSehrohr'), b.tiefe <= 4 ? 'Fernglas' : S.sim.sehrohrOben(st) ? 'Sehrohr ▲' : 'Sehrohr');
+    $('hudSehrohr').classList.toggle('aktiv', S.sim.sehrohrOben(st));
+    $('hudSehrohr').disabled = b.tiefe > 15;
     setze($('tiefenUhr'), tiefenSVG(st));
     setze($('hudTiefenKnoepfe'), D.TIEFEN.map((t, i) => '<button data-aktion="tiefe" data-arg="' + i + '" class="' + (b.zielTiefe === i ? 'aktiv' : '') + '">' + t.name + ' <small>' + t.m + '</small></button>').join(''));
     const ein = $('zielEingabe');
@@ -534,6 +538,7 @@
       '<b>Übernehmen</b> (Knopf oder Doppelklick auf die Figur): selbst steuern mit <kbd>A</kbd>/<kbd>D</kbd> oder Pfeiltasten. <b>Klick auf ein Abteil:</b> Pumpe und Schotten. <b>Klick auf ein Schott:</b> öffnen/schließen. ' +
       '<b>Mausrad</b> zoomt, <b>Ziehen</b> verschiebt die Ansicht.</p>' +
       '<h3>Ansicht</h3><p>Im normalen Blick siehst du nur Maschinentelegraf, Tiefenmesser und die wichtigsten Zähler. Karte, Besatzung, Kommando, Vorräte, Ausbau, Wachen und Meldungen klappst du oben oder per Taste auf.</p>' +
+      '<h3>Sehrohr, Horchgerät und Wetter</h3><p>Mit <b>P</b> siehst du selbst durchs <b>Sehrohr</b> (getaucht bis 13 m) oder durchs Fernglas auf der Brücke. Drehe die Peilung, schalte auf 6-fache Vergrößerung und erfasse ein Schiff im Fadenkreuz als Ziel. Getaucht sieht das Boot nur, solange das Sehrohr ausgefahren ist – und ein ausgefahrenes Sehrohr kann bei Tag aus der Nähe entdeckt werden. Unter Sehrohrtiefe ist von der Oberfläche nichts mehr zu sehen. Mit <b>H</b> bedienst du das <b>Horchgerät</b> selbst: Peilscheibe drehen, bis das Schraubengeräusch am lautesten ist. Das geht auch ohne gemeldeten Kontakt und ohne Horcher. Nachts, bei Dunst und Nebel sieht man weniger weit – der Gegner aber auch. Bei schwerem Seegang läuft das Boot über Wasser langsamer und das Geschütz ist nicht zu besetzen; bei bedecktem Himmel gibt es kein Besteck.</p>' +
       '<h3>Funk, Enigma und Navigation</h3><p>Der BdU sendet nur zu festen Zeiten – alle 4 Stunden ein Rundspruch auf Kurzwelle. Liegt ein Spruch für dich an, erscheint oben eine Meldung. Er läuft 40 Minuten; verpasst du ihn, wiederholt der BdU ihn beim nächsten Termin. Am <b>Funkgerät</b> suchst du die Welle (3,75–15 MHz, Tagwelle 8–14, Nachtwelle 4–8 MHz) und schreibst die Morsezeichen als Fünfergruppen mit. Dann entschlüsselst du sie an der <b>Schlüsselmaschine M</b>: Walzen auf die Grundstellung aus der Schlüsseltafel, Schlüsselgruppe tasten, Walzen auf den Spruchschlüssel, Gruppen tasten. Ein eigenes Kurzsignal an den BdU kann der Gegner einpeilen. Deinen Standort kennst du nur aus dem <b>Koppeln</b>: Strömung versetzt das Boot. Aufgetaucht nimmt der Obersteuermann in der Dämmerung ein Sternbesteck, mittags die Mittagsbreite und bei Tag in Küstennähe Peilungen. Die Karte ist in Marinequadrate geteilt (z. B. „AN 57“). Getauchte Kontakte erkennst du im <b>Horchraum</b> mit der Geräuschkartei.</p>' +
       '<h3>Laderaum und Ausbau</h3><p>Im <b>Laderaum</b> siehst du, was an Bord ist, und kannst Reservezellen einsetzen, Druckluftflaschen anschließen oder Ladung über Bord werfen. Konserven isst die Crew, wenn der frische Proviant alle ist; Sanitätskästen retten automatisch vor dem Ertrinken. In der <b>Werft</b> am Stützpunkt baust du das Boot über den Skilltree aus – jede Stufe schaltet die nächste frei.</p>' +
       '<p>Systeme funktionieren nur, wenn jemand am Posten steht. Fachleute (★) arbeiten voll, alle anderen mit halber Leistung. Die Chips unter „Status“ zeigen, was gerade besetzt ist.</p>' +

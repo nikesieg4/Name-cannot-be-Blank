@@ -158,6 +158,9 @@ Die Prüfungstiefe sinkt mit dem Rumpfzustand. Der Tiefenmesser zeigt den Bereic
 - **Schlüsselmaschine M (Enigma M3):** echte Walzen I–VIII, Umkehrwalze B, Ringstellung, zehn Steckerverbindungen und Doppelschritt. Jeden Tag gilt ein neuer Tagesschlüssel aus der Schlüsseltafel. Ablauf: Morse als Fünfergruppen mitschreiben → Walzen auf Grundstellung → Schlüsselgruppe tasten → Walzen auf den Spruchschlüssel → Gruppen tasten und den Klartext von den Lampen ablesen (Zahlen ausgeschrieben, X als Trennzeichen). Der Funkmaat kann es auch allein, braucht aber dreimal so lang.
 - **Marinequadrate (Kap. 8):** Großquadrate AM, AN, AO, BE, BF, BG (je 100 km), darin 3 × 3 Felder und noch einmal 3 × 3 – z. B. „AN 57“.
 - **Koppelnavigation:** Die Karte zeigt den Koppelort mit Unsicherheitskreis, nicht den wahren Standort. Strömung (0,2–0,6 kn) versetzt das Boot unbemerkt. Aufgetaucht nimmt der Obersteuermann ein Sternbesteck in der Morgen- und Abenddämmerung, mittags die Mittagsbreite und bei Tag in Küstennähe eine Kreuzpeilung. Kontakte werden vom Koppelort aus eingetragen.
+- **Sehrohr und Fernglas (Taste `P`):** Du siehst selbst hindurch – Himmel, See, Küste und Schiffe in der richtigen Peilung, Größe und Lage, mit Rauchfahne hinter der Kimm. 1,5- und 6-fache Vergrößerung, Strichplatte, Ziel im Fadenkreuz erfassen. Getaucht sieht das Boot nur mit **ausgefahrenem Sehrohr** (bis 15 m); ausgefahren kann es bei Tag aus der Nähe entdeckt werden, vor allem bei glatter See und hoher Fahrt. Unter Sehrohrtiefe ist von der Oberfläche nichts mehr zu sehen – weder im Sehrohr noch in der Bootsansicht.
+- **Horchgerät von Hand (Taste `H`):** Peilscheibe drehen und horchen, auch ohne gemeldeten Kontakt und ohne Horcher am Gerät. Lautstärke, Geräuschbild und Ton zeigen, was in der Peilung liegt; der tote Winkel achtern ist markiert. Mit Horcher gibt es „Rundhorchen“.
+- **Wetter und Licht:** Seegang 1–7, Sicht klar / diesig / Nebel und Bewölkung wechseln alle paar Stunden. Nachts und bei schlechter Sicht sieht man weniger weit – der Gegner das flache Boot aber auch kaum. Schwere See bremst die Überwasserfahrt, ab Seegang 6 ist das Geschütz nicht zu besetzen, bei bedecktem Himmel gibt es kein Stern- oder Sonnenbesteck.
 - **U-Jagd:** Zerstörer suchen auch getauchte Boote. Mit dem **Horchgerät** hören sie das Boot – je schneller es fährt, desto weiter (bei eigener Jagdfahrt sind sie taub). Haben sie Verdacht, orten sie mit **ASDIC** bis 2,5 km (direkt über dem Boot gibt es eine tote Zone). Über der vermuteten Position werfen sie **Wasserbomben** (6 pro Wurf, wirksam bis etwa 60 m zur Seite und 30 m in der Tiefe, einstellbar bis 180 m; 15 Würfe, dann dreht der Zerstörer ab). Das HUD warnt bei ASDIC-Ortung, Wasserbomben erschüttern das Bild.
 - **Taktik:** Ein Boot **auf Grund mit gestoppten Maschinen** ist für ASDIC kaum vom Meeresboden zu unterscheiden (in flachem Wasser noch weniger) und für das Horchgerät fast lautlos – im Test wurde es rund zehnmal seltener geortet und kaum getroffen. Tiefer als 180 m reichen die Wasserbomben nicht mehr ganz heran.
 
@@ -208,6 +211,7 @@ js/karte.js       Seekarte
 js/ui.js          Seitenleisten und Fenster
 js/minispiele.js  Funkraum (Kurzwelle, Morse, Schlüsselmaschine M) und Horchraum (Schraubengeräusch abgleichen)
 js/enigma.js      Schlüsselmaschine M (Enigma M3) und Tagesschlüssel
+js/sehrohr.js     Blick durchs Sehrohr und Fernglas
 js/laderaum.js    Inventar (Laderaum) und Skilltree (Werft)
 js/main.js        Spielschleife, Maus, Tastatur, Befehle
 grafik/           Pixel-Grafiken (PNG)

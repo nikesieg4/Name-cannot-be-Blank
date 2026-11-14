@@ -95,6 +95,7 @@
     if (st.verloren && !S.ui.offen()) S.ui.ende(st);
     S.grafik.zeichneBoot(bootCtx, st, ansicht, auswahl, dtReal);
     S.karte.zeichne(karteCv, st);
+    S.sehrohr.zeichne(st, dtReal);
     uiTakt -= dtReal;
     if (uiTakt <= 0) { uiTakt = 0.15; S.ui.aktualisiere(st, auswahl); $('steuer').hidden = st.gesteuert == null; }
     requestAnimationFrame(schleife);
@@ -282,6 +283,7 @@
   window.addEventListener('keydown', (e) => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
     if (S.minispiele.taste(st, e)) { S.ui.aktualisiere(st, auswahl); return; }
+    if (S.sehrohr.taste(st, e)) return;
     const k = e.key;
     if (k === 'a' || k === 'A' || k === 'ArrowLeft') { tasten.links = true; if (st.gesteuert != null) e.preventDefault(); }
     if (k === 'd' || k === 'D' || k === 'ArrowRight') { tasten.rechts = true; if (st.gesteuert != null) e.preventDefault(); }
@@ -296,6 +298,8 @@
     if (k === '+') zoomen(1);
     if (k === '-') zoomen(-1);
     if (k === 'm' || k === 'M') aktion('panel', 'karte');
+    if (k === 'p' || k === 'P') aktion('sehrohr');
+    if (k === 'h' || k === 'H') aktion('horchgeraet');
     if (k === 'c' || k === 'C') aktion('panel', 'links');
     if (k === 'k' || k === 'K') aktion('panel', 'rechts');
     if (k === 'l' || k === 'L') aktion('panel', 'log');
@@ -395,10 +399,11 @@
       case 'hilfe': pausieren(); S.ui.hilfe(); break;
       case 'modalZu':
         if (st.verloren) return;
-        S.minispiele.geschlossen(); S.laderaum.geschlossen();
+        S.minispiele.geschlossen(); S.laderaum.geschlossen(); S.sehrohr.geschlossen();
         S.ui.schliesse(); fortsetzen();
         break;
-      case 'funkgeraet': case 'horch':
+      case 'sehrohrAus': fehler(S.sim.sehrohr(st, !st.boot.sehrohrAus)); break;
+      case 'funkgeraet': case 'horch': case 'horchgeraet':
         if (!S.ui.offen()) pausieren();
         S.minispiele.aktion(st, name, arg);
         break;
@@ -406,7 +411,7 @@
         if (!S.ui.offen()) pausieren();
         S.laderaum.aktion(st, name, arg);
         break;
-      default: if (!S.minispiele.aktion(st, name, arg)) S.laderaum.aktion(st, name, arg); break;
+      default: if (!S.minispiele.aktion(st, name, arg) && !S.sehrohr.aktion(st, name, arg)) S.laderaum.aktion(st, name, arg); break;
     }
     S.ui.aktualisiere(st, auswahl);
   }

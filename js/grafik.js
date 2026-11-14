@@ -314,7 +314,8 @@
     const licht = tageslicht(st);
     const b = st.boot;
     const oberY = Math.round(t.ty + (B.WASSERLINIE_Y * F - b.tiefe * PX_PRO_M) * t.z);
-    const sichtOben = Math.max(0, Math.min(1, (45 - b.tiefe) / 30));
+    // Unter Sehrohrtiefe verschwindet die Oberfläche: ab etwa 20 m ist nach oben nur noch Wasser zu sehen
+    const sichtOben = Math.max(0, Math.min(1, (20 - b.tiefe) / 6));
     const tiefe = Math.min(1, b.tiefe / 160);
     const wasserOben = mische(mische('#10283a', '#2f6f86', licht), '#071723', tiefe);
     if (oberY > 0) {
@@ -417,7 +418,7 @@
 
     const A = D.ANKER;
     // Sehrohr und Antenne
-    const sehrohrOben = S.sim.eff.sehrohr > 0 && b.tiefe <= 15;
+    const sehrohrOben = S.sim.sehrohrOben(st);
     const sy = sehrohrOben ? 6 : 34;
     r(ctx, A.sehrohrX, sy, 4, 60 - sy, FARBE.metallHell); r(ctx, A.sehrohrX, sy, 1, 60 - sy, '#aab3b8');
     r(ctx, A.sehrohrX - 2, sy, 8, 4, FARBE.metall); r(ctx, A.sehrohrX + 4, sy + 1, 3, 2, '#1a2523');

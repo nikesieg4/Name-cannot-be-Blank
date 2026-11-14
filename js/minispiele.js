@@ -276,12 +276,128 @@
     if (cv) zeichneWasserfall(cv, s);
   }
 
+  /* ---------------- Gruppenhorchgerät von Hand ----------------
+     Auch ohne gemeldeten Kontakt: Peilscheibe drehen und horchen, was in dieser Richtung zu hören ist. */
+  function horchgeraet(st, peil) {
+    if (!offen || offen.art !== 'ghg') offen = { art: 'ghg', peil: 0, rund: null };
+    if (peil != null) offen.peil = ((peil % 360) + 360) % 360;
+    const p = offen.peil;
+    const r = S.sim.horchen(st, p);
+    const besetzt = S.sim.eff.sonar > 0;
+    const laut = Math.round(r.staerke * 100);
+    let text;
+    if (r.grund === 'oben') text = 'Aufgetaucht hört das GHG nur die eigenen Diesel und den Seegang. Erst getaucht (ab etwa 8 m) horchen.';
+    else if (r.grund === 'taub') text = 'Horcher: „Nach den Detonationen ist nichts zu hören. Es rauscht nur.“';
+    else if (r.toterWinkel) text = 'Toter Winkel achtern – hier übertönen die eigenen Schrauben alles. Kurs ändern, um nach achtern zu horchen.';
+    else if (r.schiff) text = 'Schraubengeräusch in ' + String(Math.round(p)).padStart(3, '0') + '°' + (S.sim.bekannt(r.schiff) ? ': ' + D.SCHIFFSTYPEN[r.schiff.typ].name + '.' : ' – noch nicht erkannt. Aufnahme ' + Math.round(r.schiff.ident * 100) + ' %.');
+    else if (r.staerke > 0.05) text = 'Da ist etwas – ein Stück weiter drehen, bis das Geräusch am lautesten ist.';
+    else text = r.eigen > 0.6 ? 'Nur das eigene Fahrtgeräusch. Bei weniger Fahrt hört man weiter.' : 'Nur Meeresrauschen in dieser Peilung.';
+
+    let h = '<h1>Horchraum · Gruppenhorchgerät</h1><div class="horch ghg">';
+    h += '<div class="aufnahme"><div class="zeile"><span class="etikett">PEILSCHEIBE · ' + String(Math.round(p)).padStart(3, '0') + '°</span><span class="etikett">' + (besetzt ? 'HORCHER AM GERÄT' : 'KALEU HORCHT SELBST') + '</span></div>';
+    h += '<canvas id="ghgScheibe" width="220" height="220" aria-label="Peilscheibe des Horchgeräts. Tippen setzt die Peilung."></canvas>';
+    h += '<div class="knopfraster sechs">' + [[-30, '« 30°'], [-10, '‹ 10°'], [-2, '‹ 2°'], [2, '2° ›'], [10, '10° ›'], [30, '30° »']].map(([g, t]) =>
+      '<button data-aktion="ghgDreh" data-arg="' + g + '">' + t + '</button>').join('') + '</div></div>';
+    h += '<div class="kartei"><div class="etikett">KOPFHÖRER · LAUTSTÄRKE ' + laut + ' %</div>';
+    h += '<div class="pegel">' + Array.from({ length: 16 }, (_, i) => '<i class="' + (i < Math.round(r.staerke * 16) ? (i > 12 ? 'h3' : i > 8 ? 'h2' : 'h1') : '') + '" style="height:' + (20 + i * 5) + '%"></i>').join('') + '</div>';
+    h += '<canvas id="horchBild" width="200" height="120" aria-label="Geräuschbild in dieser Peilung"></canvas>';
+    h += '<div class="meldung"><span>' + esc(text) + '</span></div>';
+    h += '<p><button data-aktion="ghgTon">▶ Abhören</button> ';
+    if (r.schiff && !S.sim.bekannt(r.schiff)) h += '<button class="aktiv" data-aktion="horch" data-arg="' + r.schiff.id + '">Mit der Geräuschkartei abgleichen</button> ';
+    h += '<button data-aktion="ghgRund"' + (besetzt && !r.grund ? '' : ' disabled') + '>Rundhorchen lassen</button></p>';
+    if (offen.rund) h += '<div class="klein">' + (offen.rund.length ? 'Horcher: „Geräusche in ' + offen.rund.map((x) => '<button data-aktion="ghgSetz" data-arg="' + x + '">' + String(x).padStart(3, '0') + '°</button>').join(' ') + '.“' : 'Horcher: „Rundhorchen – keine Schraubengeräusche.“') + '</div>';
+    else if (!besetzt) h += '<div class="klein">Ohne Horcher am Gerät musst du selbst rundhorchen.</div>';
+    h += '</div></div><p><button data-aktion="modalZu">Schließen</button></p>';
+    S.ui.oeffne(h);
+    zeichneScheibe($('ghgScheibe'), st, p, r);
+    const cv = $('horchBild');
+    if (r.schiff) zeichneWasserfall(cv, { id: r.schiff.id, typ: r.schiff.typ, ident: Math.max(r.schiff.ident, r.staerke * 0.5) });
+    else zeichneRauschen(cv, r);
+    $('ghgScheibe').addEventListener('click', (e) => {
+      const q = e.currentTarget.getBoundingClientRect();
+      const w = Math.atan2(e.clientX - q.left - q.width / 2, -(e.clientY - q.top - q.height / 2)) * 180 / Math.PI;
+      horchgeraet(st, Math.round(w));
+    });
+    offen.letztes = r;
+  }
+
+  function zeichneScheibe(cv, st, p, r) {
+    const g = cv.getContext('2d'), M = 110, R = 96;
+    g.fillStyle = '#0b1b12'; g.fillRect(0, 0, 220, 220);
+    const pol = (grad, rad) => [M + Math.sin(grad * Math.PI / 180) * rad, M - Math.cos(grad * Math.PI / 180) * rad];
+    // toter Winkel achtern
+    g.fillStyle = 'rgba(224,87,74,0.22)';
+    g.beginPath(); g.moveTo(M, M); g.arc(M, M, R, (140 - 90) * Math.PI / 180, (220 - 90) * Math.PI / 180); g.closePath(); g.fill();
+    g.strokeStyle = '#2f6a45'; g.lineWidth = 2;
+    g.beginPath(); g.arc(M, M, R, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#4fc77c'; g.font = '14px VT323, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let a = 0; a < 360; a += 10) {
+      const [x1, y1] = pol(a, R), [x2, y2] = pol(a, R - (a % 30 === 0 ? 10 : 5));
+      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+      if (a % 30 === 0) { const [tx, ty] = pol(a, R - 24); g.fillText(String(a).padStart(3, '0'), tx, ty); }
+    }
+    // Boot (Bug oben)
+    g.fillStyle = '#23784a'; g.fillRect(M - 3, M - 22, 6, 44); g.fillRect(M - 5, M - 6, 10, 10);
+    // Lautstärke rundum, soweit schon abgehorcht
+    const [zx, zy] = pol(p, R - 30);
+    g.strokeStyle = r.staerke > 0.05 ? '#b8ffd0' : '#4fc77c'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(M, M); g.lineTo(zx, zy); g.stroke();
+    g.fillStyle = g.strokeStyle; g.beginPath(); g.arc(zx, zy, 4 + r.staerke * 6, 0, Math.PI * 2); g.fill();
+  }
+
+  function zeichneRauschen(cv, r) {
+    const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+    const farben = ['#04110a', '#0a2616', '#13432a', '#23784a'];
+    const bild = g.createImageData(W, H);
+    const pegel = r.grund === 'oben' ? 0.9 : r.grund === 'taub' ? 1.1 : 0.3 + r.eigen * 0.5 + (r.toterWinkel ? 0.6 : 0) + r.staerke * 0.4;
+    for (let i = 0; i < W * H; i++) {
+      const v = Math.random() * pegel;
+      const n = parseInt(farben[v < 0.25 ? 0 : v < 0.5 ? 1 : v < 0.8 ? 2 : 3].slice(1), 16);
+      bild.data[i * 4] = n >> 16; bild.data[i * 4 + 1] = (n >> 8) & 255; bild.data[i * 4 + 2] = n & 255; bild.data[i * 4 + 3] = 255;
+    }
+    g.putImageData(bild, 0, 0);
+  }
+
+  /* Was der Horcher im Kopfhörer hat: Rauschen, dazu der Schraubentakt des angepeilten Schiffs. */
+  function horchTon(r) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const dauer = 2.2, n = Math.floor(audio.sampleRate * dauer);
+      const buf = audio.createBuffer(1, n, audio.sampleRate), d = buf.getChannelData(0);
+      const rauschen = r.grund ? 0.5 : 0.12 + r.eigen * 0.3 + (r.toterWinkel ? 0.4 : 0);
+      const typ = r.naechstes && r.staerke > 0.03 ? D.HORCH[r.naechstes.typ] : null;
+      const schlag = typ ? Math.floor(audio.sampleRate * typ.takt * 0.045) : 0;
+      let tief = 0;
+      for (let i = 0; i < n; i++) {
+        tief += (Math.random() * 2 - 1 - tief) * 0.08;               // dumpfes Rauschen
+        let v = tief * rauschen;
+        if (typ) { const ph = (i % schlag) / schlag; v += Math.sin(ph * 40) * Math.exp(-ph * 9) * r.staerke * 0.9; }
+        d[i] = v * Math.min(1, i / 2000, (n - i) / 2000);
+      }
+      const q = audio.createBufferSource(), gain = audio.createGain();
+      q.buffer = buf; gain.gain.value = 0.5; q.connect(gain); gain.connect(audio.destination); q.start();
+    } catch (err) { /* ohne Ton */ }
+  }
+
+  /* Der Horcher sucht den ganzen Kreis ab und meldet die Peilungen mit Schraubengeräusch. */
+  function rundhorchen(st) {
+    const gefunden = [];
+    let vor = 0, auf = false;
+    for (let a = 0; a <= 360; a += 2) {
+      const r = S.sim.horchPeilung(st, a % 360);
+      if (r.staerke < vor && auf && vor > 0.05) { gefunden.push((a - 2) % 360); S.sim.horchen(st, (a - 2) % 360); }
+      auf = r.staerke > vor; vor = r.staerke;
+    }
+    return gefunden;
+  }
+
   /* Liste der Horchkontakte für die rechte Seitenleiste */
   function liste(st) {
     const kontakte = st.schiffe.filter((s) => !s.versenkt && s.entdeckt === 'sonar');
-    if (S.sim.eff.sonar <= 0 && !kontakte.length) return '<div class="klein">Niemand am Horchgerät.</div>';
-    if (!kontakte.length) return '<div class="klein">Keine Horchkontakte.</div>';
-    return kontakte.map((s) => {
+    const knopf = '<button class="breit" data-aktion="horchgeraet">Horchgerät bedienen</button>';
+    if (S.sim.eff.sonar <= 0 && !kontakte.length) return knopf + '<div class="klein">Niemand am Horchgerät.</div>';
+    if (!kontakte.length) return knopf + '<div class="klein">Keine Horchkontakte.</div>';
+    return knopf + kontakte.map((s) => {
       const bek = S.sim.bekannt(s);
       return '<div class="zeile"><span>' + String(peilung(st, s)).padStart(3, '0') + '° · ' + S.sim.dist(s, st.boot).toFixed(0) + ' km · ' +
         (bek ? '<b>' + D.SCHIFFSTYPEN[s.typ].name + '</b>' : Math.round(s.ident * 100) + ' %') + '</span>' +
@@ -319,6 +435,11 @@
       case 'funkAuto':
         if (offen) { const f = S.sim.funkAuto(st, offen.id); if (f) S.sim.log(st, f, 'warn'); funkgeraet(st, offen.id); }
         return true;
+      case 'horchgeraet': offen = null; horchgeraet(st); return true;
+      case 'ghgDreh': if (offen && offen.art === 'ghg') { horchgeraet(st, offen.peil + Number(arg)); horchTon(offen.letztes); } return true;
+      case 'ghgSetz': if (offen && offen.art === 'ghg') { horchgeraet(st, Number(arg)); horchTon(offen.letztes); } return true;
+      case 'ghgTon': if (offen && offen.letztes) horchTon(offen.letztes); return true;
+      case 'ghgRund': if (offen && offen.art === 'ghg') { offen.rund = rundhorchen(st); horchgeraet(st); } return true;
       case 'horch': horchraum(st, Number(arg)); return true;
       case 'horchWahl':
         if (offen && offen.art === 'horch') { offen.wahl = arg; offen.ergebnis = null; horchraum(st, offen.id); }
@@ -341,5 +462,5 @@
 
   function geschlossen() { offen = null; }
 
-  S.minispiele = { piep, aktion, taste, liste, geschlossen, funkgeraet, horchraum };
+  S.minispiele = { piep, aktion, taste, liste, geschlossen, funkgeraet, horchraum, horchgeraet };
 })(window.Spiel = window.Spiel || {});

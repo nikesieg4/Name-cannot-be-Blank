@@ -2,7 +2,7 @@
    Fehlt eine Datei (oder ist sie noch nicht geladen), zeichnet das Spiel weiter die Platzhalter aus dem Code. */
 (function (S) {
   'use strict';
-  const NAMEN = ['boot_querschnitt', 'crew_sheet', 'crew_schlaf', 'karte_leer', 'karte_symbole', 'umwelt_meeresboden', 'umwelt_wrack'];
+  const NAMEN = ['boot_querschnitt', 'crew_sheet', 'crew_schlaf', 'karte_leer', 'karte_symbole', 'umwelt_meeresboden', 'umwelt_wrack', 'schiff_frachter', 'schiff_zerstoerer', 'schiff_haendler'];
   const bilder = {};
   for (const n of NAMEN) {
     const img = new Image();
