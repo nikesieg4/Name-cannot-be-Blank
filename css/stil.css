@@ -527,5 +527,6 @@ body.zeige-log #logLeiste { display: block; }
 .sehrohr { display: flex; flex-direction: column; gap: 8px; max-width: 720px; margin: 0 auto; }
 #sehrohrBild { width: 100%; aspect-ratio: 8 / 5; image-rendering: pixelated; background: #05080a; border: 2px solid var(--rand); touch-action: none; cursor: grab; }
 #sehrohrInfo { min-height: 2.4em; }
-#ghgScheibe { width: 220px; max-width: 100%; aspect-ratio: 1; align-self: center; cursor: crosshair; border: 2px solid #25507a; }
+#ghgScheibe { width: 220px; height: 220px; flex: none; box-sizing: content-box; align-self: center; cursor: crosshair; border: 2px solid #25507a; }
+.ghg { align-items: start; }
 .ghg .aufnahme { display: flex; flex-direction: column; gap: 6px; }
