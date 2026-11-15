@@ -96,7 +96,8 @@
     });
     h += '</div>';
     if (!n.mitgeschrieben) {
-      h += '<div class="tasten">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((z) => '<button data-aktion="funkTaste" data-arg="' + z + '">' + z + '</button>').join('') +
+      const reihe = (t) => t.split('').map((z) => '<button data-aktion="funkTaste" data-arg="' + z + '">' + z + '</button>').join('');
+      h += '<div class="tasten">' + reihe('QWERTZUIOP') + reihe('ASDFGHJKL') + '<span></span>' + reihe('YXCVBNM') +
         '<button class="zurueck" data-aktion="funkTaste" data-arg="" aria-label="Letztes Zeichen löschen">⌫</button></div>';
       h += '<p class="klein">Morsezeichen in Buchstaben übertragen – auch per Tastatur (A–Z, Rücktaste).</p>';
       h += '<div class="tabelle">' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((z) => '<span><b>' + z + '</b> ' + D.MORSE[z].replace(/\./g, '·').replace(/-/g, '−') + '</span>').join('') + '</div>';

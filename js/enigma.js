@@ -111,5 +111,5 @@
       .replace(/\d/g, (d) => ZAHLWORT[+d]).replace(/[^A-Z]+/g, 'X').replace(/^X+|X+$/g, '');
   }
 
-  S.enigma = { maschine, tagesschluessel, verschluessele, klartext, zufall, WALZEN, ROEMISCH, A, TASTEN: ['QWERTZUIO', 'ASDFGHJK', 'PYXCVBNML'] };
+  S.enigma = { maschine, tagesschluessel, verschluessele, klartext, zufall, WALZEN, ROEMISCH, A, TASTEN: ['QWERTZUIOP', 'ASDFGHJKL', 'YXCVBNM'] };
 })(window.Spiel = window.Spiel || {});
