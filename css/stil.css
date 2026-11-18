@@ -218,7 +218,7 @@ th { color: var(--leise); font-weight: normal; }
 }
 
 /* Schmale Bildschirme (z. B. iPad hoch): Boot und Karte oben, darunter zwei Spalten */
-@media (max-width: 1000px) {
+@media (max-width: 1000px) and (orientation: portrait) {
   body { height: auto; min-height: 100dvh; overflow: auto; display: block; }
   main {
     display: grid;
@@ -232,7 +232,7 @@ th { color: var(--leise); font-weight: normal; }
   #logLeiste { height: 140px; }
   #leiste .gruppe.rechts { margin-left: 0; }
 }
-@media (max-width: 640px) {
+@media (max-width: 640px) and (orientation: portrait) {
   main { grid-template-columns: 1fr; grid-template-areas: "mitte" "links" "rechts"; }
   #links { border-right: 0; }
   #mitte { position: static; height: 60vh; }
@@ -490,7 +490,7 @@ body.zeige-log #logLeiste { display: block; }
   .tiefe svg { width: 124px; height: 124px; }
   .zaehler { min-width: 84px; } .zaehler b { font-size: 22px; }
 }
-@media (max-width: 1000px) {
+@media (max-width: 1000px) and (orientation: portrait) {
   body { height: 100dvh; overflow: hidden; display: flex; }
   main { display: block; }
   #mitte { position: absolute; height: auto; }
@@ -502,7 +502,7 @@ body.zeige-log #logLeiste { display: block; }
   #hudZaehler { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   #panelKnoepfe { order: 5; width: 100%; overflow-x: auto; }
 }
-@media (max-width: 640px) {
+@media (max-width: 640px) and (orientation: portrait) {
   .hebel button, .tiefenwahl button { min-width: 0; font-size: 14px; }
   .fahrtwert b { font-size: 28px; }
   .tiefe svg { width: 96px; height: 96px; }
@@ -519,7 +519,7 @@ body.zeige-log #logLeiste { display: block; }
 .blink { animation: blink 1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0.35; } }
 @media (max-width: 1400px) { #tiefenUhr { width: 124px; height: 124px; } }
-@media (max-width: 640px) { #tiefenUhr { width: 96px; height: 96px; } }
+@media (max-width: 640px) and (orientation: portrait) { #tiefenUhr { width: 96px; height: 96px; } }
 /* Torpedotypen in den Rohren */
 .rohre i.voll.G7a, .rohrreihe i.voll.G7a { background: var(--orange); border-color: #6b4a1e; }
 .zielkarte { flex-wrap: wrap; }
@@ -531,3 +531,29 @@ body.zeige-log #logLeiste { display: block; }
 #ghgScheibe { width: 220px; height: 220px; flex: none; box-sizing: content-box; align-self: center; cursor: crosshair; border: 2px solid #25507a; }
 .ghg { align-items: start; }
 .ghg .aufnahme { display: flex; flex-direction: column; gap: 6px; }
+
+/* ---------- Eingebettet und kleine Querformate ----------
+   --ui wird in main.js aus der Fenstergröße berechnet (0,5–1). Die Bedienelemente werden damit
+   verkleinert, das Boot selbst nicht – es wird separat in den freien Bereich eingepasst. */
+#leiste, #hud, #meldungen, #auswahlKarte, .schublade, #logLeiste, #modal .fenster, #steuer, .zoom { zoom: var(--ui, 1); }
+#modal .fenster { max-height: calc(90vh / var(--ui, 1)); }
+body.kompakt #leiste { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+body.kompakt #leiste::-webkit-scrollbar { display: none; }
+body.kompakt #leiste > * { flex: none; }
+body.kompakt .titel span { display: none; }
+
+#zuKlein { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 10px;
+  text-align: center; background: #0a1013 url(../grafik/vorschau_breit.png) center / cover no-repeat; image-rendering: pixelated; }
+#zuKlein[hidden] { display: none; }
+#zuKlein::before { content: ''; position: absolute; inset: 0; background: rgba(5, 10, 14, 0.62); }
+#zuKlein > * { position: relative; }
+#zuKlein b { font-family: 'Silkscreen', monospace; color: var(--gelb); font-size: 16px; letter-spacing: 1px; }
+#zuKlein p { margin: 0; font-size: 16px; line-height: 1.1; max-width: 320px; }
+#zuKlein .knoepfe { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+#zuKlein button { min-height: 32px; font-size: 17px; }
+@media (max-width: 640px) and (orientation: portrait) {
+  body.kompakt #hudZaehler { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  body.kompakt .zaehler { min-width: 0; padding: 3px 5px; }
+  body.kompakt .zaehler b { font-size: 20px; }
+  body.kompakt .zaehler small { display: none; }
+}

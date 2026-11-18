@@ -6,7 +6,7 @@
 
   let st;
   const auswahl = { crew: null, abteil: null, hover: null };
-  const ansicht = { zoom: 2, cx: 330, cy: 80, gesetzt: false };
+  const ansicht = { zoom: 2, cx: 330, cy: 80, gesetzt: false, manuell: false };
   const tasten = { links: false, rechts: false };
   let tempoVorModal = null;
 
@@ -51,14 +51,52 @@
   /* Zoom in Bildschirmpixeln pro Grafikpixel. Ganzzahlige Stufen bleiben pixelgenau,
      0,5 und 0,75 gibt es nur für kleine Bildschirme. */
   const STUFEN = S.grafik.ZOOMSTUFEN;
+  /* Höhe des HUD unten (in Leinwandpixeln): Das Boot wird in den freien Bereich darüber eingepasst. */
+  function hudHoehe() {
+    const hud = $('hud'), wrap = $('bootWrap');
+    if (!hud || !wrap) return 0;
+    const dpr = bootCv.width / Math.max(1, bootCv.clientWidth);
+    const frei = hud.getBoundingClientRect().top - wrap.getBoundingClientRect().top;
+    return Math.max(0, Math.min(bootCv.height * 0.5, bootCv.height - frei * dpr));
+  }
   function passendZoom() {
     const F = S.grafik.F;
-    const max = Math.min(bootCv.width / ((D.BOOT.B - 8) * F), bootCv.height / (100 * F));
+    const max = Math.min(bootCv.width / ((D.BOOT.B - 8) * F), (bootCv.height - hudHoehe()) / (100 * F));
     let z = STUFEN[0];
     for (const s of STUFEN) if (s <= max) z = s;
     return z;
   }
-  function zoomFit() { ansicht.zoom = passendZoom(); ansicht.cx = 330; ansicht.cy = 82; }
+  function zoomFit() {
+    ansicht.zoom = passendZoom(); ansicht.cx = 330;
+    // Mitte des freien Bereichs über dem HUD
+    ansicht.cy = 82 + hudHoehe() / 2 / (ansicht.zoom * S.grafik.F);
+    ansicht.manuell = false;
+  }
+
+  /* Bedienelemente an die Fenstergröße anpassen (z. B. eingebettet in einem Spieleportal). */
+  let zuKleinWeg = false;
+  function passeOberflaecheAn() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const hoch = h > w && w <= 1000;
+    // Hochkant (Handy): eigenes Layout, nur auf schmalen Geräten etwas verkleinert
+    const ui = hoch ? Math.max(0.7, Math.min(1, w / 560)) : Math.max(0.5, Math.min(1, w / 1300, h / 760));
+    document.documentElement.style.setProperty('--ui', ui.toFixed(3));
+    document.body.classList.toggle('kompakt', hoch ? w <= 640 : (w <= 1000 || h <= 620));
+    // Zu klein: z. B. ein Handy, auf dem das Spiel als kleiner 16:9-Rahmen in einer Seite steckt
+    $('zuKlein').hidden = zuKleinWeg || !(w < 300 || h < 300);
+  }
+  passeOberflaecheAn();
+  window.addEventListener('resize', () => { passeOberflaecheAn(); if (!ansicht.manuell) ansicht.gesetzt = false; });
+  document.addEventListener('fullscreenchange', () => { passeOberflaecheAn(); if (!ansicht.manuell) ansicht.gesetzt = false; });
+  $('zuKleinVoll').addEventListener('click', () => {
+    const el = document.documentElement;
+    const f = el.requestFullscreen || el.webkitRequestFullscreen;
+    const fehlt = () => S.ui.meldung('Vollbild nicht möglich', 'Dein Browser erlaubt hier kein Vollbild. Nutze „Neuer Tab“ oder den Vollbild-Knopf der Seite.');
+    if (!f) { fehlt(); return; }
+    try { const r = f.call(el); if (r && r.catch) r.catch(fehlt); } catch (e) { fehlt(); }
+  });
+  $('zuKleinTab').addEventListener('click', () => { window.open(location.href, '_blank', 'noopener'); });
+  $('zuKleinTrotzdem').addEventListener('click', () => { zuKleinWeg = true; passeOberflaecheAn(); });
 
   function zoomen(richtung, sx, sy) {
     const alt = ansicht.zoom;
@@ -72,6 +110,7 @@
       const q = S.grafik.zuBoot(ansicht, bootCv.width, bootCv.height, sx, sy);
       ansicht.cx += p.x - q.x; ansicht.cy += p.y - q.y;
     } else ansicht.zoom = neu;
+    ansicht.manuell = true;
     begrenzeAnsicht();
   }
   function begrenzeAnsicht() {
@@ -85,7 +124,7 @@
   function schleife(jetzt) {
     const dtReal = Math.min(0.25, (jetzt - letzte) / 1000);
     letzte = jetzt;
-    if (passeAn(bootCv) || !ansicht.gesetzt) { if (!ansicht.gesetzt) zoomFit(); ansicht.gesetzt = true; }
+    if (passeAn(bootCv) || !ansicht.gesetzt) { if (!ansicht.gesetzt || !ansicht.manuell) zoomFit(); ansicht.gesetzt = true; }
     passeAn(karteCv);
 
     if (st.tempo > 0 && !st.verloren) {
@@ -148,6 +187,7 @@
       if (druck.gezogen) {
         const dpr = bootCv.width / bootCv.getBoundingClientRect().width;
         ansicht.cx = druck.cx - dx * dpr / (ansicht.zoom * S.grafik.F);
+        ansicht.manuell = true;
         ansicht.cy = druck.cy - dy * dpr / (ansicht.zoom * S.grafik.F);
         begrenzeAnsicht();
         bootCv.classList.add('ziehen');
